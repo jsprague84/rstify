@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api/client';
 import type { MessageResponse } from '../api/types';
 import { useMessageStream } from '../hooks/useMessageStream';
 import ConfirmDialog from '../components/ConfirmDialog';
+
+const PAGE_SIZE = 50;
 
 export default function Messages() {
   const [messages, setMessages] = useState<MessageResponse[]>([]);
@@ -10,14 +12,24 @@ export default function Messages() {
   const [deleteMsg, setDeleteMsg] = useState<MessageResponse | null>(null);
   const [filter, setFilter] = useState<'all' | 'app' | 'topic'>('all');
   const [liveCount, setLiveCount] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const fetchLimit = useRef(PAGE_SIZE);
 
-  const load = useCallback(() => {
-    api.listMessages(200)
-      .then(res => setMessages(res.messages))
-      .catch(e => setError(e.message));
+  const load = useCallback((limit: number) => {
+    setLoading(true);
+    api.listMessages(limit)
+      .then(res => {
+        setMessages(res.messages);
+        setHasMore(res.paging.size >= limit);
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false));
   }, []);
 
-  useEffect(load, [load]);
+  useEffect(() => {
+    load(PAGE_SIZE);
+  }, [load]);
 
   // Real-time: prepend new messages from WebSocket
   useMessageStream(useCallback((msg: MessageResponse) => {
@@ -35,7 +47,12 @@ export default function Messages() {
     if (!deleteMsg) return;
     await api.deleteMessage(deleteMsg.id);
     setDeleteMsg(null);
-    load();
+    setMessages(prev => prev.filter(m => m.id !== deleteMsg.id));
+  };
+
+  const handleLoadMore = () => {
+    fetchLimit.current += PAGE_SIZE;
+    load(fetchLimit.current);
   };
 
   const filtered = messages.filter(m => {
@@ -75,7 +92,7 @@ export default function Messages() {
         </div>
       </div>
       {error && <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-sm mb-4">{error}</div>}
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && !loading ? (
         <p className="text-gray-500 text-center py-8">No messages</p>
       ) : (
         <div className="space-y-3">
@@ -104,6 +121,17 @@ export default function Messages() {
               </div>
             </div>
           ))}
+          {hasMore && (
+            <div className="text-center py-4">
+              <button
+                onClick={handleLoadMore}
+                disabled={loading}
+                className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50"
+              >
+                {loading ? 'Loading...' : 'Load More'}
+              </button>
+            </div>
+          )}
         </div>
       )}
       <ConfirmDialog
