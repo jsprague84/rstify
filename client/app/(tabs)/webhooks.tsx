@@ -10,6 +10,9 @@ import {
   TextInput,
   Modal,
   Switch,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -248,9 +251,13 @@ export default function WebhooksScreen() {
       />
 
       <Modal visible={showCreate} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Create Webhook</Text>
+            <ScrollView keyboardShouldPersistTaps="handled">
 
             {/* Direction toggle */}
             <View style={styles.directionRow}>
@@ -400,8 +407,9 @@ export default function WebhooksScreen() {
                 <Text style={styles.submitText}>Create</Text>
               </Pressable>
             </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

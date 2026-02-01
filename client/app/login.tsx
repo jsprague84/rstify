@@ -5,12 +5,11 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../src/store/auth";
 
@@ -52,9 +51,10 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.inner}
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.inner}
+        bottomOffset={20}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoContainer}>
           <Ionicons name="notifications" size={56} color="#3b82f6" />
@@ -123,7 +123,7 @@ export default function LoginScreen() {
             />
           ) : null}
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

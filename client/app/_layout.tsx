@@ -1,6 +1,7 @@
 import React, { useEffect } from "react";
 import { Stack, SplashScreen } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { useAuthStore } from "../src/store/auth";
 
 SplashScreen.preventAutoHideAsync();
@@ -36,9 +37,9 @@ export default function RootLayout() {
   }, [isLoading]);
 
   return (
-    <>
+    <KeyboardProvider>
       <StatusBar style="dark" />
       <RootNavigator />
-    </>
+    </KeyboardProvider>
   );
 }
