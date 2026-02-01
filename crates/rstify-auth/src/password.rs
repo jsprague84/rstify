@@ -52,6 +52,8 @@ mod tests {
         let password = "test_password_123".to_string();
         let hash = hash_password(password.clone()).await.unwrap();
         assert!(verify_password(password, hash.clone()).await.unwrap());
-        assert!(!verify_password("wrong_password".to_string(), hash).await.unwrap());
+        assert!(!verify_password("wrong_password".to_string(), hash)
+            .await
+            .unwrap());
     }
 }

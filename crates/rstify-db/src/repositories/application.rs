@@ -55,13 +55,11 @@ impl ApplicationRepository for SqliteApplicationRepo {
     }
 
     async fn list_by_user(&self, user_id: i64) -> Result<Vec<Application>, CoreError> {
-        sqlx::query_as::<_, Application>(
-            "SELECT * FROM applications WHERE user_id = ? ORDER BY id",
-        )
-        .bind(user_id)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        sqlx::query_as::<_, Application>("SELECT * FROM applications WHERE user_id = ? ORDER BY id")
+            .bind(user_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))
     }
 
     async fn update(
@@ -99,10 +97,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
             .await
             .map_err(|e| CoreError::Database(e.to_string()))?;
         if result.rows_affected() == 0 {
-            return Err(CoreError::NotFound(format!(
-                "Application {} not found",
-                id
-            )));
+            return Err(CoreError::NotFound(format!("Application {} not found", id)));
         }
         Ok(())
     }

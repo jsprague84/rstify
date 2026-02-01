@@ -193,11 +193,12 @@ impl MessageRepository for SqliteMessageRepo {
     }
 
     async fn delete_expired_messages(&self) -> Result<u64, CoreError> {
-        let result =
-            sqlx::query("DELETE FROM messages WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')")
-                .execute(&self.pool)
-                .await
-                .map_err(|e| CoreError::Database(e.to_string()))?;
+        let result = sqlx::query(
+            "DELETE FROM messages WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')",
+        )
+        .execute(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))?;
         Ok(result.rows_affected())
     }
 

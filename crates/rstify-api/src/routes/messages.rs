@@ -33,7 +33,10 @@ pub async fn create_app_message(
         )));
     }
 
-    let extras_json = req.extras.as_ref().map(|e| serde_json::to_string(e).unwrap_or_default());
+    let extras_json = req
+        .extras
+        .as_ref()
+        .map(|e| serde_json::to_string(e).unwrap_or_default());
 
     let msg = state
         .message_repo
@@ -73,7 +76,7 @@ pub async fn list_messages(
     auth: AuthUser,
     Query(params): Query<ListParams>,
 ) -> Result<Json<PagedMessages>, ApiError> {
-    let limit = params.limit.unwrap_or(100).min(500).max(1);
+    let limit = params.limit.unwrap_or(100).clamp(1, 500);
     let since = params.since.unwrap_or(0).max(0);
 
     let messages = state
@@ -87,11 +90,7 @@ pub async fn list_messages(
 
     Ok(Json(PagedMessages {
         messages: responses,
-        paging: Paging {
-            size,
-            since,
-            limit,
-        },
+        paging: Paging { size, since, limit },
     }))
 }
 
@@ -125,7 +124,7 @@ pub async fn list_application_messages(
         )));
     }
 
-    let limit = params.limit.unwrap_or(100).min(500).max(1);
+    let limit = params.limit.unwrap_or(100).clamp(1, 500);
     let since = params.since.unwrap_or(0).max(0);
 
     let messages = state
@@ -139,11 +138,7 @@ pub async fn list_application_messages(
 
     Ok(Json(PagedMessages {
         messages: responses,
-        paging: Paging {
-            size,
-            since,
-            limit,
-        },
+        paging: Paging { size, since, limit },
     }))
 }
 

@@ -35,9 +35,12 @@ impl EmailConfig {
 
 pub async fn send_email(config: &EmailConfig, to: &str, subject: &str, body: &str) {
     let email = match Message::builder()
-        .from(config.from.parse().unwrap_or_else(|_| {
-            "rstify@localhost".parse().unwrap()
-        }))
+        .from(
+            config
+                .from
+                .parse()
+                .unwrap_or_else(|_| "rstify@localhost".parse().unwrap()),
+        )
         .to(match to.parse() {
             Ok(addr) => addr,
             Err(e) => {

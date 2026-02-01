@@ -44,9 +44,9 @@ pub async fn ntfy_publish(
             .list_permissions_for_user(auth.user.id)
             .await
             .map_err(ApiError::from)?;
-        let has_write = permissions.iter().any(|p| {
-            p.can_write && rstify_auth::acl::topic_matches(&p.topic_pattern, &topic.name)
-        });
+        let has_write = permissions
+            .iter()
+            .any(|p| p.can_write && rstify_auth::acl::topic_matches(&p.topic_pattern, &topic.name));
         if !has_write {
             return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
                 "No write permission for this topic".to_string(),

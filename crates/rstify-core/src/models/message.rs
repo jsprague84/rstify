@@ -71,11 +71,20 @@ impl Message {
             title: self.title.clone(),
             message: self.message.clone(),
             priority: self.priority,
-            tags: self.tags.as_ref().and_then(|t| serde_json::from_str(t).ok()),
+            tags: self
+                .tags
+                .as_ref()
+                .and_then(|t| serde_json::from_str(t).ok()),
             click_url: self.click_url.clone(),
             icon_url: self.icon_url.clone(),
-            actions: self.actions.as_ref().and_then(|a| serde_json::from_str(a).ok()),
-            extras: self.extras.as_ref().and_then(|e| serde_json::from_str(e).ok()),
+            actions: self
+                .actions
+                .as_ref()
+                .and_then(|a| serde_json::from_str(a).ok()),
+            extras: self
+                .extras
+                .as_ref()
+                .and_then(|e| serde_json::from_str(e).ok()),
             content_type: self.content_type.clone(),
             date: self.created_at.clone(),
         }

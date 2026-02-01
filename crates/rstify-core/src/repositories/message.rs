@@ -2,6 +2,7 @@ use crate::error::CoreError;
 use crate::models::{Attachment, Message, WebhookConfig};
 use async_trait::async_trait;
 
+#[allow(clippy::too_many_arguments)]
 #[async_trait]
 pub trait MessageRepository: Send + Sync {
     async fn create(
@@ -22,9 +23,24 @@ pub trait MessageRepository: Send + Sync {
     ) -> Result<Message, CoreError>;
 
     async fn find_by_id(&self, id: i64) -> Result<Option<Message>, CoreError>;
-    async fn list_by_application(&self, app_id: i64, limit: i64, since: i64) -> Result<Vec<Message>, CoreError>;
-    async fn list_by_user_apps(&self, user_id: i64, limit: i64, since: i64) -> Result<Vec<Message>, CoreError>;
-    async fn list_by_topic(&self, topic_id: i64, limit: i64, since: i64) -> Result<Vec<Message>, CoreError>;
+    async fn list_by_application(
+        &self,
+        app_id: i64,
+        limit: i64,
+        since: i64,
+    ) -> Result<Vec<Message>, CoreError>;
+    async fn list_by_user_apps(
+        &self,
+        user_id: i64,
+        limit: i64,
+        since: i64,
+    ) -> Result<Vec<Message>, CoreError>;
+    async fn list_by_topic(
+        &self,
+        topic_id: i64,
+        limit: i64,
+        since: i64,
+    ) -> Result<Vec<Message>, CoreError>;
     async fn delete_by_id(&self, id: i64) -> Result<(), CoreError>;
     async fn delete_all_for_user(&self, user_id: i64) -> Result<(), CoreError>;
     async fn delete_all_for_application(&self, app_id: i64) -> Result<(), CoreError>;
@@ -66,8 +82,20 @@ pub trait MessageRepository: Send + Sync {
         enabled: bool,
     ) -> Result<WebhookConfig, CoreError>;
     async fn find_webhook_config_by_id(&self, id: i64) -> Result<Option<WebhookConfig>, CoreError>;
-    async fn find_webhook_config_by_token(&self, token: &str) -> Result<Option<WebhookConfig>, CoreError>;
-    async fn list_webhook_configs_by_user(&self, user_id: i64) -> Result<Vec<WebhookConfig>, CoreError>;
-    async fn update_webhook_config(&self, id: i64, name: Option<&str>, template: Option<&str>, enabled: Option<bool>) -> Result<WebhookConfig, CoreError>;
+    async fn find_webhook_config_by_token(
+        &self,
+        token: &str,
+    ) -> Result<Option<WebhookConfig>, CoreError>;
+    async fn list_webhook_configs_by_user(
+        &self,
+        user_id: i64,
+    ) -> Result<Vec<WebhookConfig>, CoreError>;
+    async fn update_webhook_config(
+        &self,
+        id: i64,
+        name: Option<&str>,
+        template: Option<&str>,
+        enabled: Option<bool>,
+    ) -> Result<WebhookConfig, CoreError>;
     async fn delete_webhook_config(&self, id: i64) -> Result<(), CoreError>;
 }

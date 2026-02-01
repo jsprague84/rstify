@@ -30,7 +30,8 @@ async fn main() -> anyhow::Result<()> {
         .fetch_one(&pool)
         .await?;
     if user_count.0 == 0 {
-        let password_hash = hash_password("admin".to_string()).await
+        let password_hash = hash_password("admin".to_string())
+            .await
             .map_err(|e| anyhow::anyhow!("Failed to hash default password: {}", e))?;
         sqlx::query("INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)")
             .bind("admin")
@@ -41,7 +42,11 @@ async fn main() -> anyhow::Result<()> {
         warn!("Created default admin user (username: admin, password: admin) — change the password immediately!");
     }
 
-    let state = AppState::new(pool.clone(), config.jwt_secret.clone(), config.upload_dir.clone());
+    let state = AppState::new(
+        pool.clone(),
+        config.jwt_secret.clone(),
+        config.upload_dir.clone(),
+    );
 
     // Start periodic connection cleanup
     let connections_for_cleanup = state.connections.clone();

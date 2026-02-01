@@ -55,14 +55,13 @@ pub async fn login(
         )));
     }
 
-    let token = create_jwt(user.id, &user.username, user.is_admin, &state.jwt_secret).map_err(
-        |e| {
+    let token =
+        create_jwt(user.id, &user.username, user.is_admin, &state.jwt_secret).map_err(|e| {
             ApiError::from(rstify_core::error::CoreError::Internal(format!(
                 "Token creation error: {}",
                 e
             )))
-        },
-    )?;
+        })?;
 
     Ok(Json(LoginResponse { token }))
 }

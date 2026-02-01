@@ -69,10 +69,7 @@ impl RateLimiter {
 
 /// Axum middleware function for rate limiting.
 /// Uses the `RateLimiter` from request extensions (set via Extension layer).
-pub async fn rate_limit_middleware(
-    req: Request<Body>,
-    next: Next,
-) -> Response {
+pub async fn rate_limit_middleware(req: Request<Body>, next: Next) -> Response {
     // Extract rate limiter from extensions
     let limiter = match req.extensions().get::<RateLimiter>() {
         Some(l) => l.clone(),

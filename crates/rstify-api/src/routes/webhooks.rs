@@ -88,7 +88,12 @@ pub async fn update_webhook(
 
     let config = state
         .message_repo
-        .update_webhook_config(id, req.name.as_deref(), template_json.as_deref(), req.enabled)
+        .update_webhook_config(
+            id,
+            req.name.as_deref(),
+            template_json.as_deref(),
+            req.enabled,
+        )
         .await
         .map_err(ApiError::from)?;
     Ok(Json(config))
@@ -224,5 +229,7 @@ pub async fn receive_webhook(
         }
     }
 
-    Ok(Json(serde_json::json!({"success": true, "message_id": msg.id})))
+    Ok(Json(
+        serde_json::json!({"success": true, "message_id": msg.id}),
+    ))
 }

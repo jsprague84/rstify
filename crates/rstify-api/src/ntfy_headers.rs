@@ -25,12 +25,19 @@ impl NtfyHeaders {
             parsed.title = Some(v);
         }
 
-        if let Some(v) = get_header(headers, "x-priority").or_else(|| get_header(headers, "priority")) {
+        if let Some(v) =
+            get_header(headers, "x-priority").or_else(|| get_header(headers, "priority"))
+        {
             parsed.priority = Some(parse_priority(&v));
         }
 
         if let Some(v) = get_header(headers, "x-tags").or_else(|| get_header(headers, "tags")) {
-            parsed.tags = Some(v.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect());
+            parsed.tags = Some(
+                v.split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect(),
+            );
         }
 
         if let Some(v) = get_header(headers, "x-click").or_else(|| get_header(headers, "click")) {
@@ -41,11 +48,14 @@ impl NtfyHeaders {
             parsed.icon_url = Some(v);
         }
 
-        if let Some(v) = get_header(headers, "x-actions").or_else(|| get_header(headers, "actions")) {
+        if let Some(v) = get_header(headers, "x-actions").or_else(|| get_header(headers, "actions"))
+        {
             parsed.actions = Some(v);
         }
 
-        if let Some(v) = get_header(headers, "x-filename").or_else(|| get_header(headers, "filename")) {
+        if let Some(v) =
+            get_header(headers, "x-filename").or_else(|| get_header(headers, "filename"))
+        {
             parsed.filename = Some(v);
         }
 
@@ -60,7 +70,9 @@ impl NtfyHeaders {
             parsed.scheduled_for = parse_schedule(&v);
         }
 
-        if let Some(v) = get_header(headers, "x-markdown").or_else(|| get_header(headers, "markdown")) {
+        if let Some(v) =
+            get_header(headers, "x-markdown").or_else(|| get_header(headers, "markdown"))
+        {
             if v == "yes" || v == "true" || v == "1" {
                 parsed.content_type = Some("text/markdown".to_string());
             }
@@ -106,7 +118,11 @@ fn parse_schedule(s: &str) -> Option<String> {
 
     // Try parsing as ISO 8601 / RFC 3339 datetime
     if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
-        return Some(dt.with_timezone(&Utc).format("%Y-%m-%d %H:%M:%S").to_string());
+        return Some(
+            dt.with_timezone(&Utc)
+                .format("%Y-%m-%d %H:%M:%S")
+                .to_string(),
+        );
     }
 
     // Try parsing as a simple datetime string

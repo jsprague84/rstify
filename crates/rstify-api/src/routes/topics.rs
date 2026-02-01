@@ -72,11 +72,7 @@ pub async fn list_topics(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<Vec<Topic>>, ApiError> {
-    let all_topics = state
-        .topic_repo
-        .list_all()
-        .await
-        .map_err(ApiError::from)?;
+    let all_topics = state.topic_repo.list_all().await.map_err(ApiError::from)?;
 
     // Admins see everything; others see only readable topics
     if auth.user.is_admin {
@@ -322,7 +318,7 @@ pub async fn list_topic_messages(
 
     check_read_permission(&state, &auth.user, &topic).await?;
 
-    let limit = params.limit.unwrap_or(100).min(500).max(1);
+    let limit = params.limit.unwrap_or(100).clamp(1, 500);
     let since = params.since.unwrap_or(0).max(0);
 
     let messages = state
@@ -339,11 +335,7 @@ pub async fn list_topic_messages(
 
     Ok(Json(PagedMessages {
         messages: responses,
-        paging: Paging {
-            size,
-            since,
-            limit,
-        },
+        paging: Paging { size, since, limit },
     }))
 }
 
@@ -435,7 +427,7 @@ pub async fn topic_json_stream(
 
     check_read_permission(&state, &auth.user, &topic).await?;
 
-    let limit = params.limit.unwrap_or(100).min(500).max(1);
+    let limit = params.limit.unwrap_or(100).clamp(1, 500);
     let since = params.since.unwrap_or(0).max(0);
 
     let messages = state

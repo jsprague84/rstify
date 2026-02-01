@@ -95,12 +95,14 @@ impl UserRepository for SqliteUserRepo {
     }
 
     async fn update_password(&self, id: i64, password_hash: &str) -> Result<(), CoreError> {
-        sqlx::query("UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?")
-            .bind(password_hash)
-            .bind(id)
-            .execute(&self.pool)
-            .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+        sqlx::query(
+            "UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?",
+        )
+        .bind(password_hash)
+        .bind(id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))?;
         Ok(())
     }
 

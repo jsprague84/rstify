@@ -17,10 +17,7 @@ const MAX_UPLOAD_SIZE: usize = 10 * 1024 * 1024;
 /// Sanitize a filename by stripping path components and falling back to a UUID if empty.
 fn sanitize_filename(raw: &str) -> String {
     // Strip any directory components (防 path traversal)
-    let name = raw
-        .rsplit(['/', '\\'])
-        .next()
-        .unwrap_or("attachment");
+    let name = raw.rsplit(['/', '\\']).next().unwrap_or("attachment");
 
     // Remove any remaining problematic characters
     let sanitized: String = name
@@ -66,66 +63,67 @@ pub async fn upload_attachment(
         )))
     })?;
 
-    while let Some(field) = multipart.next_field().await.map_err(|e| {
-        ApiError::from(rstify_core::error::CoreError::Validation(format!(
-            "Multipart error: {}",
+    let field = multipart
+        .next_field()
+        .await
+        .map_err(|e| {
+            ApiError::from(rstify_core::error::CoreError::Validation(format!(
+                "Multipart error: {}",
+                e
+            )))
+        })?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::Validation(
+                "No file provided".to_string(),
+            ))
+        })?;
+
+    let raw_filename = field.file_name().unwrap_or("attachment").to_string();
+    let filename = sanitize_filename(&raw_filename);
+    let content_type = field.content_type().map(|s| s.to_string());
+    let data = field.bytes().await.map_err(|e| {
+        ApiError::from(rstify_core::error::CoreError::Internal(format!(
+            "Failed to read file: {}",
             e
         )))
-    })? {
-        let raw_filename = field
-            .file_name()
-            .unwrap_or("attachment")
-            .to_string();
-        let filename = sanitize_filename(&raw_filename);
-        let content_type = field.content_type().map(|s| s.to_string());
-        let data = field.bytes().await.map_err(|e| {
-            ApiError::from(rstify_core::error::CoreError::Internal(format!(
-                "Failed to read file: {}",
-                e
-            )))
-        })?;
+    })?;
 
-        if data.len() > MAX_UPLOAD_SIZE {
-            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-                format!(
-                    "File too large: {} bytes (max {} bytes)",
-                    data.len(),
-                    MAX_UPLOAD_SIZE
-                ),
-            )));
-        }
-
-        // Use a UUID prefix to avoid collisions and ensure uniqueness
-        let storage_filename = format!("{}_{}", Uuid::new_v4(), filename);
-        let storage_path = format!("{}/{}", upload_dir, storage_filename);
-
-        fs::write(&storage_path, &data).await.map_err(|e| {
-            ApiError::from(rstify_core::error::CoreError::Internal(format!(
-                "Failed to write file: {}",
-                e
-            )))
-        })?;
-
-        let attachment = state
-            .message_repo
-            .create_attachment(
-                message_id,
-                &filename,
-                content_type.as_deref(),
-                data.len() as i64,
-                "local",
-                &storage_path,
-                None,
-            )
-            .await
-            .map_err(ApiError::from)?;
-
-        return Ok(Json(attachment));
+    if data.len() > MAX_UPLOAD_SIZE {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            format!(
+                "File too large: {} bytes (max {} bytes)",
+                data.len(),
+                MAX_UPLOAD_SIZE
+            ),
+        )));
     }
 
-    Err(ApiError::from(rstify_core::error::CoreError::Validation(
-        "No file provided".to_string(),
-    )))
+    // Use a UUID prefix to avoid collisions and ensure uniqueness
+    let storage_filename = format!("{}_{}", Uuid::new_v4(), filename);
+    let storage_path = format!("{}/{}", upload_dir, storage_filename);
+
+    fs::write(&storage_path, &data).await.map_err(|e| {
+        ApiError::from(rstify_core::error::CoreError::Internal(format!(
+            "Failed to write file: {}",
+            e
+        )))
+    })?;
+
+    let attachment = state
+        .message_repo
+        .create_attachment(
+            message_id,
+            &filename,
+            content_type.as_deref(),
+            data.len() as i64,
+            "local",
+            &storage_path,
+            None,
+        )
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(Json(attachment))
 }
 
 #[utoipa::path(get, path = "/api/attachments/{id}", responses((status = 200)))]

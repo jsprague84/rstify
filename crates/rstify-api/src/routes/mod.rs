@@ -68,22 +68,13 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
         .route("/api/topics/{name}", get(topics::get_topic))
         .route("/api/topics/{name}", delete(topics::delete_topic))
         .route("/api/topics/{name}/publish", post(topics::publish_to_topic))
-        .route(
-            "/api/topics/{name}/ws",
-            get(topics::topic_websocket),
-        )
-        .route(
-            "/api/topics/{name}/sse",
-            get(crate::sse::topic_sse),
-        )
+        .route("/api/topics/{name}/ws", get(topics::topic_websocket))
+        .route("/api/topics/{name}/sse", get(crate::sse::topic_sse))
         .route(
             "/api/topics/{name}/messages",
             get(topics::list_topic_messages),
         )
-        .route(
-            "/api/topics/{name}/json",
-            get(topics::topic_json_stream),
-        )
+        .route("/api/topics/{name}/json", get(topics::topic_json_stream))
         // Stats
         .route("/api/stats", get(stats::get_stats))
         // Attachments
@@ -102,24 +93,12 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
         .route("/api/webhooks/{id}", delete(webhooks::delete_webhook))
         .route("/api/wh/{token}", post(webhooks::receive_webhook))
         // Permissions
-        .route(
-            "/api/permissions",
-            post(topics::create_permission),
-        )
-        .route(
-            "/api/permissions",
-            get(topics::list_permissions),
-        )
-        .route(
-            "/api/permissions/{id}",
-            delete(topics::delete_permission),
-        )
+        .route("/api/permissions", post(topics::create_permission))
+        .route("/api/permissions", get(topics::list_permissions))
+        .route("/api/permissions/{id}", delete(topics::delete_permission))
         // UnifiedPush
         .route("/UP", post(unified_push::receive_up_message))
-        .route(
-            "/api/up/register",
-            post(unified_push::register_up_device),
-        )
+        .route("/api/up/register", post(unified_push::register_up_device))
         .route(
             "/api/up/registrations",
             get(unified_push::list_up_registrations),

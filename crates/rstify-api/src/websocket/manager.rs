@@ -13,6 +13,12 @@ pub struct ConnectionManager {
     topic_channels: Arc<RwLock<HashMap<String, broadcast::Sender<Arc<MessageResponse>>>>>,
 }
 
+impl Default for ConnectionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConnectionManager {
     pub fn new() -> Self {
         Self {
@@ -22,10 +28,7 @@ impl ConnectionManager {
     }
 
     /// Subscribe to a user's message stream (Gotify /stream)
-    pub async fn subscribe_user(
-        &self,
-        user_id: i64,
-    ) -> broadcast::Receiver<Arc<MessageResponse>> {
+    pub async fn subscribe_user(&self, user_id: i64) -> broadcast::Receiver<Arc<MessageResponse>> {
         let mut channels = self.user_channels.write().await;
         let sender = channels
             .entry(user_id)

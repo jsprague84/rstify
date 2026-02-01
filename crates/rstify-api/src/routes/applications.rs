@@ -120,10 +120,6 @@ pub async fn delete_application(
         )));
     }
 
-    state
-        .app_repo
-        .delete(id)
-        .await
-        .map_err(ApiError::from)?;
+    state.app_repo.delete(id).await.map_err(ApiError::from)?;
     Ok(Json(serde_json::json!({"success": true})))
 }

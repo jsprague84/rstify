@@ -17,12 +17,7 @@ impl SqliteClientRepo {
 
 #[async_trait]
 impl ClientRepository for SqliteClientRepo {
-    async fn create(
-        &self,
-        user_id: i64,
-        name: &str,
-        token: &str,
-    ) -> Result<Client, CoreError> {
+    async fn create(&self, user_id: i64, name: &str, token: &str) -> Result<Client, CoreError> {
         sqlx::query_as::<_, Client>(
             "INSERT INTO clients (user_id, name, token) VALUES (?, ?, ?) RETURNING *",
         )
@@ -66,14 +61,12 @@ impl ClientRepository for SqliteClientRepo {
 
         let new_name = name.unwrap_or(&current.name);
 
-        sqlx::query_as::<_, Client>(
-            "UPDATE clients SET name = ? WHERE id = ? RETURNING *",
-        )
-        .bind(new_name)
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        sqlx::query_as::<_, Client>("UPDATE clients SET name = ? WHERE id = ? RETURNING *")
+            .bind(new_name)
+            .bind(id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))
     }
 
     async fn delete(&self, id: i64) -> Result<(), CoreError> {

@@ -8,8 +8,11 @@ use tracing::{error, info};
 
 /// Callback type for broadcasting a delivered message.
 /// Receives the message and an optional topic name (resolved from topic_id).
-pub type BroadcastFn =
-    Arc<dyn Fn(MessageResponse, Option<String>) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+pub type BroadcastFn = Arc<
+    dyn Fn(MessageResponse, Option<String>) -> Pin<Box<dyn Future<Output = ()> + Send>>
+        + Send
+        + Sync,
+>;
 
 /// Background task that checks for scheduled messages due for delivery
 pub async fn run_scheduled_delivery(
@@ -62,12 +65,11 @@ async fn deliver_scheduled(
         // Broadcast to subscribers if callback provided
         if let Some(broadcast) = broadcast {
             let topic_name = if let Some(topic_id) = msg.topic_id {
-                let row: Option<(String,)> =
-                    sqlx::query_as("SELECT name FROM topics WHERE id = ?")
-                        .bind(topic_id)
-                        .fetch_optional(pool)
-                        .await
-                        .unwrap_or(None);
+                let row: Option<(String,)> = sqlx::query_as("SELECT name FROM topics WHERE id = ?")
+                    .bind(topic_id)
+                    .fetch_optional(pool)
+                    .await
+                    .unwrap_or(None);
                 row.map(|r| r.0)
             } else {
                 None

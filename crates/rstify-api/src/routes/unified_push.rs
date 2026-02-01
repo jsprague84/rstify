@@ -42,7 +42,12 @@ pub async fn receive_up_message(
         .timeout(std::time::Duration::from_secs(10))
         .build()
         .unwrap_or_default();
-    match client.post(&registration.endpoint).body(message).send().await {
+    match client
+        .post(&registration.endpoint)
+        .body(message)
+        .send()
+        .await
+    {
         Ok(resp) => {
             tracing::debug!(
                 "UP forwarded to {}: status {}",
@@ -117,18 +122,16 @@ pub async fn delete_up_registration(
     auth: AuthUser,
     axum::extract::Path(id): axum::extract::Path<i64>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let reg = sqlx::query_as::<_, UpRegistration>(
-        "SELECT * FROM up_registrations WHERE id = ?",
-    )
-    .bind(id)
-    .fetch_optional(&state.pool)
-    .await
-    .map_err(|e| ApiError::from(rstify_core::error::CoreError::Database(e.to_string())))?
-    .ok_or_else(|| {
-        ApiError::from(rstify_core::error::CoreError::NotFound(
-            "Registration not found".to_string(),
-        ))
-    })?;
+    let reg = sqlx::query_as::<_, UpRegistration>("SELECT * FROM up_registrations WHERE id = ?")
+        .bind(id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| ApiError::from(rstify_core::error::CoreError::Database(e.to_string())))?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Registration not found".to_string(),
+            ))
+        })?;
 
     if reg.user_id != Some(auth.user.id) && !auth.user.is_admin {
         return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
@@ -149,11 +152,9 @@ async fn find_registration(
     pool: &SqlitePool,
     token: &str,
 ) -> Result<Option<UpRegistration>, rstify_core::error::CoreError> {
-    sqlx::query_as::<_, UpRegistration>(
-        "SELECT * FROM up_registrations WHERE token = ?",
-    )
-    .bind(token)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| rstify_core::error::CoreError::Database(e.to_string()))
+    sqlx::query_as::<_, UpRegistration>("SELECT * FROM up_registrations WHERE token = ?")
+        .bind(token)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| rstify_core::error::CoreError::Database(e.to_string()))
 }

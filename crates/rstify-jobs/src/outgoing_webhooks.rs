@@ -84,7 +84,12 @@ pub async fn fire_outgoing_webhooks(
             for attempt in 0..=max_retries {
                 match req.try_clone().unwrap().send().await {
                     Ok(resp) if resp.status().is_success() => {
-                        info!("Outgoing webhook {} fired to {} (attempt {})", id, url, attempt + 1);
+                        info!(
+                            "Outgoing webhook {} fired to {} (attempt {})",
+                            id,
+                            url,
+                            attempt + 1
+                        );
                         return;
                     }
                     Ok(resp) => {

@@ -9,9 +9,6 @@ pub struct Config {
     pub cors_origins: Vec<String>,
     pub rate_limit_max: u32,
     pub rate_limit_rps: f64,
-    pub max_message_size: usize,
-    pub jwt_expiry_hours: u64,
-    pub request_timeout_secs: u64,
 }
 
 impl Config {
@@ -47,18 +44,6 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(10.0),
-            max_message_size: env::var("MAX_MESSAGE_SIZE")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(65536),
-            jwt_expiry_hours: env::var("JWT_EXPIRY_HOURS")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(24),
-            request_timeout_secs: env::var("REQUEST_TIMEOUT_SECS")
-                .ok()
-                .and_then(|v| v.parse().ok())
-                .unwrap_or(30),
         }
     }
 }

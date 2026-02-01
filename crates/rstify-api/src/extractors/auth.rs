@@ -76,8 +76,8 @@ impl FromRequestParts<AppState> for AuthUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let token = extract_token(parts)
-            .ok_or_else(|| unauthorized("No authentication token provided"))?;
+        let token =
+            extract_token(parts).ok_or_else(|| unauthorized("No authentication token provided"))?;
 
         match classify_token(&token) {
             TokenType::Jwt => {
@@ -107,10 +107,7 @@ impl FromRequestParts<AppState> for AuthUser {
                     .await
                     .map_err(|_| internal_error())?
                     .ok_or_else(|| unauthorized("User not found"))?;
-                Ok(AuthUser {
-                    user,
-                    claims: None,
-                })
+                Ok(AuthUser { user, claims: None })
             }
             _ => Err(unauthorized("Invalid token type for this endpoint")),
         }
@@ -124,8 +121,8 @@ impl FromRequestParts<AppState> for AuthApp {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let token = extract_token(parts)
-            .ok_or_else(|| unauthorized("No authentication token provided"))?;
+        let token =
+            extract_token(parts).ok_or_else(|| unauthorized("No authentication token provided"))?;
 
         let application = state
             .app_repo
@@ -152,8 +149,8 @@ impl FromRequestParts<AppState> for AuthClient {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let token = extract_token(parts)
-            .ok_or_else(|| unauthorized("No authentication token provided"))?;
+        let token =
+            extract_token(parts).ok_or_else(|| unauthorized("No authentication token provided"))?;
 
         let client = state
             .client_repo

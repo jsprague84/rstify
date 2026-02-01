@@ -21,12 +21,9 @@ pub async fn web_ui_handler(uri: Uri) -> Response {
     } else {
         // SPA fallback: serve index.html for any non-file route
         match WebUiAssets::get("index.html") {
-            Some(content) => Html(
-                std::str::from_utf8(&content.data)
-                    .unwrap_or("")
-                    .to_string(),
-            )
-            .into_response(),
+            Some(content) => {
+                Html(std::str::from_utf8(&content.data).unwrap_or("").to_string()).into_response()
+            }
             None => (StatusCode::NOT_FOUND, "Web UI not found").into_response(),
         }
     }
