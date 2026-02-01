@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,13 +7,22 @@ import {
   Alert,
   TextInput,
   ScrollView,
+  RefreshControl,
+  Modal,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../src/store/auth";
 import { useMessagesStore } from "../../src/store/messages";
 import { getApiClient } from "../../src/api";
-import type { VersionResponse, Client } from "../../src/api";
+import type {
+  VersionResponse,
+  Client,
+  StatsResponse,
+  UserResponse,
+  UpRegistration,
+} from "../../src/api";
 
 export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
@@ -24,28 +33,66 @@ export default function SettingsScreen() {
 
   const [version, setVersion] = useState<VersionResponse | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [upRegistrations, setUpRegistrations] = useState<UpRegistration[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
   const [editingUrl, setEditingUrl] = useState(false);
   const [urlInput, setUrlInput] = useState(serverUrl);
   const [showPassword, setShowPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const api = getApiClient();
-        const [ver, cls] = await Promise.all([
-          api.version(),
-          api.listClients(),
-        ]);
-        setVersion(ver);
-        setClients(cls);
-      } catch {
-        // ignore
+  // Admin sections
+  const [showUsers, setShowUsers] = useState(false);
+
+  // UP registration
+  const [showUpSection, setShowUpSection] = useState(false);
+  const [upEndpoint, setUpEndpoint] = useState("");
+
+  const fetchData = useCallback(async () => {
+    try {
+      const api = getApiClient();
+      const promises: Promise<unknown>[] = [
+        api.version(),
+        api.listClients(),
+        api.listUpRegistrations(),
+      ];
+
+      if (user?.is_admin) {
+        promises.push(api.getStats(), api.listUsers());
       }
-    };
+
+      const results = await Promise.allSettled(promises);
+
+      if (results[0].status === "fulfilled")
+        setVersion(results[0].value as VersionResponse);
+      if (results[1].status === "fulfilled")
+        setClients(results[1].value as Client[]);
+      if (results[2].status === "fulfilled")
+        setUpRegistrations(results[2].value as UpRegistration[]);
+
+      if (user?.is_admin) {
+        if (results[3]?.status === "fulfilled")
+          setStats(results[3].value as StatsResponse);
+        if (results[4]?.status === "fulfilled")
+          setUsers(results[4].value as UserResponse[]);
+      }
+    } catch {
+      // ignore
+    }
+  }, [user?.is_admin]);
+
+  useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  };
 
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure?", [
@@ -67,7 +114,10 @@ export default function SettingsScreen() {
       setEditingUrl(false);
       Alert.alert("Server Updated", "Please log in again.");
     } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Failed to update");
+      Alert.alert(
+        "Error",
+        e instanceof Error ? e.message : "Failed to update",
+      );
     }
   };
 
@@ -91,8 +141,94 @@ export default function SettingsScreen() {
       setShowPassword(false);
       Alert.alert("Success", "Password changed successfully");
     } catch (e) {
-      Alert.alert("Error", e instanceof Error ? e.message : "Failed to change password");
+      Alert.alert(
+        "Error",
+        e instanceof Error ? e.message : "Failed to change password",
+      );
     }
+  };
+
+  const handleToggleAdmin = async (u: UserResponse) => {
+    if (u.id === user?.id) {
+      Alert.alert("Error", "Cannot change your own admin status");
+      return;
+    }
+    try {
+      const api = getApiClient();
+      await api.updateUser(u.id, { is_admin: !u.is_admin });
+      fetchData();
+    } catch (e) {
+      Alert.alert(
+        "Error",
+        e instanceof Error ? e.message : "Failed to update user",
+      );
+    }
+  };
+
+  const handleDeleteUser = (u: UserResponse) => {
+    if (u.id === user?.id) {
+      Alert.alert("Error", "Cannot delete yourself");
+      return;
+    }
+    Alert.alert("Delete User", `Delete "${u.username}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const api = getApiClient();
+            await api.deleteUser(u.id);
+            fetchData();
+          } catch (e) {
+            Alert.alert(
+              "Error",
+              e instanceof Error ? e.message : "Delete failed",
+            );
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleRegisterUp = async () => {
+    if (!upEndpoint.trim()) {
+      Alert.alert("Error", "Endpoint URL is required");
+      return;
+    }
+    try {
+      const api = getApiClient();
+      await api.registerUpDevice({ endpoint: upEndpoint.trim() });
+      setUpEndpoint("");
+      fetchData();
+    } catch (e) {
+      Alert.alert(
+        "Error",
+        e instanceof Error ? e.message : "Failed to register",
+      );
+    }
+  };
+
+  const handleDeleteUpRegistration = (reg: UpRegistration) => {
+    Alert.alert("Unregister", "Remove this UnifiedPush registration?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const api = getApiClient();
+            await api.deleteUpRegistration(reg.id);
+            fetchData();
+          } catch (e) {
+            Alert.alert(
+              "Error",
+              e instanceof Error ? e.message : "Failed to remove",
+            );
+          }
+        },
+      },
+    ]);
   };
 
   return (
@@ -101,7 +237,37 @@ export default function SettingsScreen() {
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
+        {/* Admin Stats */}
+        {user?.is_admin && stats ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Server Stats</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{stats.users}</Text>
+                <Text style={styles.statLabel}>Users</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{stats.topics}</Text>
+                <Text style={styles.statLabel}>Topics</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{stats.messages}</Text>
+                <Text style={styles.statLabel}>Messages</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{stats.messages_last_24h}</Text>
+                <Text style={styles.statLabel}>Last 24h</Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
         {/* User Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
@@ -243,6 +409,124 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* UnifiedPush */}
+        <View style={styles.section}>
+          <Pressable
+            style={styles.sectionHeader}
+            onPress={() => setShowUpSection(!showUpSection)}
+          >
+            <Text style={styles.sectionTitle}>
+              UnifiedPush ({upRegistrations.length})
+            </Text>
+            <Ionicons
+              name={showUpSection ? "chevron-up" : "chevron-down"}
+              size={18}
+              color="#9ca3af"
+            />
+          </Pressable>
+          {showUpSection ? (
+            <View style={styles.card}>
+              {upRegistrations.map((reg) => (
+                <View key={reg.id} style={styles.row}>
+                  <Ionicons
+                    name="notifications-outline"
+                    size={20}
+                    color="#6b7280"
+                  />
+                  <View style={styles.rowContent}>
+                    <Text style={styles.rowValueMono} numberOfLines={2}>
+                      {reg.endpoint}
+                    </Text>
+                    <Text style={styles.rowLabel}>
+                      Token: {reg.token.substring(0, 8)}...
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => handleDeleteUpRegistration(reg)}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                  </Pressable>
+                </View>
+              ))}
+              <View style={styles.upRegisterRow}>
+                <TextInput
+                  style={[styles.input, { flex: 1 }]}
+                  placeholder="Endpoint URL"
+                  placeholderTextColor="#9ca3af"
+                  value={upEndpoint}
+                  onChangeText={setUpEndpoint}
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+                <Pressable
+                  style={styles.smallButton}
+                  onPress={handleRegisterUp}
+                >
+                  <Text style={styles.smallButtonText}>Register</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Admin User Management */}
+        {user?.is_admin ? (
+          <View style={styles.section}>
+            <Pressable
+              style={styles.sectionHeader}
+              onPress={() => setShowUsers(!showUsers)}
+            >
+              <Text style={styles.sectionTitle}>
+                User Management ({users.length})
+              </Text>
+              <Ionicons
+                name={showUsers ? "chevron-up" : "chevron-down"}
+                size={18}
+                color="#9ca3af"
+              />
+            </Pressable>
+            {showUsers ? (
+              <View style={styles.card}>
+                {users.map((u) => (
+                  <View key={u.id} style={styles.userRow}>
+                    <View style={styles.userInfo}>
+                      <Text style={styles.userName}>{u.username}</Text>
+                      {u.email ? (
+                        <Text style={styles.userEmail}>{u.email}</Text>
+                      ) : null}
+                    </View>
+                    <View style={styles.userActions}>
+                      <View style={styles.adminToggle}>
+                        <Text style={styles.adminLabel}>Admin</Text>
+                        <Switch
+                          value={u.is_admin}
+                          onValueChange={() => handleToggleAdmin(u)}
+                          trackColor={{ false: "#d1d5db", true: "#93c5fd" }}
+                          thumbColor={u.is_admin ? "#3b82f6" : "#9ca3af"}
+                          disabled={u.id === user?.id}
+                        />
+                      </View>
+                      {u.id !== user?.id ? (
+                        <Pressable
+                          onPress={() => handleDeleteUser(u)}
+                          hitSlop={8}
+                        >
+                          <Ionicons
+                            name="trash-outline"
+                            size={16}
+                            color="#ef4444"
+                          />
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Logout */}
         <Pressable style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#ef4444" />
@@ -333,6 +617,52 @@ const styles = StyleSheet.create({
   },
   actionButtonText: { color: "#fff", fontWeight: "600" },
   emptyText: { padding: 12, color: "#9ca3af", fontSize: 14 },
+  // Stats
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: "45%",
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#3b82f6",
+  },
+  statLabel: {
+    fontSize: 12,
+    color: "#6b7280",
+    marginTop: 4,
+  },
+  // User management
+  userRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 12,
+    gap: 12,
+  },
+  userInfo: { flex: 1 },
+  userName: { fontSize: 15, fontWeight: "600", color: "#111827" },
+  userEmail: { fontSize: 12, color: "#6b7280", marginTop: 2 },
+  userActions: { flexDirection: "row", alignItems: "center", gap: 12 },
+  adminToggle: { flexDirection: "row", alignItems: "center", gap: 4 },
+  adminLabel: { fontSize: 11, color: "#9ca3af" },
+  // UP
+  upRegisterRow: {
+    flexDirection: "row",
+    gap: 8,
+    padding: 12,
+    alignItems: "center",
+  },
+  // Logout
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",

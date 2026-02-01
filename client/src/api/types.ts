@@ -160,6 +160,14 @@ export interface WebhookConfig {
   template: string;
   enabled: boolean;
   created_at: string;
+  // Outgoing webhook fields
+  direction: string;
+  target_url: string | null;
+  http_method: string;
+  headers: string | null;
+  body_template: string | null;
+  max_retries: number;
+  retry_delay_secs: number;
 }
 
 export interface CreateWebhookConfig {
@@ -169,6 +177,46 @@ export interface CreateWebhookConfig {
   target_application_id?: number;
   template: Record<string, unknown>;
   enabled?: boolean;
+  direction?: string;
+  target_url?: string;
+  http_method?: string;
+  headers?: Record<string, string>;
+  body_template?: string;
+}
+
+export interface UpdateWebhookConfig {
+  name?: string;
+  template?: Record<string, unknown>;
+  enabled?: boolean;
+  target_url?: string;
+  http_method?: string;
+  headers?: Record<string, string>;
+  body_template?: string;
+}
+
+export interface StatsResponse {
+  users: number;
+  topics: number;
+  messages: number;
+  messages_last_24h: number;
+}
+
+export interface UpRegistration {
+  id: number;
+  token: string;
+  user_id: number | null;
+  endpoint: string;
+  created_at: string;
+}
+
+export interface CreateUpRegistration {
+  endpoint: string;
+}
+
+export interface UpdateUser {
+  username?: string;
+  email?: string;
+  is_admin?: boolean;
 }
 
 export interface ApiError {

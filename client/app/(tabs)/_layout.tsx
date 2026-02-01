@@ -40,6 +40,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="webhooks"
+        options={{
+          title: "Webhooks",
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="link-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",

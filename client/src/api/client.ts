@@ -8,18 +8,23 @@ import type {
   CreateTopic,
   CreateTopicMessage,
   CreateAppMessage,
+  CreateUpRegistration,
+  CreateWebhookConfig,
   HealthResponse,
   LoginRequest,
   LoginResponse,
   MessageResponse,
   PagedMessages,
+  StatsResponse,
   Topic,
   TopicPermission,
   UpdateApplication,
+  UpdateUser,
+  UpdateWebhookConfig,
+  UpRegistration,
   UserResponse,
   VersionResponse,
   WebhookConfig,
-  CreateWebhookConfig,
 } from "./types";
 
 export class RstifyApiError extends Error {
@@ -118,6 +123,14 @@ export class RstifyClient {
     return this.request("GET", "/user");
   }
 
+  async updateUser(id: number, req: UpdateUser): Promise<UserResponse> {
+    return this.request("PUT", `/user/${id}`, req);
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await this.request("DELETE", `/user/${id}`);
+  }
+
   // Applications
   async listApplications(): Promise<Application[]> {
     return this.request("GET", "/application");
@@ -136,6 +149,17 @@ export class RstifyClient {
 
   async deleteApplication(id: number): Promise<void> {
     await this.request("DELETE", `/application/${id}`);
+  }
+
+  async listApplicationMessages(
+    id: number,
+    limit = 100,
+    since = 0,
+  ): Promise<PagedMessages> {
+    return this.request(
+      "GET",
+      `/application/${id}/messages?limit=${limit}&since=${since}`,
+    );
   }
 
   // Clients
@@ -262,8 +286,33 @@ export class RstifyClient {
     return this.request("POST", "/api/webhooks", req);
   }
 
+  async updateWebhook(
+    id: number,
+    req: UpdateWebhookConfig,
+  ): Promise<WebhookConfig> {
+    return this.request("PUT", `/api/webhooks/${id}`, req);
+  }
+
   async deleteWebhook(id: number): Promise<void> {
     await this.request("DELETE", `/api/webhooks/${id}`);
+  }
+
+  // Stats (admin)
+  async getStats(): Promise<StatsResponse> {
+    return this.request("GET", "/api/stats");
+  }
+
+  // UnifiedPush
+  async registerUpDevice(req: CreateUpRegistration): Promise<UpRegistration> {
+    return this.request("POST", "/api/up/register", req);
+  }
+
+  async listUpRegistrations(): Promise<UpRegistration[]> {
+    return this.request("GET", "/api/up/registrations");
+  }
+
+  async deleteUpRegistration(id: number): Promise<void> {
+    await this.request("DELETE", `/api/up/registrations/${id}`);
   }
 
   // WebSocket connection for user stream (Gotify compat)
