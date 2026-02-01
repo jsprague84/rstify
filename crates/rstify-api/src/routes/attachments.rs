@@ -5,10 +5,32 @@ use axum::Json;
 use rstify_core::models::Attachment;
 use rstify_core::repositories::MessageRepository;
 use tokio::fs;
+use uuid::Uuid;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
+
+/// Sanitize a filename by stripping path components and falling back to a UUID if empty.
+fn sanitize_filename(raw: &str) -> String {
+    // Strip any directory components (防 path traversal)
+    let name = raw
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or("attachment");
+
+    // Remove any remaining problematic characters
+    let sanitized: String = name
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
+        .collect();
+
+    if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
+        format!("{}.bin", Uuid::new_v4())
+    } else {
+        sanitized
+    }
+}
 
 #[utoipa::path(
     post,
@@ -33,8 +55,8 @@ pub async fn upload_attachment(
             ))
         })?;
 
-    let upload_dir = std::env::var("UPLOAD_DIR").unwrap_or_else(|_| "./uploads".to_string());
-    fs::create_dir_all(&upload_dir).await.map_err(|e| {
+    let upload_dir = &state.upload_dir;
+    fs::create_dir_all(upload_dir).await.map_err(|e| {
         ApiError::from(rstify_core::error::CoreError::Internal(format!(
             "Failed to create upload dir: {}",
             e
@@ -47,10 +69,11 @@ pub async fn upload_attachment(
             e
         )))
     })? {
-        let filename = field
+        let raw_filename = field
             .file_name()
             .unwrap_or("attachment")
             .to_string();
+        let filename = sanitize_filename(&raw_filename);
         let content_type = field.content_type().map(|s| s.to_string());
         let data = field.bytes().await.map_err(|e| {
             ApiError::from(rstify_core::error::CoreError::Internal(format!(
@@ -59,7 +82,8 @@ pub async fn upload_attachment(
             )))
         })?;
 
-        let storage_filename = format!("{}_{}", message_id, filename);
+        // Use a UUID prefix to avoid collisions and ensure uniqueness
+        let storage_filename = format!("{}_{}", Uuid::new_v4(), filename);
         let storage_path = format!("{}/{}", upload_dir, storage_filename);
 
         fs::write(&storage_path, &data).await.map_err(|e| {
@@ -118,12 +142,15 @@ pub async fn download_attachment(
         .content_type
         .unwrap_or_else(|| "application/octet-stream".to_string());
 
+    // Sanitize filename for Content-Disposition to prevent header injection
+    let safe_filename = sanitize_filename(&attachment.filename);
+
     Ok((
         [
             (header::CONTENT_TYPE, content_type),
             (
                 header::CONTENT_DISPOSITION,
-                format!("attachment; filename=\"{}\"", attachment.filename),
+                format!("attachment; filename=\"{}\"", safe_filename),
             ),
         ],
         data,

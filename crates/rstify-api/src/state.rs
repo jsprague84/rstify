@@ -14,11 +14,12 @@ pub struct AppState {
     pub topic_repo: SqliteTopicRepo,
     pub message_repo: SqliteMessageRepo,
     pub jwt_secret: String,
+    pub upload_dir: String,
     pub connections: Arc<ConnectionManager>,
 }
 
 impl AppState {
-    pub fn new(pool: SqlitePool, jwt_secret: String) -> Self {
+    pub fn new(pool: SqlitePool, jwt_secret: String, upload_dir: String) -> Self {
         Self {
             user_repo: SqliteUserRepo::new(pool.clone()),
             app_repo: SqliteApplicationRepo::new(pool.clone()),
@@ -26,6 +27,7 @@ impl AppState {
             topic_repo: SqliteTopicRepo::new(pool.clone()),
             message_repo: SqliteMessageRepo::new(pool),
             jwt_secret,
+            upload_dir,
             connections: Arc::new(ConnectionManager::new()),
         }
     }

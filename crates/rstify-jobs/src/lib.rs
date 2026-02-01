@@ -3,39 +3,37 @@ pub mod scheduled;
 pub mod webhooks;
 
 use sqlx::SqlitePool;
-use std::sync::Arc;
-use tokio::sync::Notify;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Clone)]
 pub struct JobRunner {
     pool: SqlitePool,
-    shutdown: Arc<Notify>,
+    cancel: CancellationToken,
 }
 
 impl JobRunner {
     pub fn new(pool: SqlitePool) -> Self {
         Self {
             pool,
-            shutdown: Arc::new(Notify::new()),
+            cancel: CancellationToken::new(),
         }
     }
 
     pub async fn start(&self) {
         let pool = self.pool.clone();
-        let shutdown = self.shutdown.clone();
-
+        let cancel = self.cancel.clone();
         tokio::spawn(async move {
-            scheduled::run_scheduled_delivery(pool.clone(), shutdown.clone()).await;
+            scheduled::run_scheduled_delivery(pool, cancel).await;
         });
 
         let pool = self.pool.clone();
-        let shutdown = self.shutdown.clone();
+        let cancel = self.cancel.clone();
         tokio::spawn(async move {
-            cleanup::run_attachment_cleanup(pool, shutdown).await;
+            cleanup::run_attachment_cleanup(pool, cancel).await;
         });
     }
 
     pub fn shutdown(&self) {
-        self.shutdown.notify_waiters();
+        self.cancel.cancel();
     }
 }

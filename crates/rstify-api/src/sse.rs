@@ -1,5 +1,5 @@
 use axum::extract::{Path, State};
-use axum::response::sse::{Event, Sse};
+use axum::response::sse::{Event, KeepAlive, Sse};
 use futures::stream::Stream;
 use rstify_core::repositories::TopicRepository;
 use std::convert::Infallible;
@@ -34,5 +34,5 @@ pub async fn topic_sse(
         Err(_) => None,
     });
 
-    Ok(Sse::new(stream))
+    Ok(Sse::new(stream).keep_alive(KeepAlive::default()))
 }

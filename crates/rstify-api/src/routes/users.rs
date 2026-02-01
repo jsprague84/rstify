@@ -24,11 +24,13 @@ pub async fn change_password(
     auth: AuthUser,
     Json(req): Json<ChangePassword>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let valid = verify_password(&req.current_password, &auth.user.password_hash).map_err(|_| {
-        ApiError::from(rstify_core::error::CoreError::Internal(
-            "Password verification error".to_string(),
-        ))
-    })?;
+    let valid = verify_password(req.current_password, auth.user.password_hash.clone())
+        .await
+        .map_err(|_| {
+            ApiError::from(rstify_core::error::CoreError::Internal(
+                "Password verification error".to_string(),
+            ))
+        })?;
 
     if !valid {
         return Err(ApiError::from(rstify_core::error::CoreError::Unauthorized(
@@ -36,7 +38,7 @@ pub async fn change_password(
         )));
     }
 
-    let new_hash = hash_password(&req.new_password).map_err(|e| {
+    let new_hash = hash_password(req.new_password).await.map_err(|e| {
         ApiError::from(rstify_core::error::CoreError::Internal(format!(
             "Password hash error: {}",
             e
@@ -84,7 +86,7 @@ pub async fn create_user(
         )));
     }
 
-    let password_hash = hash_password(&req.password).map_err(|e| {
+    let password_hash = hash_password(req.password).await.map_err(|e| {
         ApiError::from(rstify_core::error::CoreError::Internal(format!(
             "Password hash error: {}",
             e

@@ -122,18 +122,26 @@ pub async fn delete_message(
             ))
         })?;
 
-    if let Some(app_id) = msg.application_id {
-        let app = state
-            .app_repo
-            .find_by_id(app_id)
-            .await
-            .map_err(ApiError::from)?;
-        if let Some(app) = app {
-            if app.user_id != auth.user.id && !auth.user.is_admin {
-                return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-                    "Not your message".to_string(),
-                )));
-            }
+    // Check ownership: admin can delete anything, otherwise verify ownership
+    if !auth.user.is_admin {
+        let is_owner = if let Some(app_id) = msg.application_id {
+            // App message: check if the app belongs to this user
+            state
+                .app_repo
+                .find_by_id(app_id)
+                .await
+                .map_err(ApiError::from)?
+                .map(|app| app.user_id == auth.user.id)
+                .unwrap_or(false)
+        } else {
+            // Topic message: check if the user_id on the message matches
+            msg.user_id == Some(auth.user.id)
+        };
+
+        if !is_owner {
+            return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+                "Not your message".to_string(),
+            )));
         }
     }
 

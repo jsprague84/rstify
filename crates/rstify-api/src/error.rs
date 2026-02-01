@@ -32,10 +32,13 @@ impl From<CoreError> for ApiError {
                 status: StatusCode::BAD_REQUEST,
                 message: msg,
             },
-            CoreError::Database(msg) => ApiError {
-                status: StatusCode::INTERNAL_SERVER_ERROR,
-                message: format!("Database error: {}", msg),
-            },
+            CoreError::Database(msg) => {
+                tracing::error!("Database error: {}", msg);
+                ApiError {
+                    status: StatusCode::INTERNAL_SERVER_ERROR,
+                    message: "Internal database error".to_string(),
+                }
+            }
             CoreError::Internal(msg) => ApiError {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
                 message: msg,

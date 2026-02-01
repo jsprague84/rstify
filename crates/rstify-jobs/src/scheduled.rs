@@ -1,15 +1,14 @@
 use sqlx::SqlitePool;
-use std::sync::Arc;
-use tokio::sync::Notify;
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info};
 
 /// Background task that checks for scheduled messages due for delivery
-pub async fn run_scheduled_delivery(pool: SqlitePool, shutdown: Arc<Notify>) {
+pub async fn run_scheduled_delivery(pool: SqlitePool, cancel: CancellationToken) {
     info!("Scheduled delivery worker started");
 
     loop {
         tokio::select! {
-            _ = shutdown.notified() => {
+            _ = cancel.cancelled() => {
                 info!("Scheduled delivery worker shutting down");
                 break;
             }

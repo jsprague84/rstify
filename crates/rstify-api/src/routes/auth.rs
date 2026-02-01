@@ -41,11 +41,13 @@ pub async fn login(
             ))
         })?;
 
-    let valid = verify_password(&req.password, &user.password_hash).map_err(|_| {
-        ApiError::from(rstify_core::error::CoreError::Internal(
-            "Password verification error".to_string(),
-        ))
-    })?;
+    let valid = verify_password(req.password, user.password_hash.clone())
+        .await
+        .map_err(|_| {
+            ApiError::from(rstify_core::error::CoreError::Internal(
+                "Password verification error".to_string(),
+            ))
+        })?;
 
     if !valid {
         return Err(ApiError::from(rstify_core::error::CoreError::Unauthorized(

@@ -1,15 +1,14 @@
 use sqlx::SqlitePool;
-use std::sync::Arc;
-use tokio::sync::Notify;
+use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
 /// Background task that cleans up expired attachments
-pub async fn run_attachment_cleanup(pool: SqlitePool, shutdown: Arc<Notify>) {
+pub async fn run_attachment_cleanup(pool: SqlitePool, cancel: CancellationToken) {
     info!("Attachment cleanup worker started");
 
     loop {
         tokio::select! {
-            _ = shutdown.notified() => {
+            _ = cancel.cancelled() => {
                 info!("Attachment cleanup worker shutting down");
                 break;
             }
