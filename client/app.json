@@ -17,6 +17,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "cc.js_node.rstify",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -30,6 +31,13 @@
     "plugins": [
       "expo-router",
       "expo-secure-store"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "16c32c5a-8e04-4958-a55b-5868a1c337eb"
+      }
+    },
+    "owner": "jsprague"
   }
 }
