@@ -27,7 +27,10 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-sm w-full mx-4">
-        <h1 className="text-3xl font-bold text-center mb-8">rstify</h1>
+        <div className="flex flex-col items-center mb-8">
+          <img src="/icon-512.png" alt="rstify" className="w-20 h-20 rounded-xl mb-3" />
+          <h1 className="text-3xl font-bold">rstify</h1>
+        </div>
         <form onSubmit={handleSubmit} className="bg-white shadow-md rounded-lg p-6 space-y-4">
           {error && (
             <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-sm">{error}</div>

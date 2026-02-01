@@ -16,7 +16,8 @@ export default function Sidebar() {
 
   return (
     <aside className="w-56 bg-gray-900 text-white flex flex-col min-h-screen">
-      <div className="p-4 border-b border-gray-700">
+      <div className="p-4 border-b border-gray-700 flex items-center gap-3">
+        <img src="/icon-512.png" alt="" className="w-8 h-8 rounded-md" />
         <h1 className="text-xl font-bold tracking-tight">rstify</h1>
       </div>
       <nav className="flex-1 py-4">

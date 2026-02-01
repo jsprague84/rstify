@@ -1,9 +1,6 @@
 name: Expo EAS Build
 
 on:
-  push:
-    branches: [master]
-    paths: [client/**]
   workflow_dispatch:
 
 jobs:
