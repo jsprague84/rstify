@@ -1,7 +1,6 @@
 import type {
   ApiError,
   Application,
-  Attachment,
   ChangePassword,
   Client,
   CreateApplication,
@@ -23,7 +22,7 @@ import type {
   CreateWebhookConfig,
 } from "./types";
 
-class RstifyApiError extends Error {
+export class RstifyApiError extends Error {
   constructor(
     public status: number,
     public body: ApiError,
@@ -54,9 +53,11 @@ export class RstifyClient {
     path: string,
     body?: unknown,
   ): Promise<T> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
+    const headers: Record<string, string> = {};
+
+    if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
 
     if (this.token) {
       headers["Authorization"] = `Bearer ${this.token}`;
@@ -65,7 +66,7 @@ export class RstifyClient {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
     if (!response.ok) {
@@ -79,6 +80,12 @@ export class RstifyClient {
         };
       }
       throw new RstifyApiError(response.status, errorBody);
+    }
+
+    // Handle empty responses (204 No Content, etc.)
+    const contentLength = response.headers.get("content-length");
+    if (response.status === 204 || contentLength === "0") {
+      return undefined as T;
     }
 
     return response.json();
@@ -159,13 +166,31 @@ export class RstifyClient {
     appToken: string,
     req: CreateAppMessage,
   ): Promise<MessageResponse> {
-    const prevToken = this.token;
-    this.token = appToken;
-    try {
-      return await this.request("POST", "/message", req);
-    } finally {
-      this.token = prevToken;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${appToken}`,
+    };
+
+    const response = await fetch(`${this.baseUrl}/message`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(req),
+    });
+
+    if (!response.ok) {
+      let errorBody: ApiError;
+      try {
+        errorBody = await response.json();
+      } catch {
+        errorBody = {
+          error: response.statusText,
+          errorCode: response.status,
+        };
+      }
+      throw new RstifyApiError(response.status, errorBody);
     }
+
+    return response.json();
   }
 
   async deleteMessage(id: number): Promise<void> {
@@ -250,7 +275,7 @@ export class RstifyClient {
   ): WebSocket {
     const wsUrl = this.baseUrl
       .replace(/^http/, "ws")
-      .concat(`/stream?token=${clientToken}`);
+      .concat(`/stream?token=${encodeURIComponent(clientToken)}`);
 
     const ws = new WebSocket(wsUrl);
 
@@ -279,7 +304,7 @@ export class RstifyClient {
     const wsUrl = this.baseUrl
       .replace(/^http/, "ws")
       .concat(
-        `/api/topics/${encodeURIComponent(topicName)}/ws?token=${this.token}`,
+        `/api/topics/${encodeURIComponent(topicName)}/ws?token=${encodeURIComponent(this.token ?? "")}`,
       );
 
     const ws = new WebSocket(wsUrl);

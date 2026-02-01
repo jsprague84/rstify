@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,8 @@ export default function LoginScreen() {
   );
   const [showServer, setShowServer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const passwordRef = useRef<TextInput>(null);
 
   const login = useAuthStore((s) => s.login);
   const setServerUrlStore = useAuthStore((s) => s.setServerUrl);
@@ -69,15 +71,23 @@ export default function LoginScreen() {
             onChangeText={setUsername}
             autoCapitalize="none"
             autoCorrect={false}
+            textContentType="username"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordRef.current?.focus()}
+            blurOnSubmit={false}
           />
 
           <TextInput
+            ref={passwordRef}
             style={styles.input}
             placeholder="Password"
             placeholderTextColor="#9ca3af"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={handleLogin}
           />
 
           <Pressable

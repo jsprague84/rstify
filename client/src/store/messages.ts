@@ -34,9 +34,13 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   },
 
   addMessage: (msg: MessageResponse) => {
-    set((state) => ({
-      messages: [msg, ...state.messages],
-    }));
+    set((state) => {
+      // Deduplicate: WebSocket may deliver messages already in the list
+      if (state.messages.some((m) => m.id === msg.id)) {
+        return state;
+      }
+      return { messages: [msg, ...state.messages] };
+    });
   },
 
   deleteMessage: async (id: number) => {

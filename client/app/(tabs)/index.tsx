@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useMemo } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import {
   View,
   FlatList,
@@ -14,10 +14,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { MessageCard } from "../../src/components/MessageCard";
 import { EmptyState } from "../../src/components/EmptyState";
 import { useMessagesStore } from "../../src/store/messages";
-import { useAuthStore } from "../../src/store/auth";
 import { useUserWebSocket } from "../../src/hooks/useWebSocket";
 import { getApiClient } from "../../src/api";
-import type { MessageResponse, Client } from "../../src/api";
+import type { MessageResponse } from "../../src/api";
 
 export default function MessagesScreen() {
   const messages = useMessagesStore((s) => s.messages);
