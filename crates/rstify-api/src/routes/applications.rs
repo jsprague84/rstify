@@ -32,12 +32,19 @@ pub async fn create_application(
     auth: AuthUser,
     Json(req): Json<CreateApplication>,
 ) -> Result<Json<Application>, ApiError> {
+    let name = req.name.trim();
+    if name.is_empty() || name.len() > 128 {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Application name must be between 1 and 128 characters".to_string(),
+        )));
+    }
+
     let token = generate_app_token();
     let app = state
         .app_repo
         .create(
             auth.user.id,
-            &req.name,
+            name,
             req.description.as_deref(),
             &token,
             req.default_priority.unwrap_or(5),

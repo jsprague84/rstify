@@ -27,6 +27,12 @@ pub async fn create_app_message(
     auth: AuthApp,
     Json(req): Json<CreateAppMessage>,
 ) -> Result<Json<MessageResponse>, ApiError> {
+    if req.message.is_empty() || req.message.len() > 65536 {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Message must be between 1 and 65536 characters".to_string(),
+        )));
+    }
+
     let extras_json = req.extras.as_ref().map(|e| serde_json::to_string(e).unwrap_or_default());
 
     let msg = state
@@ -67,8 +73,8 @@ pub async fn list_messages(
     auth: AuthUser,
     Query(params): Query<ListParams>,
 ) -> Result<Json<PagedMessages>, ApiError> {
-    let limit = params.limit.unwrap_or(100);
-    let since = params.since.unwrap_or(0);
+    let limit = params.limit.unwrap_or(100).min(500).max(1);
+    let since = params.since.unwrap_or(0).max(0);
 
     let messages = state
         .message_repo

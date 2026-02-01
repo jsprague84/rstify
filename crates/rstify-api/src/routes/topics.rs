@@ -24,10 +24,26 @@ pub async fn create_topic(
     auth: AuthUser,
     Json(req): Json<CreateTopic>,
 ) -> Result<Json<Topic>, ApiError> {
+    let name = req.name.trim();
+    if name.is_empty() || name.len() > 128 {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Topic name must be between 1 and 128 characters".to_string(),
+        )));
+    }
+    if !name
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
+    {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Topic name may only contain alphanumeric characters, hyphens, underscores, and dots"
+                .to_string(),
+        )));
+    }
+
     let topic = state
         .topic_repo
         .create(
-            &req.name,
+            name,
             Some(auth.user.id),
             req.description.as_deref(),
             req.everyone_read.unwrap_or(true),
@@ -41,18 +57,43 @@ pub async fn create_topic(
 #[utoipa::path(get, path = "/api/topics", responses((status = 200, body = Vec<Topic>)))]
 pub async fn list_topics(
     State(state): State<AppState>,
+    auth: AuthUser,
 ) -> Result<Json<Vec<Topic>>, ApiError> {
-    let topics = state
+    let all_topics = state
         .topic_repo
         .list_all()
         .await
         .map_err(ApiError::from)?;
-    Ok(Json(topics))
+
+    // Admins see everything; others see only readable topics
+    if auth.user.is_admin {
+        return Ok(Json(all_topics));
+    }
+
+    let permissions = state
+        .topic_repo
+        .list_permissions_for_user(auth.user.id)
+        .await
+        .map_err(ApiError::from)?;
+
+    let visible: Vec<Topic> = all_topics
+        .into_iter()
+        .filter(|t| {
+            t.everyone_read
+                || t.owner_id == Some(auth.user.id)
+                || permissions
+                    .iter()
+                    .any(|p| p.can_read && topic_matches(&p.topic_pattern, &t.name))
+        })
+        .collect();
+
+    Ok(Json(visible))
 }
 
 #[utoipa::path(get, path = "/api/topics/{name}", responses((status = 200, body = Topic)))]
 pub async fn get_topic(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(name): Path<String>,
 ) -> Result<Json<Topic>, ApiError> {
     let topic = state
@@ -66,6 +107,9 @@ pub async fn get_topic(
                 name
             )))
         })?;
+
+    check_read_permission(&state, &auth.user, &topic).await?;
+
     Ok(Json(topic))
 }
 
@@ -99,6 +143,33 @@ pub async fn delete_topic(
         .await
         .map_err(ApiError::from)?;
     Ok(Json(serde_json::json!({"success": true})))
+}
+
+/// Check if user has read permission to a topic
+async fn check_read_permission(
+    state: &AppState,
+    user: &rstify_core::models::User,
+    topic: &Topic,
+) -> Result<(), ApiError> {
+    if user.is_admin || topic.everyone_read || topic.owner_id == Some(user.id) {
+        return Ok(());
+    }
+
+    let permissions = state
+        .topic_repo
+        .list_permissions_for_user(user.id)
+        .await
+        .map_err(ApiError::from)?;
+
+    for perm in &permissions {
+        if perm.can_read && topic_matches(&perm.topic_pattern, &topic.name) {
+            return Ok(());
+        }
+    }
+
+    Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+        "No read permission for this topic".to_string(),
+    )))
 }
 
 /// Check if user has write permission to a topic
@@ -154,6 +225,12 @@ pub async fn publish_to_topic(
 
     check_write_permission(&state, &auth.user, &topic).await?;
 
+    if req.message.is_empty() || req.message.len() > 65536 {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Message must be between 1 and 65536 characters".to_string(),
+        )));
+    }
+
     let tags_json = req
         .tags
         .as_ref()
@@ -199,10 +276,11 @@ pub async fn publish_to_topic(
 /// WebSocket for topic subscription
 pub async fn topic_websocket(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(name): Path<String>,
     ws: WebSocketUpgrade,
 ) -> Result<impl IntoResponse, ApiError> {
-    let _topic = state
+    let topic = state
         .topic_repo
         .find_by_name(&name)
         .await
@@ -213,6 +291,8 @@ pub async fn topic_websocket(
                 name
             )))
         })?;
+
+    check_read_permission(&state, &auth.user, &topic).await?;
 
     let connections = state.connections.clone();
 
@@ -247,6 +327,7 @@ pub async fn topic_websocket(
 /// JSON stream for topic (long-polling style)
 pub async fn topic_json_stream(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(name): Path<String>,
     Query(params): Query<ListParams>,
 ) -> Result<Json<Vec<MessageResponse>>, ApiError> {
@@ -262,8 +343,10 @@ pub async fn topic_json_stream(
             )))
         })?;
 
-    let limit = params.limit.unwrap_or(100);
-    let since = params.since.unwrap_or(0);
+    check_read_permission(&state, &auth.user, &topic).await?;
+
+    let limit = params.limit.unwrap_or(100).min(500).max(1);
+    let since = params.since.unwrap_or(0).max(0);
 
     let messages = state
         .message_repo

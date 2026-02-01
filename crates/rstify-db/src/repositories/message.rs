@@ -132,9 +132,13 @@ impl MessageRepository for SqliteMessageRepo {
     }
 
     async fn delete_all_for_user(&self, user_id: i64) -> Result<(), CoreError> {
+        // Delete messages from user's applications AND messages posted by user to topics
         sqlx::query(
-            "DELETE FROM messages WHERE application_id IN (SELECT id FROM applications WHERE user_id = ?)",
+            r#"DELETE FROM messages WHERE
+                application_id IN (SELECT id FROM applications WHERE user_id = ?)
+                OR (user_id = ? AND topic_id IS NOT NULL)"#,
         )
+        .bind(user_id)
         .bind(user_id)
         .execute(&self.pool)
         .await

@@ -60,4 +60,17 @@ impl ConnectionManager {
             let _ = sender.send(Arc::new(msg));
         }
     }
+
+    /// Remove channels that have no active receivers to prevent memory leaks.
+    /// Should be called periodically (e.g., from a background job).
+    pub async fn cleanup_stale_channels(&self) {
+        {
+            let mut channels = self.user_channels.write().await;
+            channels.retain(|_, sender| sender.receiver_count() > 0);
+        }
+        {
+            let mut channels = self.topic_channels.write().await;
+            channels.retain(|_, sender| sender.receiver_count() > 0);
+        }
+    }
 }

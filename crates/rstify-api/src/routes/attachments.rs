@@ -11,6 +11,9 @@ use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
 
+/// Maximum attachment size: 10 MiB
+const MAX_UPLOAD_SIZE: usize = 10 * 1024 * 1024;
+
 /// Sanitize a filename by stripping path components and falling back to a UUID if empty.
 fn sanitize_filename(raw: &str) -> String {
     // Strip any directory components (防 path traversal)
@@ -81,6 +84,16 @@ pub async fn upload_attachment(
                 e
             )))
         })?;
+
+        if data.len() > MAX_UPLOAD_SIZE {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                format!(
+                    "File too large: {} bytes (max {} bytes)",
+                    data.len(),
+                    MAX_UPLOAD_SIZE
+                ),
+            )));
+        }
 
         // Use a UUID prefix to avoid collisions and ensure uniqueness
         let storage_filename = format!("{}_{}", Uuid::new_v4(), filename);

@@ -4,6 +4,7 @@ mod telemetry;
 use rstify_api::state::AppState;
 use rstify_db::pool::Database;
 use rstify_jobs::JobRunner;
+use std::sync::Arc;
 use tracing::info;
 
 #[tokio::main]
@@ -18,9 +19,25 @@ async fn main() -> anyhow::Result<()> {
     db.migrate().await?;
 
     let pool = db.pool().clone();
-    let job_runner = JobRunner::new(pool.clone());
 
-    let state = AppState::new(pool, config.jwt_secret.clone(), config.upload_dir.clone());
+    let state = AppState::new(pool.clone(), config.jwt_secret.clone(), config.upload_dir.clone());
+
+    // Create broadcast callback for scheduled message delivery
+    let connections = state.connections.clone();
+    let broadcast_fn: rstify_jobs::scheduled::BroadcastFn = Arc::new(move |msg, topic_name| {
+        let connections = connections.clone();
+        Box::pin(async move {
+            if let Some(ref name) = topic_name {
+                connections.broadcast_to_topic(name, msg).await;
+            }
+            // For app messages, we'd need user_id which is available from the message's
+            // application, but the current callback signature covers the topic case which
+            // is what scheduled messages use.
+        })
+    });
+
+    let job_runner = JobRunner::new(pool).with_broadcast(broadcast_fn);
+
     let app = rstify_api::build_router(state);
 
     let app = app

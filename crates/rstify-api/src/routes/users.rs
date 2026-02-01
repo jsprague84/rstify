@@ -24,6 +24,12 @@ pub async fn change_password(
     auth: AuthUser,
     Json(req): Json<ChangePassword>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    if req.new_password.len() < 8 || req.new_password.len() > 256 {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "New password must be between 8 and 256 characters".to_string(),
+        )));
+    }
+
     let valid = verify_password(req.current_password, auth.user.password_hash.clone())
         .await
         .map_err(|_| {
@@ -86,6 +92,19 @@ pub async fn create_user(
         )));
     }
 
+    // Validate input
+    let username = req.username.trim();
+    if username.is_empty() || username.len() > 64 {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Username must be between 1 and 64 characters".to_string(),
+        )));
+    }
+    if req.password.len() < 8 || req.password.len() > 256 {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Password must be between 8 and 256 characters".to_string(),
+        )));
+    }
+
     let password_hash = hash_password(req.password).await.map_err(|e| {
         ApiError::from(rstify_core::error::CoreError::Internal(format!(
             "Password hash error: {}",
@@ -96,7 +115,7 @@ pub async fn create_user(
     let user = state
         .user_repo
         .create(
-            &req.username,
+            username,
             &password_hash,
             req.email.as_deref(),
             req.is_admin.unwrap_or(false),
@@ -116,6 +135,12 @@ pub async fn delete_user(
     if !auth.user.is_admin {
         return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
             "Admin access required".to_string(),
+        )));
+    }
+
+    if id == auth.user.id {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Cannot delete your own account".to_string(),
         )));
     }
 

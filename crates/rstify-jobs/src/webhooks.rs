@@ -1,5 +1,16 @@
 use serde::{Deserialize, Serialize};
+use std::sync::LazyLock;
+use std::time::Duration;
 use tracing::info;
+
+/// Shared HTTP client for all webhook calls. Reuses connections and thread pool.
+static HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(30))
+        .connect_timeout(Duration::from_secs(10))
+        .build()
+        .expect("failed to build HTTP client")
+});
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OutgoingWebhook {
@@ -11,7 +22,7 @@ pub struct OutgoingWebhook {
 
 /// Execute an outgoing HTTP webhook call
 pub async fn execute_webhook(webhook: &OutgoingWebhook) -> Result<(), reqwest::Error> {
-    let client = reqwest::Client::new();
+    let client = &*HTTP_CLIENT;
 
     let mut request = match webhook.method.to_uppercase().as_str() {
         "POST" => client.post(&webhook.url),
