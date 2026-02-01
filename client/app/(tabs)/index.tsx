@@ -1,0 +1,167 @@
+import React, { useEffect, useCallback, useState } from "react";
+import {
+  View,
+  FlatList,
+  StyleSheet,
+  RefreshControl,
+  Alert,
+  Pressable,
+  Text,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
+import { MessageCard } from "../../src/components/MessageCard";
+import { EmptyState } from "../../src/components/EmptyState";
+import { useMessagesStore } from "../../src/store/messages";
+import { useAuthStore } from "../../src/store/auth";
+import { useUserWebSocket } from "../../src/hooks/useWebSocket";
+import { getApiClient } from "../../src/api";
+import type { MessageResponse, Client } from "../../src/api";
+
+export default function MessagesScreen() {
+  const messages = useMessagesStore((s) => s.messages);
+  const isLoading = useMessagesStore((s) => s.isLoading);
+  const fetchMessages = useMessagesStore((s) => s.fetchMessages);
+  const addMessage = useMessagesStore((s) => s.addMessage);
+  const deleteMessage = useMessagesStore((s) => s.deleteMessage);
+  const deleteAllMessages = useMessagesStore((s) => s.deleteAllMessages);
+
+  const [clientToken, setClientToken] = useState<string | null>(null);
+
+  // Get or create a client token for WebSocket
+  useEffect(() => {
+    const setupClient = async () => {
+      try {
+        const api = getApiClient();
+        const clients = await api.listClients();
+        if (clients.length > 0) {
+          setClientToken(clients[0].token);
+        } else {
+          const client = await api.createClient({ name: "rstify-mobile" });
+          setClientToken(client.token);
+        }
+      } catch {
+        // Will retry on next render
+      }
+    };
+    setupClient();
+  }, []);
+
+  // WebSocket for real-time messages
+  const onMessage = useCallback(
+    (msg: MessageResponse) => {
+      addMessage(msg);
+    },
+    [addMessage],
+  );
+
+  useUserWebSocket({
+    clientToken,
+    onMessage,
+    enabled: !!clientToken,
+  });
+
+  // Initial fetch
+  useEffect(() => {
+    fetchMessages();
+  }, [fetchMessages]);
+
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteMessage(id);
+    } catch (e) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Delete failed");
+    }
+  };
+
+  const handleDeleteAll = () => {
+    Alert.alert(
+      "Delete All Messages",
+      "Are you sure you want to delete all messages?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteAllMessages();
+            } catch (e) {
+              Alert.alert(
+                "Error",
+                e instanceof Error ? e.message : "Failed to delete",
+              );
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Messages</Text>
+        {messages.length > 0 ? (
+          <Pressable onPress={handleDeleteAll} hitSlop={8}>
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          </Pressable>
+        ) : null}
+      </View>
+
+      <FlatList
+        data={messages}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <MessageCard message={item} onDelete={handleDelete} />
+        )}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={() => fetchMessages()}
+          />
+        }
+        ListEmptyComponent={
+          isLoading ? null : (
+            <EmptyState
+              icon="chatbubbles-outline"
+              title="No messages"
+              subtitle="Messages from your apps will appear here"
+            />
+          )
+        }
+        contentContainerStyle={
+          messages.length === 0 ? styles.emptyList : styles.list
+        }
+      />
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#f9fafb",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
+  },
+  list: {
+    paddingVertical: 8,
+  },
+  emptyList: {
+    flex: 1,
+  },
+});
