@@ -17,11 +17,12 @@ RUN cargo build --release --bin rstify-server
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates gosu && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r rstify && useradd -r -g rstify -s /sbin/nologin rstify
 
 COPY --from=builder /app/target/release/rstify-server /usr/local/bin/rstify-server
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 RUN mkdir -p /data /uploads && chown rstify:rstify /data /uploads
 
@@ -31,6 +32,5 @@ ENV LISTEN_ADDR=0.0.0.0:8080
 
 EXPOSE 8080
 
-USER rstify
-
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["rstify-server"]
