@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 import type { MessageResponse } from '../api/types';
+import { useMessageStream } from '../hooks/useMessageStream';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function Messages() {
@@ -8,6 +9,7 @@ export default function Messages() {
   const [error, setError] = useState('');
   const [deleteMsg, setDeleteMsg] = useState<MessageResponse | null>(null);
   const [filter, setFilter] = useState<'all' | 'app' | 'topic'>('all');
+  const [liveCount, setLiveCount] = useState(0);
 
   const load = useCallback(() => {
     api.listMessages(200)
@@ -16,6 +18,18 @@ export default function Messages() {
   }, []);
 
   useEffect(load, [load]);
+
+  // Real-time: prepend new messages from WebSocket
+  useMessageStream(useCallback((msg: MessageResponse) => {
+    setMessages(prev => {
+      if (prev.some(m => m.id === msg.id)) return prev;
+      return [msg, ...prev];
+    });
+    setLiveCount(c => c + 1);
+  }, []));
+
+  // Reset live count when filter changes
+  useEffect(() => setLiveCount(0), [filter]);
 
   const handleDelete = async () => {
     if (!deleteMsg) return;
@@ -33,7 +47,21 @@ export default function Messages() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Messages</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold">Messages</h2>
+          <span className="flex items-center gap-1.5 text-xs text-green-600">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            Live
+          </span>
+          {liveCount > 0 && (
+            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+              +{liveCount} new
+            </span>
+          )}
+        </div>
         <div className="flex gap-1">
           {(['all', 'app', 'topic'] as const).map(f => (
             <button
