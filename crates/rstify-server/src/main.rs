@@ -2,10 +2,11 @@ mod config;
 mod telemetry;
 
 use rstify_api::state::AppState;
+use rstify_auth::password::hash_password;
 use rstify_db::pool::Database;
 use rstify_jobs::JobRunner;
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -19,6 +20,22 @@ async fn main() -> anyhow::Result<()> {
     db.migrate().await?;
 
     let pool = db.pool().clone();
+
+    // Seed default admin user if no users exist (like Gotify)
+    let user_count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
+        .fetch_one(&pool)
+        .await?;
+    if user_count.0 == 0 {
+        let password_hash = hash_password("admin".to_string()).await
+            .map_err(|e| anyhow::anyhow!("Failed to hash default password: {}", e))?;
+        sqlx::query("INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)")
+            .bind("admin")
+            .bind(&password_hash)
+            .bind(true)
+            .execute(&pool)
+            .await?;
+        warn!("Created default admin user (username: admin, password: admin) — change the password immediately!");
+    }
 
     let state = AppState::new(pool.clone(), config.jwt_secret.clone(), config.upload_dir.clone());
 
