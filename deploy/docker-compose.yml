@@ -1,0 +1,30 @@
+services:
+  rstify:
+    image: ghcr.io/jsprague84/rstify:latest
+    container_name: rstify
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=sqlite:///data/rstify.db
+      - JWT_SECRET=${JWT_SECRET}
+      - UPLOAD_DIR=/uploads
+      - RUST_LOG=${RUST_LOG:-rstify=info,tower_http=info}
+    volumes:
+      - /home/ubuntu/docker/rstify/data:/data
+      - /home/ubuntu/docker/rstify/uploads:/uploads
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+
+      - "traefik.http.routers.rstify-secure.rule=Host(`rstify.js-node.cc`)"
+      - "traefik.http.routers.rstify-secure.entrypoints=https"
+      - "traefik.http.routers.rstify-secure.tls=true"
+      - "traefik.http.routers.rstify-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.rstify-secure.service=rstify"
+      - "traefik.http.services.rstify.loadbalancer.server.port=8080"
+      - "traefik.http.routers.rstify-secure.middlewares=secure-chain@file"
+
+networks:
+  proxy:
+    external: true
