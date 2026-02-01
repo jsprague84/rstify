@@ -64,3 +64,7 @@ anyhow = "1"
 rand = "0.8"
 async-trait = "0.1"
 tokio-util = "0.7"
+rust-embed = { version = "8", features = ["mime-guess"] }
+humantime = "2"
+lettre = { version = "0.11", features = ["tokio1-native-tls", "builder", "smtp-transport"] }
+mime_guess = "2"

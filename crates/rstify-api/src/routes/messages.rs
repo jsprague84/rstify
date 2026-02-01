@@ -95,6 +95,58 @@ pub async fn list_messages(
     }))
 }
 
+/// GET /application/{id}/messages - List messages for an application (paginated)
+#[utoipa::path(
+    get,
+    path = "/application/{id}/messages",
+    responses((status = 200, body = PagedMessages))
+)]
+pub async fn list_application_messages(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(app_id): Path<i64>,
+    Query(params): Query<ListParams>,
+) -> Result<Json<PagedMessages>, ApiError> {
+    let app = state
+        .app_repo
+        .find_by_id(app_id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Application not found".to_string(),
+            ))
+        })?;
+
+    // Ownership check: must be admin or own the application
+    if !auth.user.is_admin && app.user_id != auth.user.id {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Not your application".to_string(),
+        )));
+    }
+
+    let limit = params.limit.unwrap_or(100).min(500).max(1);
+    let since = params.since.unwrap_or(0).max(0);
+
+    let messages = state
+        .message_repo
+        .list_by_application(app_id, limit, since)
+        .await
+        .map_err(ApiError::from)?;
+
+    let responses: Vec<MessageResponse> = messages.iter().map(|m| m.to_response(None)).collect();
+    let size = responses.len() as i64;
+
+    Ok(Json(PagedMessages {
+        messages: responses,
+        paging: Paging {
+            size,
+            since,
+            limit,
+        },
+    }))
+}
+
 /// DELETE /message - Delete all messages for user
 #[utoipa::path(delete, path = "/message", responses((status = 200)))]
 pub async fn delete_all_messages(

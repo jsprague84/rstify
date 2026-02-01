@@ -79,6 +79,14 @@ impl TopicRepository for SqliteTopicRepo {
         Ok(())
     }
 
+    async fn count(&self) -> Result<i64, CoreError> {
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM topics")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))?;
+        Ok(count)
+    }
+
     async fn create_permission(
         &self,
         user_id: i64,

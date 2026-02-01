@@ -3,8 +3,8 @@ use axum::response::IntoResponse;
 use axum::Json;
 use rstify_auth::acl::topic_matches;
 use rstify_core::models::{
-    CreateTopic, CreateTopicMessage, CreateTopicPermission, MessageResponse, Topic,
-    TopicPermission,
+    CreateTopic, CreateTopicMessage, CreateTopicPermission, MessageResponse, PagedMessages, Paging,
+    Topic, TopicPermission,
 };
 use rstify_core::repositories::{MessageRepository, TopicRepository};
 
@@ -270,7 +270,68 @@ pub async fn publish_to_topic(
             .await;
     }
 
+    // Fire outgoing webhooks
+    {
+        let pool = state.pool.clone();
+        let topic = name.clone();
+        let resp = response.clone();
+        tokio::spawn(async move {
+            rstify_jobs::outgoing_webhooks::fire_outgoing_webhooks(&pool, &topic, &resp).await;
+        });
+    }
+
     Ok(Json(response))
+}
+
+/// GET /api/topics/{name}/messages - Paginated messages for a topic
+#[utoipa::path(
+    get,
+    path = "/api/topics/{name}/messages",
+    responses((status = 200, body = PagedMessages))
+)]
+pub async fn list_topic_messages(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(name): Path<String>,
+    Query(params): Query<ListParams>,
+) -> Result<Json<PagedMessages>, ApiError> {
+    let topic = state
+        .topic_repo
+        .find_by_name(&name)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(format!(
+                "Topic '{}' not found",
+                name
+            )))
+        })?;
+
+    check_read_permission(&state, &auth.user, &topic).await?;
+
+    let limit = params.limit.unwrap_or(100).min(500).max(1);
+    let since = params.since.unwrap_or(0).max(0);
+
+    let messages = state
+        .message_repo
+        .list_by_topic(topic.id, limit, since)
+        .await
+        .map_err(ApiError::from)?;
+
+    let responses: Vec<MessageResponse> = messages
+        .iter()
+        .map(|m| m.to_response(Some(name.clone())))
+        .collect();
+    let size = responses.len() as i64;
+
+    Ok(Json(PagedMessages {
+        messages: responses,
+        paging: Paging {
+            size,
+            since,
+            limit,
+        },
+    }))
 }
 
 /// WebSocket for topic subscription

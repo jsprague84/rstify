@@ -45,7 +45,7 @@ pub struct CreateTopicMessage {
     pub scheduled_for: Option<String>,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct MessageResponse {
     pub id: i64,
     pub appid: Option<i64>,

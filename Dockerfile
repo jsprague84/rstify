@@ -1,9 +1,18 @@
+FROM node:20-slim AS web-builder
+
+WORKDIR /app/web-ui
+COPY web-ui/package.json web-ui/package-lock.json ./
+RUN npm ci
+COPY web-ui/ .
+RUN npm run build
+
 FROM rust:1-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y pkg-config libssl-dev libsqlite3-dev curl && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY . .
+COPY --from=web-builder /app/web-ui/dist /app/web-ui/dist
 RUN cargo build --release --bin rstify-server
 
 FROM debian:bookworm-slim

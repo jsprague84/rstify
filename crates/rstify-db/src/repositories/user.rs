@@ -115,4 +115,12 @@ impl UserRepository for SqliteUserRepo {
         }
         Ok(())
     }
+
+    async fn count(&self) -> Result<i64, CoreError> {
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))?;
+        Ok(count)
+    }
 }

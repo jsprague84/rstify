@@ -164,6 +164,43 @@ impl MessageRepository for SqliteMessageRepo {
         .map_err(|e| CoreError::Database(e.to_string()))
     }
 
+    async fn count(&self) -> Result<i64, CoreError> {
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM messages")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))?;
+        Ok(count)
+    }
+
+    async fn count_since(&self, since: &str) -> Result<i64, CoreError> {
+        let (count,): (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM messages WHERE created_at >= ?")
+                .bind(since)
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| CoreError::Database(e.to_string()))?;
+        Ok(count)
+    }
+
+    async fn set_expires_at(&self, id: i64, expires_at: &str) -> Result<(), CoreError> {
+        sqlx::query("UPDATE messages SET expires_at = ? WHERE id = ?")
+            .bind(expires_at)
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn delete_expired_messages(&self) -> Result<u64, CoreError> {
+        let result =
+            sqlx::query("DELETE FROM messages WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')")
+                .execute(&self.pool)
+                .await
+                .map_err(|e| CoreError::Database(e.to_string()))?;
+        Ok(result.rows_affected())
+    }
+
     async fn mark_delivered(&self, id: i64) -> Result<(), CoreError> {
         sqlx::query("UPDATE messages SET delivered_at = datetime('now') WHERE id = ?")
             .bind(id)

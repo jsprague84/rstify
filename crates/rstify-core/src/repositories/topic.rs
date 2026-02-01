@@ -9,6 +9,7 @@ pub trait TopicRepository: Send + Sync {
     async fn find_by_name(&self, name: &str) -> Result<Option<Topic>, CoreError>;
     async fn list_all(&self) -> Result<Vec<Topic>, CoreError>;
     async fn delete(&self, id: i64) -> Result<(), CoreError>;
+    async fn count(&self) -> Result<i64, CoreError>;
 
     async fn create_permission(&self, user_id: i64, topic_pattern: &str, can_read: bool, can_write: bool) -> Result<TopicPermission, CoreError>;
     async fn list_permissions_for_user(&self, user_id: i64) -> Result<Vec<TopicPermission>, CoreError>;

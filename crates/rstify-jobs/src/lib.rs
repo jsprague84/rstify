@@ -1,4 +1,6 @@
 pub mod cleanup;
+pub mod email;
+pub mod outgoing_webhooks;
 pub mod scheduled;
 pub mod webhooks;
 
@@ -40,6 +42,12 @@ impl JobRunner {
         let cancel = self.cancel.clone();
         tokio::spawn(async move {
             cleanup::run_attachment_cleanup(pool, cancel).await;
+        });
+
+        let pool = self.pool.clone();
+        let cancel = self.cancel.clone();
+        tokio::spawn(async move {
+            cleanup::run_message_cleanup(pool, cancel).await;
         });
     }
 

@@ -29,6 +29,12 @@ pub trait MessageRepository: Send + Sync {
     async fn delete_all_for_user(&self, user_id: i64) -> Result<(), CoreError>;
     async fn delete_all_for_application(&self, app_id: i64) -> Result<(), CoreError>;
 
+    async fn count(&self) -> Result<i64, CoreError>;
+    async fn count_since(&self, since: &str) -> Result<i64, CoreError>;
+
+    async fn set_expires_at(&self, id: i64, expires_at: &str) -> Result<(), CoreError>;
+    async fn delete_expired_messages(&self) -> Result<u64, CoreError>;
+
     async fn list_scheduled_due(&self) -> Result<Vec<Message>, CoreError>;
     async fn mark_delivered(&self, id: i64) -> Result<(), CoreError>;
 

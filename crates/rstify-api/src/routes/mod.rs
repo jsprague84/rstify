@@ -4,7 +4,10 @@ pub mod auth;
 pub mod clients;
 pub mod health;
 pub mod messages;
+pub mod ntfy_publish;
+pub mod stats;
 pub mod topics;
+pub mod unified_push;
 pub mod users;
 pub mod webhooks;
 
@@ -37,9 +40,15 @@ pub fn gotify_routes(_state: AppState) -> Router<AppState> {
         // Current user
         .route("/current/user", get(users::current_user))
         .route("/current/user/password", post(users::change_password))
+        // Application messages
+        .route(
+            "/application/{id}/messages",
+            get(messages::list_application_messages),
+        )
         // Admin user management
         .route("/user", get(users::list_users))
         .route("/user", post(users::create_user))
+        .route("/user/{id}", put(users::update_user))
         .route("/user/{id}", delete(users::delete_user))
         // WebSocket stream
         .route("/stream", get(messages::websocket_stream))
@@ -68,9 +77,15 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
             get(crate::sse::topic_sse),
         )
         .route(
+            "/api/topics/{name}/messages",
+            get(topics::list_topic_messages),
+        )
+        .route(
             "/api/topics/{name}/json",
             get(topics::topic_json_stream),
         )
+        // Stats
+        .route("/api/stats", get(stats::get_stats))
         // Attachments
         .route(
             "/api/messages/{id}/attachments",
@@ -99,4 +114,26 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
             "/api/permissions/{id}",
             delete(topics::delete_permission),
         )
+        // UnifiedPush
+        .route("/UP", post(unified_push::receive_up_message))
+        .route(
+            "/api/up/register",
+            post(unified_push::register_up_device),
+        )
+        .route(
+            "/api/up/registrations",
+            get(unified_push::list_up_registrations),
+        )
+        .route(
+            "/api/up/registrations/{id}",
+            delete(unified_push::delete_up_registration),
+        )
+}
+
+/// ntfy-style catch-all publish routes.
+/// These must be merged LAST so specific routes (e.g., /message, /application, etc.) take priority.
+pub fn ntfy_routes(_state: AppState) -> Router<AppState> {
+    Router::new()
+        .route("/{topic}", post(ntfy_publish::ntfy_publish))
+        .route("/{topic}", put(ntfy_publish::ntfy_publish))
 }

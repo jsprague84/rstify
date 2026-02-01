@@ -26,6 +26,14 @@ pub struct WebhookConfig {
     pub template: String,
     pub enabled: bool,
     pub created_at: String,
+    // Outgoing webhook fields
+    pub direction: String,
+    pub target_url: Option<String>,
+    pub http_method: String,
+    pub headers: Option<String>,
+    pub body_template: Option<String>,
+    pub max_retries: i32,
+    pub retry_delay_secs: i32,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -36,6 +44,12 @@ pub struct CreateWebhookConfig {
     pub target_application_id: Option<i64>,
     pub template: serde_json::Value,
     pub enabled: Option<bool>,
+    // Outgoing webhook fields
+    pub direction: Option<String>,
+    pub target_url: Option<String>,
+    pub http_method: Option<String>,
+    pub headers: Option<serde_json::Value>,
+    pub body_template: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -43,4 +57,9 @@ pub struct UpdateWebhookConfig {
     pub name: Option<String>,
     pub template: Option<serde_json::Value>,
     pub enabled: Option<bool>,
+    // Outgoing webhook fields
+    pub target_url: Option<String>,
+    pub http_method: Option<String>,
+    pub headers: Option<serde_json::Value>,
+    pub body_template: Option<String>,
 }

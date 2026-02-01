@@ -11,4 +11,5 @@ pub trait UserRepository: Send + Sync {
     async fn update(&self, id: i64, username: Option<&str>, email: Option<&str>, is_admin: Option<bool>) -> Result<User, CoreError>;
     async fn update_password(&self, id: i64, password_hash: &str) -> Result<(), CoreError>;
     async fn delete(&self, id: i64) -> Result<(), CoreError>;
+    async fn count(&self) -> Result<i64, CoreError>;
 }

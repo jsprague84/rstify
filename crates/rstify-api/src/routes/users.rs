@@ -1,7 +1,7 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use rstify_auth::password::{hash_password, verify_password};
-use rstify_core::models::{ChangePassword, CreateUser, UserResponse};
+use rstify_core::models::{ChangePassword, CreateUser, UpdateUser, UserResponse};
 use rstify_core::repositories::UserRepository;
 
 use crate::error::ApiError;
@@ -119,6 +119,38 @@ pub async fn create_user(
             &password_hash,
             req.email.as_deref(),
             req.is_admin.unwrap_or(false),
+        )
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(Json(UserResponse::from(user)))
+}
+
+#[utoipa::path(
+    put,
+    path = "/user/{id}",
+    request_body = UpdateUser,
+    responses((status = 200, body = UserResponse))
+)]
+pub async fn update_user(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<i64>,
+    Json(req): Json<UpdateUser>,
+) -> Result<Json<UserResponse>, ApiError> {
+    if !auth.user.is_admin {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Admin access required".to_string(),
+        )));
+    }
+
+    let user = state
+        .user_repo
+        .update(
+            id,
+            req.username.as_deref(),
+            req.email.as_deref(),
+            req.is_admin,
         )
         .await
         .map_err(ApiError::from)?;
