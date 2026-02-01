@@ -21,7 +21,7 @@ const priorityColors: Record<number, string> = {
   10: "#dc2626",
 };
 
-export function MessageCard({ message, onDelete }: MessageCardProps) {
+export const MessageCard = React.memo(function MessageCard({ message, onDelete }: MessageCardProps) {
   const borderColor = priorityColors[message.priority] ?? "#10b981";
   const timeStr = new Date(message.date).toLocaleString();
   const source = message.topic ?? (message.appid ? `App #${message.appid}` : "Unknown");
@@ -58,7 +58,7 @@ export function MessageCard({ message, onDelete }: MessageCardProps) {
       </View>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {

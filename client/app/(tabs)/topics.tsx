@@ -109,6 +109,21 @@ export default function TopicsScreen() {
     ]);
   };
 
+  const messageKeyExtractor = useCallback(
+    (item: MessageResponse) => item.id.toString(),
+    [],
+  );
+
+  const topicKeyExtractor = useCallback(
+    (item: Topic) => item.id.toString(),
+    [],
+  );
+
+  const renderTopicMessage = useCallback(
+    ({ item }: { item: MessageResponse }) => <MessageCard message={item} />,
+    [],
+  );
+
   // Topic detail view
   if (selectedTopic) {
     return (
@@ -125,8 +140,11 @@ export default function TopicsScreen() {
 
         <FlatList
           data={topicMessages}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => <MessageCard message={item} />}
+          keyExtractor={messageKeyExtractor}
+          renderItem={renderTopicMessage}
+          removeClippedSubviews
+          maxToRenderPerBatch={15}
+          windowSize={11}
           ListEmptyComponent={
             <EmptyState
               icon="chatbubble-outline"
@@ -190,7 +208,7 @@ export default function TopicsScreen() {
 
       <FlatList
         data={topics}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={topicKeyExtractor}
         renderItem={({ item }) => (
           <Pressable
             style={styles.topicItem}

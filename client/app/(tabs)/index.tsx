@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useMemo } from "react";
 import {
   View,
   FlatList,
@@ -8,6 +8,7 @@ import {
   Pressable,
   Text,
 } from "react-native";
+import type { ListRenderItemInfo } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { MessageCard } from "../../src/components/MessageCard";
@@ -74,6 +75,18 @@ export default function MessagesScreen() {
     }
   };
 
+  const renderItem = useCallback(
+    ({ item }: ListRenderItemInfo<MessageResponse>) => (
+      <MessageCard message={item} onDelete={handleDelete} />
+    ),
+    [],
+  );
+
+  const keyExtractor = useCallback(
+    (item: MessageResponse) => item.id.toString(),
+    [],
+  );
+
   const handleDeleteAll = () => {
     Alert.alert(
       "Delete All Messages",
@@ -111,10 +124,11 @@ export default function MessagesScreen() {
 
       <FlatList
         data={messages}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <MessageCard message={item} onDelete={handleDelete} />
-        )}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        removeClippedSubviews
+        maxToRenderPerBatch={15}
+        windowSize={11}
         refreshControl={
           <RefreshControl
             refreshing={isLoading}

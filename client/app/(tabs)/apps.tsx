@@ -67,6 +67,11 @@ export default function AppsScreen() {
     }
   };
 
+  const keyExtractor = useCallback(
+    (item: Application) => item.id.toString(),
+    [],
+  );
+
   const handleDeleteApp = (app: Application) => {
     Alert.alert("Delete Application", `Delete "${app.name}"?`, [
       { text: "Cancel", style: "cancel" },
@@ -97,7 +102,7 @@ export default function AppsScreen() {
 
       <FlatList
         data={apps}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={keyExtractor}
         renderItem={({ item }) => (
           <View style={styles.appItem}>
             <View style={styles.appInfo}>

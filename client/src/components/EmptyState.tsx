@@ -8,7 +8,7 @@ interface EmptyStateProps {
   subtitle?: string;
 }
 
-export function EmptyState({ icon, title, subtitle }: EmptyStateProps) {
+export const EmptyState = React.memo(function EmptyState({ icon, title, subtitle }: EmptyStateProps) {
   return (
     <View style={styles.container}>
       <Ionicons name={icon} size={48} color="#d1d5db" />
@@ -16,7 +16,7 @@ export function EmptyState({ icon, title, subtitle }: EmptyStateProps) {
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
