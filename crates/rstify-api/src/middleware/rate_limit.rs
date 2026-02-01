@@ -67,22 +67,42 @@ impl RateLimiter {
     }
 }
 
-/// Axum middleware function for rate limiting by peer IP.
-/// Install via `axum::middleware::from_fn_with_state`.
+/// Axum middleware function for rate limiting.
+/// Uses the `RateLimiter` from request extensions (set via Extension layer).
 pub async fn rate_limit_middleware(
-    axum::extract::State(limiter): axum::extract::State<RateLimiter>,
     req: Request<Body>,
     next: Next,
 ) -> Response {
-    // Use the peer IP from the connection info, falling back to a fixed key
+    // Extract rate limiter from extensions
+    let limiter = match req.extensions().get::<RateLimiter>() {
+        Some(l) => l.clone(),
+        None => return next.run(req).await,
+    };
+
+    // Use X-Forwarded-For (for reverse proxies like Traefik), else peer IP
     let key = req
-        .extensions()
-        .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
-        .map(|ci| ci.0.ip().to_string())
+        .headers()
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.split(',').next())
+        .map(|s| s.trim().to_string())
+        .or_else(|| {
+            req.extensions()
+                .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+                .map(|ci| ci.0.ip().to_string())
+        })
         .unwrap_or_else(|| "unknown".to_string());
 
     if !limiter.check(&key).await {
-        return (StatusCode::TOO_MANY_REQUESTS, "Rate limit exceeded").into_response();
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            [(
+                axum::http::header::RETRY_AFTER,
+                "1".parse::<axum::http::HeaderValue>().unwrap(),
+            )],
+            "Rate limit exceeded",
+        )
+            .into_response();
     }
 
     next.run(req).await

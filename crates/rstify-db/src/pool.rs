@@ -48,6 +48,7 @@ impl Database {
             ("010_message_expiry", include_str!("../../../migrations/010_message_expiry.sql")),
             ("011_outgoing_webhooks", include_str!("../../../migrations/011_outgoing_webhooks.sql")),
             ("012_unified_push", include_str!("../../../migrations/012_unified_push.sql")),
+            ("013_additional_indexes", include_str!("../../../migrations/013_additional_indexes.sql")),
         ];
 
         for (name, sql) in migrations {

@@ -38,23 +38,30 @@ async fn deliver_scheduled(
     pool: &SqlitePool,
     broadcast: &Option<BroadcastFn>,
 ) -> Result<(), sqlx::Error> {
+    // Use a transaction with UPDATE ... RETURNING to atomically claim messages,
+    // preventing double-delivery if multiple workers run concurrently.
+    let mut tx = pool.begin().await?;
+
     let messages = sqlx::query_as::<_, Message>(
-        "SELECT * FROM messages WHERE scheduled_for IS NOT NULL AND scheduled_for <= datetime('now') AND delivered_at IS NULL",
+        "UPDATE messages SET delivered_at = datetime('now') \
+         WHERE id IN ( \
+             SELECT id FROM messages \
+             WHERE scheduled_for IS NOT NULL \
+               AND scheduled_for <= datetime('now') \
+               AND delivered_at IS NULL \
+         ) RETURNING *",
     )
-    .fetch_all(pool)
+    .fetch_all(&mut *tx)
     .await?;
 
+    tx.commit().await?;
+
     for msg in messages {
-        sqlx::query("UPDATE messages SET delivered_at = datetime('now') WHERE id = ?")
-            .bind(msg.id)
-            .execute(pool)
-            .await?;
         info!("Delivered scheduled message {}", msg.id);
 
         // Broadcast to subscribers if callback provided
         if let Some(broadcast) = broadcast {
             let topic_name = if let Some(topic_id) = msg.topic_id {
-                // Resolve topic name
                 let row: Option<(String,)> =
                     sqlx::query_as("SELECT name FROM topics WHERE id = ?")
                         .bind(topic_id)

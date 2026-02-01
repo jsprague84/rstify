@@ -1,11 +1,15 @@
 mod config;
 mod telemetry;
 
+use axum::http::{HeaderValue, Method};
+use rstify_api::middleware::rate_limit::RateLimiter;
 use rstify_api::state::AppState;
 use rstify_auth::password::hash_password;
 use rstify_db::pool::Database;
 use rstify_jobs::JobRunner;
 use std::sync::Arc;
+use std::time::Duration;
+use tower_http::cors::CorsLayer;
 use tracing::{info, warn};
 
 #[tokio::main]
@@ -39,6 +43,16 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState::new(pool.clone(), config.jwt_secret.clone(), config.upload_dir.clone());
 
+    // Start periodic connection cleanup
+    let connections_for_cleanup = state.connections.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(60));
+        loop {
+            interval.tick().await;
+            connections_for_cleanup.cleanup_stale_channels().await;
+        }
+    });
+
     // Create broadcast callback for scheduled message delivery
     let connections = state.connections.clone();
     let broadcast_fn: rstify_jobs::scheduled::BroadcastFn = Arc::new(move |msg, topic_name| {
@@ -47,18 +61,51 @@ async fn main() -> anyhow::Result<()> {
             if let Some(ref name) = topic_name {
                 connections.broadcast_to_topic(name, msg).await;
             }
-            // For app messages, we'd need user_id which is available from the message's
-            // application, but the current callback signature covers the topic case which
-            // is what scheduled messages use.
         })
     });
 
     let job_runner = JobRunner::new(pool).with_broadcast(broadcast_fn);
 
-    let app = rstify_api::build_router(state);
+    // Build rate limiter
+    let limiter = RateLimiter::new(config.rate_limit_max, config.rate_limit_rps);
+
+    // Periodic rate limiter cleanup
+    let limiter_cleanup = limiter.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(Duration::from_secs(300));
+        loop {
+            interval.tick().await;
+            limiter_cleanup.cleanup().await;
+        }
+    });
+
+    let app = rstify_api::build_router(state, limiter);
+
+    // CORS configuration
+    let cors = if config.cors_origins.is_empty() {
+        // Default: allow same-origin + common dev origins
+        CorsLayer::permissive()
+    } else {
+        let origins: Vec<HeaderValue> = config
+            .cors_origins
+            .iter()
+            .filter_map(|o| o.parse::<HeaderValue>().ok())
+            .collect();
+        CorsLayer::new()
+            .allow_origin(origins)
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::PUT,
+                Method::DELETE,
+                Method::OPTIONS,
+            ])
+            .allow_headers(tower_http::cors::Any)
+            .allow_credentials(true)
+    };
 
     let app = app
-        .layer(tower_http::cors::CorsLayer::permissive())
+        .layer(cors)
         .layer(tower_http::trace::TraceLayer::new_for_http());
 
     job_runner.start().await;

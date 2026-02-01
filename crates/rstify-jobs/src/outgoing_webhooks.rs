@@ -31,7 +31,10 @@ pub async fn fire_outgoing_webhooks(
         }
     };
 
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .unwrap_or_default();
     let message_json = serde_json::to_string(message).unwrap_or_default();
 
     for config in configs {

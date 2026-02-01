@@ -240,6 +240,8 @@ pub async fn websocket_stream(
 
     Ok(ws.on_upgrade(move |mut socket| async move {
         let mut rx = connections.subscribe_user(user_id).await;
+        let mut ping_interval = tokio::time::interval(std::time::Duration::from_secs(30));
+        ping_interval.tick().await; // skip first immediate tick
 
         loop {
             tokio::select! {
@@ -251,7 +253,10 @@ pub async fn websocket_stream(
                                 break;
                             }
                         }
-                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                            tracing::warn!("WebSocket user={} lagged, skipped {} messages", user_id, n);
+                            continue;
+                        }
                         Err(_) => break,
                     }
                 }
@@ -262,8 +267,14 @@ pub async fn websocket_stream(
                                 break;
                             }
                         }
+                        Some(Ok(axum::extract::ws::Message::Pong(_))) => {}
                         Some(Ok(axum::extract::ws::Message::Close(_))) | None => break,
                         _ => {}
+                    }
+                }
+                _ = ping_interval.tick() => {
+                    if socket.send(axum::extract::ws::Message::Ping(vec![].into())).await.is_err() {
+                        break;
                     }
                 }
             }

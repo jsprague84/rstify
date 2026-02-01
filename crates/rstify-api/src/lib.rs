@@ -10,9 +10,10 @@ pub mod web_ui;
 pub mod websocket;
 
 use axum::Router;
+use middleware::rate_limit::RateLimiter;
 use state::AppState;
 
-pub fn build_router(state: AppState) -> Router {
+pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
     let api_routes = routes::api_routes(state.clone());
     let gotify_routes = routes::gotify_routes(state.clone());
     let ntfy_routes = routes::ntfy_routes(state.clone());
@@ -25,6 +26,10 @@ pub fn build_router(state: AppState) -> Router {
         .merge(api_routes)
         // ntfy catch-all routes must be last so specific routes take priority
         .merge(ntfy_routes)
+        .layer(axum::Extension(limiter))
+        .layer(axum::middleware::from_fn(
+            middleware::rate_limit::rate_limit_middleware,
+        ))
         .fallback(web_ui::web_ui_handler)
         .with_state(state)
 }

@@ -38,12 +38,22 @@ pub async fn receive_up_message(
     let message = String::from_utf8_lossy(&body).to_string();
 
     // Forward to the registered endpoint
-    let client = reqwest::Client::new();
-    let _ = client
-        .post(&registration.endpoint)
-        .body(message)
-        .send()
-        .await;
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .unwrap_or_default();
+    match client.post(&registration.endpoint).body(message).send().await {
+        Ok(resp) => {
+            tracing::debug!(
+                "UP forwarded to {}: status {}",
+                registration.endpoint,
+                resp.status()
+            );
+        }
+        Err(e) => {
+            tracing::warn!("UP forward to {} failed: {}", registration.endpoint, e);
+        }
+    }
 
     Ok(Json(serde_json::json!({"success": true})))
 }

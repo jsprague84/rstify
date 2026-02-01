@@ -39,6 +39,19 @@ pub async fn create_topic(
                 .to_string(),
         )));
     }
+    // Reject names that are only dots, start/end with dots, or have consecutive dots
+    if name.chars().all(|c| c == '.')
+        || name.starts_with('.')
+        || name.ends_with('.')
+        || name.contains("..")
+        || name.starts_with('-')
+        || name.starts_with('_')
+    {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Topic name must start with an alphanumeric character and not contain consecutive dots"
+                .to_string(),
+        )));
+    }
 
     let topic = state
         .topic_repo
@@ -359,6 +372,8 @@ pub async fn topic_websocket(
 
     Ok(ws.on_upgrade(move |mut socket| async move {
         let mut rx = connections.subscribe_topic(&name).await;
+        let mut ping_interval = tokio::time::interval(std::time::Duration::from_secs(30));
+        ping_interval.tick().await; // skip first immediate tick
 
         loop {
             tokio::select! {
@@ -370,14 +385,28 @@ pub async fn topic_websocket(
                                 break;
                             }
                         }
-                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => continue,
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(n)) => {
+                            tracing::warn!("WebSocket topic={} lagged, skipped {} messages", name, n);
+                            continue;
+                        }
                         Err(_) => break,
                     }
                 }
                 msg = socket.recv() => {
                     match msg {
+                        Some(Ok(axum::extract::ws::Message::Ping(data))) => {
+                            if socket.send(axum::extract::ws::Message::Pong(data)).await.is_err() {
+                                break;
+                            }
+                        }
+                        Some(Ok(axum::extract::ws::Message::Pong(_))) => {}
                         Some(Ok(axum::extract::ws::Message::Close(_))) | None => break,
                         _ => {}
+                    }
+                }
+                _ = ping_interval.tick() => {
+                    if socket.send(axum::extract::ws::Message::Ping(vec![].into())).await.is_err() {
+                        break;
                     }
                 }
             }
