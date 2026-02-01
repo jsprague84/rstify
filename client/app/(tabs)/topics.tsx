@@ -9,10 +9,9 @@ import {
   Alert,
   TextInput,
   Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState } from "../../src/components/EmptyState";
 import { MessageCard } from "../../src/components/MessageCard";
@@ -159,43 +158,52 @@ export default function TopicsScreen() {
           }
         />
 
-        <Modal visible={showPublish} animationType="slide" transparent>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
+        <Modal visible={showPublish} animationType="fade" transparent>
+          <Pressable
             style={styles.modalOverlay}
+            onPress={() => setShowPublish(false)}
           >
-            <View style={styles.modal}>
-              <Text style={styles.modalTitle}>
-                Publish to {selectedTopic.name}
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Title (optional)"
-                placeholderTextColor="#9ca3af"
-                value={publishTitle}
-                onChangeText={setPublishTitle}
-              />
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Message"
-                placeholderTextColor="#9ca3af"
-                value={publishMessage}
-                onChangeText={setPublishMessage}
-                multiline
-              />
-              <View style={styles.modalButtons}>
-                <Pressable
-                  style={styles.cancelButton}
-                  onPress={() => setShowPublish(false)}
-                >
-                  <Text style={styles.cancelText}>Cancel</Text>
-                </Pressable>
-                <Pressable style={styles.submitButton} onPress={handlePublish}>
-                  <Text style={styles.submitText}>Publish</Text>
-                </Pressable>
-              </View>
-            </View>
-          </KeyboardAvoidingView>
+            <Pressable style={styles.modalOuter} onPress={() => {}}>
+              <KeyboardAwareScrollView
+                bottomOffset={20}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={styles.modalScrollContent}
+              >
+                <View style={styles.modal}>
+                  <Text style={styles.modalTitle}>
+                    Publish to {selectedTopic.name}
+                  </Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Title (optional)"
+                    placeholderTextColor="#9ca3af"
+                    value={publishTitle}
+                    onChangeText={setPublishTitle}
+                    returnKeyType="next"
+                  />
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    placeholder="Message"
+                    placeholderTextColor="#9ca3af"
+                    value={publishMessage}
+                    onChangeText={setPublishMessage}
+                    multiline
+                  />
+                  <View style={styles.modalButtons}>
+                    <Pressable
+                      style={styles.cancelButton}
+                      onPress={() => setShowPublish(false)}
+                    >
+                      <Text style={styles.cancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable style={styles.submitButton} onPress={handlePublish}>
+                      <Text style={styles.submitText}>Publish</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </KeyboardAwareScrollView>
+            </Pressable>
+          </Pressable>
         </Modal>
       </SafeAreaView>
     );
@@ -261,37 +269,47 @@ export default function TopicsScreen() {
         }
       />
 
-      <Modal visible={showCreate} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <Modal visible={showCreate} animationType="fade" transparent>
+        <Pressable
           style={styles.modalOverlay}
+          onPress={() => setShowCreate(false)}
         >
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Create Topic</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Topic name (e.g. alerts.production)"
-              placeholderTextColor="#9ca3af"
-              value={newTopicName}
-              onChangeText={setNewTopicName}
-              autoCapitalize="none"
-            />
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={styles.cancelButton}
-                onPress={() => setShowCreate(false)}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={styles.submitButton}
-                onPress={handleCreateTopic}
-              >
-                <Text style={styles.submitText}>Create</Text>
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
+          <Pressable style={styles.modalOuter} onPress={() => {}}>
+            <KeyboardAwareScrollView
+              bottomOffset={20}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              <View style={styles.modal}>
+                <Text style={styles.modalTitle}>Create Topic</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Topic name (e.g. alerts.production)"
+                  placeholderTextColor="#9ca3af"
+                  value={newTopicName}
+                  onChangeText={setNewTopicName}
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  onSubmitEditing={handleCreateTopic}
+                />
+                <View style={styles.modalButtons}>
+                  <Pressable
+                    style={styles.cancelButton}
+                    onPress={() => setShowCreate(false)}
+                  >
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.submitButton}
+                    onPress={handleCreateTopic}
+                  >
+                    <Text style={styles.submitText}>Create</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </KeyboardAwareScrollView>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -343,12 +361,19 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalOuter: {
+    maxHeight: "80%",
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   modal: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderRadius: 16,
     padding: 24,
     gap: 12,
   },

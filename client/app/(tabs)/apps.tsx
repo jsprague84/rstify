@@ -9,10 +9,9 @@ import {
   Alert,
   TextInput,
   Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState } from "../../src/components/EmptyState";
 import { getApiClient } from "../../src/api";
@@ -144,43 +143,54 @@ export default function AppsScreen() {
         contentContainerStyle={apps.length === 0 ? styles.emptyList : undefined}
       />
 
-      <Modal visible={showCreate} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+      <Modal visible={showCreate} animationType="fade" transparent>
+        <Pressable
           style={styles.modalOverlay}
+          onPress={() => setShowCreate(false)}
         >
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Create Application</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Application name"
-              placeholderTextColor="#9ca3af"
-              value={newAppName}
-              onChangeText={setNewAppName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Description (optional)"
-              placeholderTextColor="#9ca3af"
-              value={newAppDesc}
-              onChangeText={setNewAppDesc}
-            />
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={styles.cancelButton}
-                onPress={() => setShowCreate(false)}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable
-                style={styles.submitButton}
-                onPress={handleCreateApp}
-              >
-                <Text style={styles.submitText}>Create</Text>
-              </Pressable>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
+          <Pressable style={styles.modalOuter} onPress={() => {}}>
+            <KeyboardAwareScrollView
+              bottomOffset={20}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              <View style={styles.modal}>
+                <Text style={styles.modalTitle}>Create Application</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Application name"
+                  placeholderTextColor="#9ca3af"
+                  value={newAppName}
+                  onChangeText={setNewAppName}
+                  returnKeyType="next"
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Description (optional)"
+                  placeholderTextColor="#9ca3af"
+                  value={newAppDesc}
+                  onChangeText={setNewAppDesc}
+                  returnKeyType="done"
+                  onSubmitEditing={handleCreateApp}
+                />
+                <View style={styles.modalButtons}>
+                  <Pressable
+                    style={styles.cancelButton}
+                    onPress={() => setShowCreate(false)}
+                  >
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.submitButton}
+                    onPress={handleCreateApp}
+                  >
+                    <Text style={styles.submitText}>Create</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </KeyboardAwareScrollView>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -222,12 +232,19 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalOuter: {
+    maxHeight: "80%",
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   modal: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderRadius: 16,
     padding: 24,
     gap: 12,
   },

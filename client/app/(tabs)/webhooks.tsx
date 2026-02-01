@@ -10,11 +10,9 @@ import {
   TextInput,
   Modal,
   Switch,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState } from "../../src/components/EmptyState";
 import { getApiClient } from "../../src/api";
@@ -183,6 +181,11 @@ export default function WebhooksScreen() {
     );
   };
 
+  const closeModal = () => {
+    resetForm();
+    setShowCreate(false);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
@@ -250,166 +253,163 @@ export default function WebhooksScreen() {
         }
       />
 
-      <Modal visible={showCreate} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Create Webhook</Text>
-            <ScrollView keyboardShouldPersistTaps="handled">
+      <Modal visible={showCreate} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={closeModal}>
+          <Pressable style={styles.modalOuter} onPress={() => {}}>
+            <KeyboardAwareScrollView
+              bottomOffset={20}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              <View style={styles.modal}>
+                <Text style={styles.modalTitle}>Create Webhook</Text>
 
-            {/* Direction toggle */}
-            <View style={styles.directionRow}>
-              <Pressable
-                style={[
-                  styles.directionBtn,
-                  direction === "incoming" && styles.directionBtnActive,
-                ]}
-                onPress={() => setDirection("incoming")}
-              >
-                <Text
-                  style={[
-                    styles.directionBtnText,
-                    direction === "incoming" && styles.directionBtnTextActive,
-                  ]}
-                >
-                  Incoming
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.directionBtn,
-                  direction === "outgoing" && styles.directionBtnActive,
-                ]}
-                onPress={() => setDirection("outgoing")}
-              >
-                <Text
-                  style={[
-                    styles.directionBtnText,
-                    direction === "outgoing" && styles.directionBtnTextActive,
-                  ]}
-                >
-                  Outgoing
-                </Text>
-              </Pressable>
-            </View>
-
-            <TextInput
-              style={styles.input}
-              placeholder="Webhook name"
-              placeholderTextColor="#9ca3af"
-              value={name}
-              onChangeText={setName}
-            />
-
-            {/* Topic selector */}
-            {topics.length > 0 ? (
-              <View>
-                <Text style={styles.fieldLabel}>Target Topic (optional)</Text>
-                <View style={styles.topicList}>
+                {/* Direction toggle */}
+                <View style={styles.directionRow}>
                   <Pressable
                     style={[
-                      styles.topicChip,
-                      selectedTopicId === null && styles.topicChipActive,
+                      styles.directionBtn,
+                      direction === "incoming" && styles.directionBtnActive,
                     ]}
-                    onPress={() => setSelectedTopicId(null)}
+                    onPress={() => setDirection("incoming")}
                   >
                     <Text
                       style={[
-                        styles.topicChipText,
-                        selectedTopicId === null && styles.topicChipTextActive,
+                        styles.directionBtnText,
+                        direction === "incoming" && styles.directionBtnTextActive,
                       ]}
                     >
-                      None
+                      Incoming
                     </Text>
                   </Pressable>
-                  {topics.map((t) => (
-                    <Pressable
-                      key={t.id}
+                  <Pressable
+                    style={[
+                      styles.directionBtn,
+                      direction === "outgoing" && styles.directionBtnActive,
+                    ]}
+                    onPress={() => setDirection("outgoing")}
+                  >
+                    <Text
                       style={[
-                        styles.topicChip,
-                        selectedTopicId === t.id && styles.topicChipActive,
+                        styles.directionBtnText,
+                        direction === "outgoing" && styles.directionBtnTextActive,
                       ]}
-                      onPress={() => setSelectedTopicId(t.id)}
                     >
-                      <Text
-                        style={[
-                          styles.topicChipText,
-                          selectedTopicId === t.id &&
-                            styles.topicChipTextActive,
-                        ]}
-                      >
-                        {t.name}
-                      </Text>
-                    </Pressable>
-                  ))}
+                      Outgoing
+                    </Text>
+                  </Pressable>
                 </View>
-              </View>
-            ) : null}
 
-            {/* Outgoing-specific fields */}
-            {direction === "outgoing" ? (
-              <>
                 <TextInput
                   style={styles.input}
-                  placeholder="Target URL"
+                  placeholder="Webhook name"
                   placeholderTextColor="#9ca3af"
-                  value={targetUrl}
-                  onChangeText={setTargetUrl}
-                  autoCapitalize="none"
-                  keyboardType="url"
+                  value={name}
+                  onChangeText={setName}
                 />
-                <View style={styles.methodRow}>
-                  {["GET", "POST", "PUT"].map((m) => (
-                    <Pressable
-                      key={m}
-                      style={[
-                        styles.methodBtn,
-                        httpMethod === m && styles.methodBtnActive,
-                      ]}
-                      onPress={() => setHttpMethod(m)}
-                    >
-                      <Text
-                        style={[
-                          styles.methodBtnText,
-                          httpMethod === m && styles.methodBtnTextActive,
-                        ]}
-                      >
-                        {m}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <TextInput
-                  style={[styles.input, styles.multilineInput]}
-                  placeholder="Body template (optional, use {{message}}, {{title}})"
-                  placeholderTextColor="#9ca3af"
-                  value={bodyTemplate}
-                  onChangeText={setBodyTemplate}
-                  multiline
-                  numberOfLines={3}
-                />
-              </>
-            ) : null}
 
-            <View style={styles.modalButtons}>
-              <Pressable
-                style={styles.cancelButton}
-                onPress={() => {
-                  resetForm();
-                  setShowCreate(false);
-                }}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </Pressable>
-              <Pressable style={styles.submitButton} onPress={handleCreate}>
-                <Text style={styles.submitText}>Create</Text>
-              </Pressable>
-            </View>
-            </ScrollView>
-          </View>
-        </KeyboardAvoidingView>
+                {/* Topic selector */}
+                {topics.length > 0 ? (
+                  <View>
+                    <Text style={styles.fieldLabel}>Target Topic (optional)</Text>
+                    <View style={styles.topicList}>
+                      <Pressable
+                        style={[
+                          styles.topicChip,
+                          selectedTopicId === null && styles.topicChipActive,
+                        ]}
+                        onPress={() => setSelectedTopicId(null)}
+                      >
+                        <Text
+                          style={[
+                            styles.topicChipText,
+                            selectedTopicId === null && styles.topicChipTextActive,
+                          ]}
+                        >
+                          None
+                        </Text>
+                      </Pressable>
+                      {topics.map((t) => (
+                        <Pressable
+                          key={t.id}
+                          style={[
+                            styles.topicChip,
+                            selectedTopicId === t.id && styles.topicChipActive,
+                          ]}
+                          onPress={() => setSelectedTopicId(t.id)}
+                        >
+                          <Text
+                            style={[
+                              styles.topicChipText,
+                              selectedTopicId === t.id &&
+                                styles.topicChipTextActive,
+                            ]}
+                          >
+                            {t.name}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+
+                {/* Outgoing-specific fields */}
+                {direction === "outgoing" ? (
+                  <>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Target URL"
+                      placeholderTextColor="#9ca3af"
+                      value={targetUrl}
+                      onChangeText={setTargetUrl}
+                      autoCapitalize="none"
+                      keyboardType="url"
+                    />
+                    <View style={styles.methodRow}>
+                      {["GET", "POST", "PUT"].map((m) => (
+                        <Pressable
+                          key={m}
+                          style={[
+                            styles.methodBtn,
+                            httpMethod === m && styles.methodBtnActive,
+                          ]}
+                          onPress={() => setHttpMethod(m)}
+                        >
+                          <Text
+                            style={[
+                              styles.methodBtnText,
+                              httpMethod === m && styles.methodBtnTextActive,
+                            ]}
+                          >
+                            {m}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <TextInput
+                      style={[styles.input, styles.multilineInput]}
+                      placeholder="Body template (optional, use {{message}}, {{title}})"
+                      placeholderTextColor="#9ca3af"
+                      value={bodyTemplate}
+                      onChangeText={setBodyTemplate}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  </>
+                ) : null}
+
+                <View style={styles.modalButtons}>
+                  <Pressable style={styles.cancelButton} onPress={closeModal}>
+                    <Text style={styles.cancelText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable style={styles.submitButton} onPress={handleCreate}>
+                    <Text style={styles.submitText}>Create</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </KeyboardAwareScrollView>
+          </Pressable>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );
@@ -466,15 +466,21 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
+    padding: 16,
+  },
+  modalOuter: {
+    maxHeight: "85%",
+  },
+  modalScrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   modal: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderRadius: 16,
     padding: 24,
     gap: 12,
-    maxHeight: "80%",
   },
   modalTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
   directionRow: { flexDirection: "row", gap: 8 },
