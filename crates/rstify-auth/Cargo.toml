@@ -1,0 +1,15 @@
+[package]
+name = "rstify-auth"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rstify-core = { workspace = true }
+jsonwebtoken = { workspace = true }
+argon2 = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+rand = { workspace = true }

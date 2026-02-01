@@ -1,0 +1,23 @@
+[package]
+name = "rstify-server"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "rstify-server"
+path = "src/main.rs"
+
+[dependencies]
+rstify-core = { workspace = true }
+rstify-db = { workspace = true }
+rstify-auth = { workspace = true }
+rstify-api = { workspace = true }
+rstify-jobs = { workspace = true }
+axum = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+dotenvy = { workspace = true }
+sqlx = { workspace = true }
+tower-http = { workspace = true }
+anyhow = { workspace = true }

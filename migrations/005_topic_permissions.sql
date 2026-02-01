@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS topic_permissions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    topic_pattern TEXT NOT NULL,
+    can_read BOOLEAN DEFAULT FALSE,
+    can_write BOOLEAN DEFAULT FALSE
+);

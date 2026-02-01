@@ -1,0 +1,17 @@
+services:
+  rstify:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - rstify_data:/data
+      - rstify_uploads:/uploads
+    environment:
+      - DATABASE_URL=sqlite:///data/rstify.db
+      - JWT_SECRET=change-me-in-production
+      - UPLOAD_DIR=/uploads
+      - RUST_LOG=info
+
+volumes:
+  rstify_data:
+  rstify_uploads:

@@ -1,0 +1,16 @@
+[package]
+name = "rstify-jobs"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rstify-core = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+async-trait = { workspace = true }

@@ -1,0 +1,32 @@
+use rstify_db::repositories::{
+    SqliteApplicationRepo, SqliteClientRepo, SqliteMessageRepo, SqliteTopicRepo, SqliteUserRepo,
+};
+use sqlx::SqlitePool;
+use std::sync::Arc;
+
+use crate::websocket::manager::ConnectionManager;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub user_repo: SqliteUserRepo,
+    pub app_repo: SqliteApplicationRepo,
+    pub client_repo: SqliteClientRepo,
+    pub topic_repo: SqliteTopicRepo,
+    pub message_repo: SqliteMessageRepo,
+    pub jwt_secret: String,
+    pub connections: Arc<ConnectionManager>,
+}
+
+impl AppState {
+    pub fn new(pool: SqlitePool, jwt_secret: String) -> Self {
+        Self {
+            user_repo: SqliteUserRepo::new(pool.clone()),
+            app_repo: SqliteApplicationRepo::new(pool.clone()),
+            client_repo: SqliteClientRepo::new(pool.clone()),
+            topic_repo: SqliteTopicRepo::new(pool.clone()),
+            message_repo: SqliteMessageRepo::new(pool),
+            jwt_secret,
+            connections: Arc::new(ConnectionManager::new()),
+        }
+    }
+}
