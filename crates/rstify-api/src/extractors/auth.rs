@@ -7,6 +7,7 @@ use rstify_auth::tokens::{classify_token, validate_jwt, Claims, TokenType};
 use rstify_core::models::{Application, Client, User};
 use rstify_core::repositories::{ApplicationRepository, ClientRepository, UserRepository};
 use serde_json::json;
+use tracing::warn;
 
 use crate::state::AppState;
 
@@ -76,19 +77,27 @@ impl FromRequestParts<AppState> for AuthUser {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let token =
-            extract_token(parts).ok_or_else(|| unauthorized("No authentication token provided"))?;
+        let uri = parts.uri.path().to_string();
+        let token = extract_token(parts).ok_or_else(|| {
+            warn!(path = %uri, "Auth rejected: no token provided");
+            unauthorized("No authentication token provided")
+        })?;
 
         match classify_token(&token) {
             TokenType::Jwt => {
-                let claims = validate_jwt(&token, &state.jwt_secret)
-                    .map_err(|_| unauthorized("Invalid JWT token"))?;
+                let claims = validate_jwt(&token, &state.jwt_secret).map_err(|_| {
+                    warn!(path = %uri, "Auth rejected: invalid JWT");
+                    unauthorized("Invalid JWT token")
+                })?;
                 let user = state
                     .user_repo
                     .find_by_id(claims.sub)
                     .await
                     .map_err(|_| internal_error())?
-                    .ok_or_else(|| unauthorized("User not found"))?;
+                    .ok_or_else(|| {
+                        warn!(path = %uri, user_id = claims.sub, "Auth rejected: JWT user not found");
+                        unauthorized("User not found")
+                    })?;
                 Ok(AuthUser {
                     user,
                     claims: Some(claims),
@@ -100,7 +109,10 @@ impl FromRequestParts<AppState> for AuthUser {
                     .find_by_token(&token)
                     .await
                     .map_err(|_| internal_error())?
-                    .ok_or_else(|| unauthorized("Invalid client token"))?;
+                    .ok_or_else(|| {
+                        warn!(path = %uri, "Auth rejected: invalid client token");
+                        unauthorized("Invalid client token")
+                    })?;
                 let user = state
                     .user_repo
                     .find_by_id(client.user_id)
@@ -109,7 +121,10 @@ impl FromRequestParts<AppState> for AuthUser {
                     .ok_or_else(|| unauthorized("User not found"))?;
                 Ok(AuthUser { user, claims: None })
             }
-            _ => Err(unauthorized("Invalid token type for this endpoint")),
+            _ => {
+                warn!(path = %uri, "Auth rejected: invalid token type");
+                Err(unauthorized("Invalid token type for this endpoint"))
+            }
         }
     }
 }

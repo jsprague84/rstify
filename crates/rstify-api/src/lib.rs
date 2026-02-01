@@ -12,6 +12,7 @@ pub mod websocket;
 use axum::Router;
 use middleware::rate_limit::RateLimiter;
 use state::AppState;
+use tower_http::limit::RequestBodyLimitLayer;
 
 pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
     let api_routes = routes::api_routes(state.clone());
@@ -26,6 +27,7 @@ pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
         .merge(api_routes)
         // ntfy catch-all routes must be last so specific routes take priority
         .merge(ntfy_routes)
+        .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB body limit
         .layer(axum::Extension(limiter))
         .layer(axum::middleware::from_fn(
             middleware::rate_limit::rate_limit_middleware,

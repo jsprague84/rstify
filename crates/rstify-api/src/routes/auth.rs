@@ -4,6 +4,7 @@ use rstify_auth::password::verify_password;
 use rstify_auth::tokens::create_jwt;
 use rstify_core::repositories::UserRepository;
 use serde::{Deserialize, Serialize};
+use tracing::{info, warn};
 use utoipa::ToSchema;
 
 use crate::error::ApiError;
@@ -36,6 +37,7 @@ pub async fn login(
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| {
+            warn!(username = %req.username, "Login failed: unknown username");
             ApiError::from(rstify_core::error::CoreError::Unauthorized(
                 "Invalid credentials".to_string(),
             ))
@@ -50,6 +52,7 @@ pub async fn login(
         })?;
 
     if !valid {
+        warn!(username = %req.username, "Login failed: wrong password");
         return Err(ApiError::from(rstify_core::error::CoreError::Unauthorized(
             "Invalid credentials".to_string(),
         )));
@@ -63,5 +66,6 @@ pub async fn login(
             )))
         })?;
 
+    info!(username = %req.username, user_id = user.id, "Login successful");
     Ok(Json(LoginResponse { token }))
 }
