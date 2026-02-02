@@ -162,6 +162,55 @@ export class RstifyClient {
     );
   }
 
+  // Application Icons
+  async uploadApplicationIcon(
+    id: number,
+    uri: string,
+    filename: string,
+    mimeType: string,
+  ): Promise<Application> {
+    const form = new FormData();
+    form.append("file", {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as unknown as Blob);
+
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+
+    const response = await fetch(`${this.baseUrl}/application/${id}/icon`, {
+      method: "POST",
+      headers,
+      body: form,
+    });
+
+    if (!response.ok) {
+      let errorBody: ApiError;
+      try {
+        errorBody = await response.json();
+      } catch {
+        errorBody = {
+          error: response.statusText,
+          errorCode: response.status,
+        };
+      }
+      throw new RstifyApiError(response.status, errorBody);
+    }
+
+    return response.json();
+  }
+
+  applicationIconUrl(id: number): string {
+    return `${this.baseUrl}/application/${id}/icon`;
+  }
+
+  async deleteApplicationIcon(id: number): Promise<void> {
+    await this.request("DELETE", `/application/${id}/icon`);
+  }
+
   // Clients
   async listClients(): Promise<Client[]> {
     return this.request("GET", "/client");

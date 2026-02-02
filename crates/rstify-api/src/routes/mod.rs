@@ -32,6 +32,18 @@ pub fn gotify_routes(_state: AppState) -> Router<AppState> {
             "/application/{id}",
             delete(applications::delete_application),
         )
+        .route(
+            "/application/{id}/icon",
+            post(applications::upload_icon),
+        )
+        .route(
+            "/application/{id}/icon",
+            get(applications::get_icon),
+        )
+        .route(
+            "/application/{id}/icon",
+            delete(applications::delete_icon),
+        )
         // Clients
         .route("/client", get(clients::list_clients))
         .route("/client", post(clients::create_client))

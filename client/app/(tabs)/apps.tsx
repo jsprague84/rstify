@@ -9,6 +9,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -17,6 +18,25 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { getApiClient } from "../../src/api";
 import type { Application } from "../../src/api";
 import * as Clipboard from "expo-clipboard";
+
+function AppIconView({ app }: { app: Application }) {
+  const api = getApiClient();
+  if (!app.image) {
+    return (
+      <View style={styles.iconPlaceholder}>
+        <Text style={styles.iconPlaceholderText}>
+          {app.name.charAt(0).toUpperCase()}
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri: `${api.applicationIconUrl(app.id)}?v=${app.updated_at}` }}
+      style={styles.appIcon}
+    />
+  );
+}
 
 export default function AppsScreen() {
   const [apps, setApps] = useState<Application[]>([]);
@@ -106,6 +126,7 @@ export default function AppsScreen() {
         keyExtractor={keyExtractor}
         renderItem={({ item }) => (
           <View style={styles.appItem}>
+            <AppIconView app={item} />
             <View style={styles.appInfo}>
               <Text style={styles.appName}>{item.name}</Text>
               {item.description ? (
@@ -218,6 +239,26 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: "#f3f4f6",
+  },
+  appIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  iconPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: "#e5e7eb",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  iconPlaceholderText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#9ca3af",
   },
   appInfo: { flex: 1, marginRight: 12 },
   appName: { fontSize: 15, fontWeight: "600", color: "#111827" },

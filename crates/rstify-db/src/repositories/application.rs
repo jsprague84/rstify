@@ -90,6 +90,21 @@ impl ApplicationRepository for SqliteApplicationRepo {
         .map_err(|e| CoreError::Database(e.to_string()))
     }
 
+    async fn update_image(
+        &self,
+        id: i64,
+        image: Option<&str>,
+    ) -> Result<Application, CoreError> {
+        sqlx::query_as::<_, Application>(
+            "UPDATE applications SET image = ?, updated_at = datetime('now') WHERE id = ? RETURNING *",
+        )
+        .bind(image)
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))
+    }
+
     async fn delete(&self, id: i64) -> Result<(), CoreError> {
         let result = sqlx::query("DELETE FROM applications WHERE id = ?")
             .bind(id)

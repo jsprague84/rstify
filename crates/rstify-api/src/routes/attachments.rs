@@ -10,27 +10,10 @@ use uuid::Uuid;
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
+use crate::utils::sanitize_filename;
 
 /// Maximum attachment size: 10 MiB
 const MAX_UPLOAD_SIZE: usize = 10 * 1024 * 1024;
-
-/// Sanitize a filename by stripping path components and falling back to a UUID if empty.
-fn sanitize_filename(raw: &str) -> String {
-    // Strip any directory components (防 path traversal)
-    let name = raw.rsplit(['/', '\\']).next().unwrap_or("attachment");
-
-    // Remove any remaining problematic characters
-    let sanitized: String = name
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == '.' || *c == '-' || *c == '_')
-        .collect();
-
-    if sanitized.is_empty() || sanitized == "." || sanitized == ".." {
-        format!("{}.bin", Uuid::new_v4())
-    } else {
-        sanitized
-    }
-}
 
 #[utoipa::path(
     post,

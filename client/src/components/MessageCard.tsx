@@ -1,11 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { View, Text, StyleSheet, Pressable, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MessageResponse } from "../api";
 
 interface MessageCardProps {
   message: MessageResponse;
   onDelete?: (id: number) => void;
+  appIconUrl?: string;
 }
 
 const priorityColors: Record<number, string> = {
@@ -21,7 +22,7 @@ const priorityColors: Record<number, string> = {
   10: "#dc2626",
 };
 
-export const MessageCard = React.memo(function MessageCard({ message, onDelete }: MessageCardProps) {
+export const MessageCard = React.memo(function MessageCard({ message, onDelete, appIconUrl }: MessageCardProps) {
   const borderColor = priorityColors[message.priority] ?? "#10b981";
   const timeStr = new Date(message.date).toLocaleString();
   const source = message.topic ?? (message.appid ? `App #${message.appid}` : "Unknown");
@@ -30,10 +31,17 @@ export const MessageCard = React.memo(function MessageCard({ message, onDelete }
     <View style={[styles.card, { borderLeftColor: borderColor }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          {message.title ? (
-            <Text style={styles.title}>{message.title}</Text>
-          ) : null}
-          <Text style={styles.source}>{source}</Text>
+          <View style={styles.sourceRow}>
+            {appIconUrl ? (
+              <Image source={{ uri: appIconUrl }} style={styles.appIcon} />
+            ) : null}
+            <View>
+              {message.title ? (
+                <Text style={styles.title}>{message.title}</Text>
+              ) : null}
+              <Text style={styles.source}>{source}</Text>
+            </View>
+          </View>
         </View>
         {onDelete ? (
           <Pressable onPress={() => onDelete(message.id)} hitSlop={8}>
@@ -82,6 +90,16 @@ const styles = StyleSheet.create({
   },
   headerLeft: {
     flex: 1,
+  },
+  sourceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  appIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
   },
   title: {
     fontSize: 15,

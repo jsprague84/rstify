@@ -6,6 +6,7 @@ pub mod openapi;
 pub mod routes;
 pub mod sse;
 pub mod state;
+pub mod utils;
 pub mod web_ui;
 pub mod websocket;
 

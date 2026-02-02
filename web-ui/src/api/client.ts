@@ -78,6 +78,27 @@ export const api = {
   listApplicationMessages(id: number, limit = 100, since = 0): Promise<PagedMessages> {
     return request(`/application/${id}/messages?limit=${limit}&since=${since}`);
   },
+  async uploadApplicationIcon(id: number, file: File): Promise<Application> {
+    const form = new FormData();
+    form.append('file', file);
+    const token = getToken();
+    const res = await fetch(`${BASE}/application/${id}/icon`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+  getApplicationIconUrl(id: number): string {
+    return `${BASE}/application/${id}/icon`;
+  },
+  deleteApplicationIcon(id: number): Promise<void> {
+    return request(`/application/${id}/icon`, { method: 'DELETE' });
+  },
 
   // Clients
   listClients(): Promise<Client[]> {

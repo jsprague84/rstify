@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useMemo } from "react";
 import {
   View,
   FlatList,
@@ -16,7 +16,7 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { useMessagesStore } from "../../src/store/messages";
 import { useUserWebSocket } from "../../src/hooks/useWebSocket";
 import { getApiClient } from "../../src/api";
-import type { MessageResponse } from "../../src/api";
+import type { Application, MessageResponse } from "../../src/api";
 
 export default function MessagesScreen() {
   const messages = useMessagesStore((s) => s.messages);
@@ -27,6 +27,32 @@ export default function MessagesScreen() {
   const deleteAllMessages = useMessagesStore((s) => s.deleteAllMessages);
 
   const [clientToken, setClientToken] = useState<string | null>(null);
+  const [apps, setApps] = useState<Application[]>([]);
+
+  // Load apps for icon URLs
+  useEffect(() => {
+    const loadApps = async () => {
+      try {
+        const api = getApiClient();
+        const result = await api.listApplications();
+        setApps(result);
+      } catch {
+        // non-critical
+      }
+    };
+    loadApps();
+  }, []);
+
+  const appIconMap = useMemo(() => {
+    const api = getApiClient();
+    const map: Record<number, string> = {};
+    for (const app of apps) {
+      if (app.image) {
+        map[app.id] = api.applicationIconUrl(app.id);
+      }
+    }
+    return map;
+  }, [apps]);
 
   // Get or create a client token for WebSocket
   useEffect(() => {
@@ -76,9 +102,13 @@ export default function MessagesScreen() {
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<MessageResponse>) => (
-      <MessageCard message={item} onDelete={handleDelete} />
+      <MessageCard
+        message={item}
+        onDelete={handleDelete}
+        appIconUrl={item.appid ? appIconMap[item.appid] : undefined}
+      />
     ),
-    [],
+    [appIconMap],
   );
 
   const keyExtractor = useCallback(
