@@ -202,7 +202,10 @@ pub async fn upload_icon(
     if let Some(ref ct) = content_type {
         if !ALLOWED_ICON_TYPES.contains(&ct.as_str()) {
             return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-                format!("Invalid content type: {}. Allowed: PNG, JPEG, GIF, SVG, WebP", ct),
+                format!(
+                    "Invalid content type: {}. Allowed: PNG, JPEG, GIF, SVG, WebP",
+                    ct
+                ),
             )));
         }
     }
@@ -293,10 +296,7 @@ pub async fn get_icon(
     Ok((
         [
             (header::CONTENT_TYPE, content_type),
-            (
-                header::CACHE_CONTROL,
-                "public, max-age=86400".to_string(),
-            ),
+            (header::CACHE_CONTROL, "public, max-age=86400".to_string()),
         ],
         data,
     ))

@@ -22,10 +22,6 @@ pub trait ApplicationRepository: Send + Sync {
         description: Option<&str>,
         default_priority: Option<i32>,
     ) -> Result<Application, CoreError>;
-    async fn update_image(
-        &self,
-        id: i64,
-        image: Option<&str>,
-    ) -> Result<Application, CoreError>;
+    async fn update_image(&self, id: i64, image: Option<&str>) -> Result<Application, CoreError>;
     async fn delete(&self, id: i64) -> Result<(), CoreError>;
 }

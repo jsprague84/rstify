@@ -90,11 +90,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
         .map_err(|e| CoreError::Database(e.to_string()))
     }
 
-    async fn update_image(
-        &self,
-        id: i64,
-        image: Option<&str>,
-    ) -> Result<Application, CoreError> {
+    async fn update_image(&self, id: i64, image: Option<&str>) -> Result<Application, CoreError> {
         sqlx::query_as::<_, Application>(
             "UPDATE applications SET image = ?, updated_at = datetime('now') WHERE id = ? RETURNING *",
         )
