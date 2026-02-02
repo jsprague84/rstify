@@ -28,6 +28,11 @@ pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
         .merge(api_routes)
         // ntfy catch-all routes must be last so specific routes take priority
         .merge(ntfy_routes)
+        // The ntfy /{topic} catch-all only handles POST/PUT. Without this,
+        // GET requests to unknown paths (e.g. /icon-512.png) would return 405
+        // instead of falling through to the web UI. This handler ensures those
+        // requests are served by the web UI instead.
+        .method_not_allowed_fallback(web_ui::web_ui_handler)
         .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB body limit
         .layer(axum::Extension(limiter))
         .layer(axum::middleware::from_fn(
