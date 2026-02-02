@@ -33,12 +33,12 @@ export default function Topics() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Topics</h2>
+        <h2 className="text-2xl font-bold dark:text-white">Topics</h2>
         <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
           Create Topic
         </button>
       </div>
-      {error && <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-sm mb-4">{error}</div>}
+      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
       <DataTable
         data={topics}
         keyField="id"
@@ -93,19 +93,19 @@ function TopicForm({ onSubmit, onClose }: { onSubmit: (d: CreateTopic) => Promis
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {error && <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-sm">{error}</div>}
-      <input placeholder="Topic name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm" />
-      <input placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm" />
-      <label className="flex items-center gap-2 text-sm">
+      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
+      <input placeholder="Topic name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
+      <input placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
+      <label className="flex items-center gap-2 text-sm dark:text-gray-300">
         <input type="checkbox" checked={form.everyone_read} onChange={e => setForm(f => ({ ...f, everyone_read: e.target.checked }))} />
         Everyone can read
       </label>
-      <label className="flex items-center gap-2 text-sm">
+      <label className="flex items-center gap-2 text-sm dark:text-gray-300">
         <input type="checkbox" checked={form.everyone_write} onChange={e => setForm(f => ({ ...f, everyone_write: e.target.checked }))} />
         Everyone can write
       </label>
       <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md">Cancel</button>
+        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
         <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Create</button>
       </div>
     </form>

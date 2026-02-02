@@ -12,7 +12,7 @@ export default function TokenDisplay({ token }: { token: string }) {
 
   return (
     <span className="inline-flex items-center gap-1">
-      <code className="text-xs bg-gray-100 px-2 py-0.5 rounded font-mono truncate max-w-[200px]">
+      <code className="text-xs bg-gray-100 dark:bg-gray-800 dark:text-gray-200 px-2 py-0.5 rounded font-mono truncate max-w-[200px]">
         {token}
       </code>
       <button onClick={copy} className="text-xs text-indigo-600 hover:text-indigo-800">

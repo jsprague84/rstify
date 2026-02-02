@@ -8,7 +8,7 @@ function AppIcon({ app, size = 32 }: { app: Application; size?: number }) {
     return (
       <div
         style={{ width: size, height: size }}
-        className="rounded bg-gray-200 flex items-center justify-center text-gray-400 text-xs font-bold"
+        className="rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400 dark:text-gray-400 text-xs font-bold"
       >
         {app.name.charAt(0).toUpperCase()}
       </div>
@@ -63,12 +63,12 @@ export default function Applications() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Applications</h2>
+        <h2 className="text-2xl font-bold dark:text-white">Applications</h2>
         <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
           Create Application
         </button>
       </div>
-      {error && <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-sm mb-4">{error}</div>}
+      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
       <DataTable
         data={apps}
         keyField="id"
@@ -170,10 +170,10 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {error && <div className="bg-red-50 text-red-700 px-3 py-2 rounded text-sm">{error}</div>}
+      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
       {app && (
         <div>
-          <label className="block text-sm text-gray-700 mb-1">Icon</label>
+          <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Icon</label>
           <div className="flex items-center gap-3">
             {app.image ? (
               <img
@@ -182,7 +182,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
                 className="w-10 h-10 rounded object-cover"
               />
             ) : (
-              <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center text-gray-400 text-sm font-bold">
+              <div className="w-10 h-10 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">
                 {app.name.charAt(0).toUpperCase()}
               </div>
             )}
@@ -207,14 +207,14 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
           </div>
         </div>
       )}
-      <input placeholder="Name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm" />
-      <input placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border rounded px-3 py-2 text-sm" />
+      <input placeholder="Name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
+      <input placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
       <div>
-        <label className="block text-sm text-gray-700 mb-1">Default Priority</label>
-        <input type="number" min={0} max={10} value={form.default_priority} onChange={e => setForm(f => ({ ...f, default_priority: parseInt(e.target.value) || 0 }))} className="w-full border rounded px-3 py-2 text-sm" />
+        <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Default Priority</label>
+        <input type="number" min={0} max={10} value={form.default_priority} onChange={e => setForm(f => ({ ...f, default_priority: parseInt(e.target.value) || 0 }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
       </div>
       <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-md">Cancel</button>
+        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
         <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">{app ? 'Save' : 'Create'}</button>
       </div>
     </form>
