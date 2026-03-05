@@ -12,8 +12,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../src/store/auth";
+import { useTheme } from "../src/store/theme";
+import { Colors } from "../src/theme/colors";
 
 export default function LoginScreen() {
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [serverUrl, setServerUrl] = useState(
@@ -50,23 +55,23 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAwareScrollView
         contentContainerStyle={styles.inner}
         bottomOffset={20}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoContainer}>
-          <Ionicons name="notifications" size={56} color="#3b82f6" />
-          <Text style={styles.appName}>rstify</Text>
-          <Text style={styles.tagline}>Push Notifications</Text>
+          <Ionicons name="notifications" size={56} color={colors.primary} />
+          <Text style={[styles.appName, { color: colors.text }]}>rstify</Text>
+          <Text style={[styles.tagline, { color: colors.textSecondary }]}>Push Notifications</Text>
         </View>
 
         <View style={styles.form}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             placeholder="Username"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textTertiary}
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
@@ -79,9 +84,9 @@ export default function LoginScreen() {
 
           <TextInput
             ref={passwordRef}
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
             placeholder="Password"
-            placeholderTextColor="#9ca3af"
+            placeholderTextColor={colors.textTertiary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -91,7 +96,7 @@ export default function LoginScreen() {
           />
 
           <Pressable
-            style={[styles.button, isSubmitting && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: colors.primary }, isSubmitting && styles.buttonDisabled]}
             onPress={handleLogin}
             disabled={isSubmitting}
           >
@@ -106,15 +111,15 @@ export default function LoginScreen() {
             style={styles.serverToggle}
             onPress={() => setShowServer(!showServer)}
           >
-            <Ionicons name="server-outline" size={14} color="#9ca3af" />
-            <Text style={styles.serverToggleText}>Server Settings</Text>
+            <Ionicons name="server-outline" size={14} color={colors.textTertiary} />
+            <Text style={[styles.serverToggleText, { color: colors.textSecondary }]}>Server Settings</Text>
           </Pressable>
 
           {showServer ? (
             <TextInput
-              style={styles.input}
+              style={[styles.input, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.text }]}
               placeholder="Server URL (e.g. http://192.168.1.100:8080)"
-              placeholderTextColor="#9ca3af"
+              placeholderTextColor={colors.textTertiary}
               value={serverUrl}
               onChangeText={setServerUrl}
               autoCapitalize="none"

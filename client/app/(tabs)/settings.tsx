@@ -267,7 +267,7 @@ export default function SettingsScreen() {
                   Bright and clean interface
                 </Text>
               </View>
-              <View style={styles.radioOuter}>
+              <View style={[styles.radioOuter, { borderColor: mode === "light" ? colors.primary : colors.border }]}>
                 {mode === "light" && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
               </View>
             </Pressable>
@@ -284,7 +284,7 @@ export default function SettingsScreen() {
                   Easy on the eyes in low light
                 </Text>
               </View>
-              <View style={styles.radioOuter}>
+              <View style={[styles.radioOuter, { borderColor: mode === "dark" ? colors.primary : colors.border }]}>
                 {mode === "dark" && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
               </View>
             </Pressable>
@@ -301,7 +301,7 @@ export default function SettingsScreen() {
                   Match device theme automatically
                 </Text>
               </View>
-              <View style={styles.radioOuter}>
+              <View style={[styles.radioOuter, { borderColor: mode === "system" ? colors.primary : colors.border }]}>
                 {mode === "system" && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
               </View>
             </Pressable>
@@ -311,23 +311,23 @@ export default function SettingsScreen() {
         {/* Admin Stats */}
         {user?.is_admin && stats ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Server Stats</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Server Stats</Text>
             <View style={styles.statsGrid}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.users}</Text>
-                <Text style={styles.statLabel}>Users</Text>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{stats.users}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Users</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.topics}</Text>
-                <Text style={styles.statLabel}>Topics</Text>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{stats.topics}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Topics</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.messages}</Text>
-                <Text style={styles.statLabel}>Messages</Text>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{stats.messages}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Messages</Text>
               </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.messages_last_24h}</Text>
-                <Text style={styles.statLabel}>Last 24h</Text>
+              <View style={[styles.statCard, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{stats.messages_last_24h}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Last 24h</Text>
               </View>
             </View>
           </View>
@@ -335,29 +335,29 @@ export default function SettingsScreen() {
 
         {/* User Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.row}>
-              <Ionicons name="person-outline" size={20} color="#6b7280" />
+              <Ionicons name="person-outline" size={20} color={colors.textSecondary} />
               <View style={styles.rowContent}>
-                <Text style={styles.rowLabel}>Username</Text>
-                <Text style={styles.rowValue}>{user?.username}</Text>
+                <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Username</Text>
+                <Text style={[styles.rowValue, { color: colors.text }]}>{user?.username}</Text>
               </View>
             </View>
             {user?.email ? (
               <View style={styles.row}>
-                <Ionicons name="mail-outline" size={20} color="#6b7280" />
+                <Ionicons name="mail-outline" size={20} color={colors.textSecondary} />
                 <View style={styles.rowContent}>
-                  <Text style={styles.rowLabel}>Email</Text>
-                  <Text style={styles.rowValue}>{user.email}</Text>
+                  <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Email</Text>
+                  <Text style={[styles.rowValue, { color: colors.text }]}>{user.email}</Text>
                 </View>
               </View>
             ) : null}
             <View style={styles.row}>
-              <Ionicons name="shield-outline" size={20} color="#6b7280" />
+              <Ionicons name="shield-outline" size={20} color={colors.textSecondary} />
               <View style={styles.rowContent}>
-                <Text style={styles.rowLabel}>Role</Text>
-                <Text style={styles.rowValue}>
+                <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Role</Text>
+                <Text style={[styles.rowValue, { color: colors.text }]}>
                   {user?.is_admin ? "Administrator" : "User"}
                 </Text>
               </View>
@@ -371,33 +371,33 @@ export default function SettingsScreen() {
             style={styles.sectionHeader}
             onPress={() => setShowPassword(!showPassword)}
           >
-            <Text style={styles.sectionTitle}>Change Password</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Change Password</Text>
             <Ionicons
               name={showPassword ? "chevron-up" : "chevron-down"}
               size={18}
-              color="#9ca3af"
+              color={colors.textTertiary}
             />
           </Pressable>
           {showPassword ? (
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                 placeholder="Current password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.textTertiary}
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 secureTextEntry
               />
               <TextInput
-                style={styles.input}
+                style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                 placeholder="New password (min 8 chars)"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.textTertiary}
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry
               />
               <Pressable
-                style={styles.actionButton}
+                style={[styles.actionButton, { backgroundColor: colors.primary }]}
                 onPress={handleChangePassword}
               >
                 <Text style={styles.actionButtonText}>Update Password</Text>
@@ -408,23 +408,24 @@ export default function SettingsScreen() {
 
         {/* Server */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Server</Text>
-          <View style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Server</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
             <View style={styles.row}>
-              <Ionicons name="server-outline" size={20} color="#6b7280" />
+              <Ionicons name="server-outline" size={20} color={colors.textSecondary} />
               <View style={styles.rowContent}>
-                <Text style={styles.rowLabel}>Server URL</Text>
+                <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Server URL</Text>
                 {editingUrl ? (
                   <View style={styles.editRow}>
                     <TextInput
-                      style={[styles.input, { flex: 1 }]}
+                      style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       value={urlInput}
                       onChangeText={setUrlInput}
                       autoCapitalize="none"
                       keyboardType="url"
+                      placeholderTextColor={colors.textTertiary}
                     />
                     <Pressable
-                      style={styles.smallButton}
+                      style={[styles.smallButton, { backgroundColor: colors.primary }]}
                       onPress={handleSaveUrl}
                     >
                       <Text style={styles.smallButtonText}>Save</Text>
@@ -432,7 +433,7 @@ export default function SettingsScreen() {
                   </View>
                 ) : (
                   <Pressable onPress={() => setEditingUrl(true)}>
-                    <Text style={styles.rowValueLink}>{serverUrl}</Text>
+                    <Text style={[styles.rowValueLink, { color: colors.primary }]}>{serverUrl}</Text>
                   </Pressable>
                 )}
               </View>
@@ -442,11 +443,11 @@ export default function SettingsScreen() {
                 <Ionicons
                   name="information-circle-outline"
                   size={20}
-                  color="#6b7280"
+                  color={colors.textSecondary}
                 />
                 <View style={styles.rowContent}>
-                  <Text style={styles.rowLabel}>Server Version</Text>
-                  <Text style={styles.rowValue}>{version.version}</Text>
+                  <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Server Version</Text>
+                  <Text style={[styles.rowValue, { color: colors.text }]}>{version.version}</Text>
                 </View>
               </View>
             ) : null}
@@ -455,21 +456,21 @@ export default function SettingsScreen() {
 
         {/* Client Tokens */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
             Client Tokens ({clients.length})
           </Text>
-          <View style={styles.card}>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
             {clients.map((client) => (
               <View key={client.id} style={styles.row}>
-                <Ionicons name="key-outline" size={20} color="#6b7280" />
+                <Ionicons name="key-outline" size={20} color={colors.textSecondary} />
                 <View style={styles.rowContent}>
-                  <Text style={styles.rowLabel}>{client.name}</Text>
-                  <Text style={styles.rowValueMono}>{client.token}</Text>
+                  <Text style={[styles.rowLabel, { color: colors.text }]}>{client.name}</Text>
+                  <Text style={[styles.rowValueMono, { color: colors.textSecondary }]}>{client.token}</Text>
                 </View>
               </View>
             ))}
             {clients.length === 0 ? (
-              <Text style={styles.emptyText}>No client tokens</Text>
+              <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No client tokens</Text>
             ) : null}
           </View>
         </View>
@@ -480,29 +481,29 @@ export default function SettingsScreen() {
             style={styles.sectionHeader}
             onPress={() => setShowUpSection(!showUpSection)}
           >
-            <Text style={styles.sectionTitle}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
               UnifiedPush ({upRegistrations.length})
             </Text>
             <Ionicons
               name={showUpSection ? "chevron-up" : "chevron-down"}
               size={18}
-              color="#9ca3af"
+              color={colors.textTertiary}
             />
           </Pressable>
           {showUpSection ? (
-            <View style={styles.card}>
+            <View style={[styles.card, { backgroundColor: colors.surface }]}>
               {upRegistrations.map((reg) => (
                 <View key={reg.id} style={styles.row}>
                   <Ionicons
                     name="notifications-outline"
                     size={20}
-                    color="#6b7280"
+                    color={colors.textSecondary}
                   />
                   <View style={styles.rowContent}>
-                    <Text style={styles.rowValueMono} numberOfLines={2}>
+                    <Text style={[styles.rowValueMono, { color: colors.textSecondary }]} numberOfLines={2}>
                       {reg.endpoint}
                     </Text>
-                    <Text style={styles.rowLabel}>
+                    <Text style={[styles.rowLabel, { color: colors.textTertiary }]}>
                       Token: {reg.token.substring(0, 8)}...
                     </Text>
                   </View>
@@ -510,22 +511,22 @@ export default function SettingsScreen() {
                     onPress={() => handleDeleteUpRegistration(reg)}
                     hitSlop={8}
                   >
-                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                    <Ionicons name="trash-outline" size={16} color={colors.error} />
                   </Pressable>
                 </View>
               ))}
               <View style={styles.upRegisterRow}>
                 <TextInput
-                  style={[styles.input, { flex: 1 }]}
+                  style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                   placeholder="Endpoint URL"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.textTertiary}
                   value={upEndpoint}
                   onChangeText={setUpEndpoint}
                   autoCapitalize="none"
                   keyboardType="url"
                 />
                 <Pressable
-                  style={styles.smallButton}
+                  style={[styles.smallButton, { backgroundColor: colors.primary }]}
                   onPress={handleRegisterUp}
                 >
                   <Text style={styles.smallButtonText}>Register</Text>
@@ -542,33 +543,36 @@ export default function SettingsScreen() {
               style={styles.sectionHeader}
               onPress={() => setShowUsers(!showUsers)}
             >
-              <Text style={styles.sectionTitle}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
                 User Management ({users.length})
               </Text>
               <Ionicons
                 name={showUsers ? "chevron-up" : "chevron-down"}
                 size={18}
-                color="#9ca3af"
+                color={colors.textTertiary}
               />
             </Pressable>
             {showUsers ? (
-              <View style={styles.card}>
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
                 {users.map((u) => (
                   <View key={u.id} style={styles.userRow}>
                     <View style={styles.userInfo}>
-                      <Text style={styles.userName}>{u.username}</Text>
+                      <Text style={[styles.userName, { color: colors.text }]}>{u.username}</Text>
                       {u.email ? (
-                        <Text style={styles.userEmail}>{u.email}</Text>
+                        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{u.email}</Text>
                       ) : null}
                     </View>
                     <View style={styles.userActions}>
                       <View style={styles.adminToggle}>
-                        <Text style={styles.adminLabel}>Admin</Text>
+                        <Text style={[styles.adminLabel, { color: colors.textTertiary }]}>Admin</Text>
                         <Switch
                           value={u.is_admin}
                           onValueChange={() => handleToggleAdmin(u)}
-                          trackColor={{ false: "#d1d5db", true: "#93c5fd" }}
-                          thumbColor={u.is_admin ? "#3b82f6" : "#9ca3af"}
+                          trackColor={{
+                            false: isDark ? colors.border : "#d1d5db",
+                            true: isDark ? colors.primary : "#93c5fd"
+                          }}
+                          thumbColor={u.is_admin ? colors.primary : (isDark ? colors.textTertiary : "#9ca3af")}
                           disabled={u.id === user?.id}
                         />
                       </View>
@@ -580,7 +584,7 @@ export default function SettingsScreen() {
                           <Ionicons
                             name="trash-outline"
                             size={16}
-                            color="#ef4444"
+                            color={colors.error}
                           />
                         </Pressable>
                       ) : null}
@@ -593,9 +597,9 @@ export default function SettingsScreen() {
         ) : null}
 
         {/* Logout */}
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-          <Text style={styles.logoutText}>Logout</Text>
+        <Pressable style={[styles.logoutButton, { backgroundColor: colors.surface, borderColor: isDark ? colors.error + "40" : "#fecaca" }]} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={20} color={colors.error} />
+          <Text style={[styles.logoutText, { color: colors.error }]}>Logout</Text>
         </Pressable>
       </KeyboardAwareScrollView>
     </SafeAreaView>

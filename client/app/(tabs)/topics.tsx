@@ -17,8 +17,12 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { MessageCard } from "../../src/components/MessageCard";
 import { getApiClient } from "../../src/api";
 import type { Topic, MessageResponse } from "../../src/api";
+import { useTheme } from "../../src/store/theme";
+import { Colors } from "../../src/theme/colors";
 
 export default function TopicsScreen() {
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
   const [topics, setTopics] = useState<Topic[]>([]);
   const [selectedTopic, setSelectedTopic] = useState<Topic | null>(null);
   const [topicMessages, setTopicMessages] = useState<MessageResponse[]>([]);
@@ -128,14 +132,14 @@ export default function TopicsScreen() {
   // Topic detail view
   if (selectedTopic) {
     return (
-      <SafeAreaView style={styles.container} edges={["top"]}>
-        <View style={styles.header}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={["top"]}>
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
           <Pressable onPress={() => setSelectedTopic(null)} hitSlop={8}>
-            <Ionicons name="arrow-back" size={24} color="#111827" />
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>{selectedTopic.name}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{selectedTopic.name}</Text>
           <Pressable onPress={() => setShowPublish(true)} hitSlop={8}>
-            <Ionicons name="send-outline" size={20} color="#3b82f6" />
+            <Ionicons name="send-outline" size={20} color={colors.primary} />
           </Pressable>
         </View>
 
@@ -169,34 +173,34 @@ export default function TopicsScreen() {
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={styles.modalScrollContent}
               >
-                <View style={styles.modal}>
-                  <Text style={styles.modalTitle}>
+                <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.modalTitle, { color: colors.text }]}>
                     Publish to {selectedTopic.name}
                   </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                     placeholder="Title (optional)"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={colors.textTertiary}
                     value={publishTitle}
                     onChangeText={setPublishTitle}
                     returnKeyType="next"
                   />
                   <TextInput
-                    style={[styles.input, styles.textArea]}
+                    style={[styles.input, styles.textArea, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                     placeholder="Message"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={colors.textTertiary}
                     value={publishMessage}
                     onChangeText={setPublishMessage}
                     multiline
                   />
                   <View style={styles.modalButtons}>
                     <Pressable
-                      style={styles.cancelButton}
+                      style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary }]}
                       onPress={() => setShowPublish(false)}
                     >
-                      <Text style={styles.cancelText}>Cancel</Text>
+                      <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
                     </Pressable>
-                    <Pressable style={styles.submitButton} onPress={handlePublish}>
+                    <Pressable style={[styles.submitButton, { backgroundColor: colors.primary }]} onPress={handlePublish}>
                       <Text style={styles.submitText}>Publish</Text>
                     </Pressable>
                   </View>
@@ -211,11 +215,11 @@ export default function TopicsScreen() {
 
   // Topics list view
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Topics</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Topics</Text>
         <Pressable onPress={() => setShowCreate(true)} hitSlop={8}>
-          <Ionicons name="add-circle-outline" size={24} color="#3b82f6" />
+          <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
         </Pressable>
       </View>
 
@@ -224,31 +228,31 @@ export default function TopicsScreen() {
         keyExtractor={topicKeyExtractor}
         renderItem={({ item }) => (
           <Pressable
-            style={styles.topicItem}
+            style={[styles.topicItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
             onPress={() => handleSelectTopic(item)}
             onLongPress={() => handleDeleteTopic(item)}
           >
             <View style={styles.topicInfo}>
-              <Text style={styles.topicName}>{item.name}</Text>
+              <Text style={[styles.topicName, { color: colors.text }]}>{item.name}</Text>
               {item.description ? (
-                <Text style={styles.topicDesc} numberOfLines={1}>
+                <Text style={[styles.topicDesc, { color: colors.textSecondary }]} numberOfLines={1}>
                   {item.description}
                 </Text>
               ) : null}
             </View>
             <View style={styles.topicBadges}>
               {item.everyone_read ? (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>public</Text>
+                <View style={[styles.badge, { backgroundColor: isDark ? "#1e3a8a" : "#dbeafe" }]}>
+                  <Text style={[styles.badgeText, { color: isDark ? "#93c5fd" : "#3b82f6" }]}>public</Text>
                 </View>
               ) : (
-                <View style={[styles.badge, styles.privateBadge]}>
-                  <Text style={[styles.badgeText, styles.privateBadgeText]}>
+                <View style={[styles.badge, styles.privateBadge, { backgroundColor: isDark ? "#713f12" : "#fef3c7" }]}>
+                  <Text style={[styles.badgeText, styles.privateBadgeText, { color: isDark ? "#fcd34d" : "#d97706" }]}>
                     private
                   </Text>
                 </View>
               )}
-              <Ionicons name="chevron-forward" size={18} color="#d1d5db" />
+              <Ionicons name="chevron-forward" size={18} color={colors.textTertiary} />
             </View>
           </Pressable>
         )}
@@ -280,12 +284,12 @@ export default function TopicsScreen() {
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.modalScrollContent}
             >
-              <View style={styles.modal}>
-                <Text style={styles.modalTitle}>Create Topic</Text>
+              <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Create Topic</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                   placeholder="Topic name (e.g. alerts.production)"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.textTertiary}
                   value={newTopicName}
                   onChangeText={setNewTopicName}
                   autoCapitalize="none"
@@ -294,13 +298,13 @@ export default function TopicsScreen() {
                 />
                 <View style={styles.modalButtons}>
                   <Pressable
-                    style={styles.cancelButton}
+                    style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary }]}
                     onPress={() => setShowCreate(false)}
                   >
-                    <Text style={styles.cancelText}>Cancel</Text>
+                    <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={styles.submitButton}
+                    style={[styles.submitButton, { backgroundColor: colors.primary }]}
                     onPress={handleCreateTopic}
                   >
                     <Text style={styles.submitText}>Create</Text>
@@ -316,22 +320,19 @@ export default function TopicsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f9fafb" },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
     gap: 12,
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-    color: "#111827",
     flex: 1,
   },
   list: { paddingVertical: 8 },
@@ -340,24 +341,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
   },
   topicInfo: { flex: 1 },
-  topicName: { fontSize: 15, fontWeight: "600", color: "#111827" },
-  topicDesc: { fontSize: 13, color: "#6b7280", marginTop: 2 },
+  topicName: { fontSize: 15, fontWeight: "600" },
+  topicDesc: { fontSize: 13, marginTop: 2 },
   topicBadges: { flexDirection: "row", alignItems: "center", gap: 8 },
   badge: {
-    backgroundColor: "#dbeafe",
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  badgeText: { fontSize: 11, color: "#3b82f6", fontWeight: "500" },
-  privateBadge: { backgroundColor: "#fef3c7" },
-  privateBadgeText: { color: "#d97706" },
+  badgeText: { fontSize: 11, fontWeight: "500" },
+  privateBadge: {},
+  privateBadgeText: {},
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -372,20 +370,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modal: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 24,
     gap: 12,
   },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  modalTitle: { fontSize: 18, fontWeight: "700" },
   input: {
-    backgroundColor: "#f9fafb",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
     borderRadius: 8,
     padding: 12,
     fontSize: 15,
-    color: "#111827",
   },
   textArea: { minHeight: 100, textAlignVertical: "top" },
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 4 },
@@ -393,15 +387,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     borderRadius: 8,
-    backgroundColor: "#f3f4f6",
     alignItems: "center",
   },
-  cancelText: { color: "#6b7280", fontWeight: "600" },
+  cancelText: { fontWeight: "600" },
   submitButton: {
     flex: 1,
     padding: 14,
     borderRadius: 8,
-    backgroundColor: "#3b82f6",
     alignItems: "center",
   },
   submitText: { color: "#fff", fontWeight: "600" },

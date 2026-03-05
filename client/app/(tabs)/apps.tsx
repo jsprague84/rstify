@@ -18,13 +18,17 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { getApiClient } from "../../src/api";
 import type { Application } from "../../src/api";
 import * as Clipboard from "expo-clipboard";
+import { useTheme } from "../../src/store/theme";
+import { Colors } from "../../src/theme/colors";
 
 function AppIconView({ app }: { app: Application }) {
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
   const api = getApiClient();
   if (!app.image) {
     return (
-      <View style={styles.iconPlaceholder}>
-        <Text style={styles.iconPlaceholderText}>
+      <View style={[styles.iconPlaceholder, { backgroundColor: colors.backgroundTertiary }]}>
+        <Text style={[styles.iconPlaceholderText, { color: colors.textTertiary }]}>
           {app.name.charAt(0).toUpperCase()}
         </Text>
       </View>
@@ -39,6 +43,8 @@ function AppIconView({ app }: { app: Application }) {
 }
 
 export default function AppsScreen() {
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
   const [apps, setApps] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -113,11 +119,11 @@ export default function AppsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Applications</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Applications</Text>
         <Pressable onPress={() => setShowCreate(true)} hitSlop={8}>
-          <Ionicons name="add-circle-outline" size={24} color="#3b82f6" />
+          <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
         </Pressable>
       </View>
 
@@ -125,12 +131,12 @@ export default function AppsScreen() {
         data={apps}
         keyExtractor={keyExtractor}
         renderItem={({ item }) => (
-          <View style={styles.appItem}>
+          <View style={[styles.appItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <AppIconView app={item} />
             <View style={styles.appInfo}>
-              <Text style={styles.appName}>{item.name}</Text>
+              <Text style={[styles.appName, { color: colors.text }]}>{item.name}</Text>
               {item.description ? (
-                <Text style={styles.appDesc} numberOfLines={1}>
+                <Text style={[styles.appDesc, { color: colors.textSecondary }]} numberOfLines={1}>
                   {item.description}
                 </Text>
               ) : null}
@@ -138,14 +144,14 @@ export default function AppsScreen() {
                 style={styles.tokenRow}
                 onPress={() => handleCopyToken(item.token)}
               >
-                <Text style={styles.tokenText} numberOfLines={1}>
+                <Text style={[styles.tokenText, { color: colors.textTertiary }]} numberOfLines={1}>
                   {item.token}
                 </Text>
-                <Ionicons name="copy-outline" size={14} color="#9ca3af" />
+                <Ionicons name="copy-outline" size={14} color={colors.textTertiary} />
               </Pressable>
             </View>
             <Pressable onPress={() => handleDeleteApp(item)} hitSlop={8}>
-              <Ionicons name="trash-outline" size={18} color="#ef4444" />
+              <Ionicons name="trash-outline" size={18} color={colors.error} />
             </Pressable>
           </View>
         )}
@@ -175,20 +181,20 @@ export default function AppsScreen() {
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.modalScrollContent}
             >
-              <View style={styles.modal}>
-                <Text style={styles.modalTitle}>Create Application</Text>
+              <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Create Application</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                   placeholder="Application name"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.textTertiary}
                   value={newAppName}
                   onChangeText={setNewAppName}
                   returnKeyType="next"
                 />
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                   placeholder="Description (optional)"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.textTertiary}
                   value={newAppDesc}
                   onChangeText={setNewAppDesc}
                   returnKeyType="done"
@@ -196,13 +202,13 @@ export default function AppsScreen() {
                 />
                 <View style={styles.modalButtons}>
                   <Pressable
-                    style={styles.cancelButton}
+                    style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary }]}
                     onPress={() => setShowCreate(false)}
                   >
-                    <Text style={styles.cancelText}>Cancel</Text>
+                    <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
                   </Pressable>
                   <Pressable
-                    style={styles.submitButton}
+                    style={[styles.submitButton, { backgroundColor: colors.primary }]}
                     onPress={handleCreateApp}
                   >
                     <Text style={styles.submitText}>Create</Text>
@@ -218,27 +224,23 @@ export default function AppsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f9fafb" },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
   },
-  headerTitle: { fontSize: 20, fontWeight: "700", color: "#111827" },
+  headerTitle: { fontSize: 20, fontWeight: "700" },
   emptyList: { flex: 1 },
   appItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#fff",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
   },
   appIcon: {
     width: 36,
@@ -250,7 +252,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: "#e5e7eb",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -258,18 +259,17 @@ const styles = StyleSheet.create({
   iconPlaceholderText: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#9ca3af",
   },
   appInfo: { flex: 1, marginRight: 12 },
-  appName: { fontSize: 15, fontWeight: "600", color: "#111827" },
-  appDesc: { fontSize: 13, color: "#6b7280", marginTop: 2 },
+  appName: { fontSize: 15, fontWeight: "600" },
+  appDesc: { fontSize: 13, marginTop: 2 },
   tokenRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     marginTop: 4,
   },
-  tokenText: { fontSize: 12, color: "#9ca3af", fontFamily: "monospace" },
+  tokenText: { fontSize: 12, fontFamily: "monospace" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -284,35 +284,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modal: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 24,
     gap: 12,
   },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  modalTitle: { fontSize: 18, fontWeight: "700" },
   input: {
-    backgroundColor: "#f9fafb",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
     borderRadius: 8,
     padding: 12,
     fontSize: 15,
-    color: "#111827",
   },
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 4 },
   cancelButton: {
     flex: 1,
     padding: 14,
     borderRadius: 8,
-    backgroundColor: "#f3f4f6",
     alignItems: "center",
   },
-  cancelText: { color: "#6b7280", fontWeight: "600" },
+  cancelText: { fontWeight: "600" },
   submitButton: {
     flex: 1,
     padding: 14,
     borderRadius: 8,
-    backgroundColor: "#3b82f6",
     alignItems: "center",
   },
   submitText: { color: "#fff", fontWeight: "600" },

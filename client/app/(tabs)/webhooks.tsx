@@ -18,10 +18,14 @@ import { EmptyState } from "../../src/components/EmptyState";
 import { getApiClient } from "../../src/api";
 import type { WebhookConfig, Topic } from "../../src/api";
 import * as Clipboard from "expo-clipboard";
+import { useTheme } from "../../src/store/theme";
+import { Colors } from "../../src/theme/colors";
 
 type Direction = "incoming" | "outgoing";
 
 export default function WebhooksScreen() {
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -157,22 +161,28 @@ export default function WebhooksScreen() {
 
   const getDirectionBadge = (dir: string) => {
     const isOutgoing = dir === "outgoing";
+    const bgColor = isOutgoing
+      ? (isDark ? "#713f12" : "#fef3c7")
+      : (isDark ? "#1e3a8a" : "#dbeafe");
+    const textColor = isOutgoing
+      ? (isDark ? "#fcd34d" : "#92400e")
+      : (isDark ? "#93c5fd" : "#1e40af");
     return (
       <View
         style={[
           styles.badge,
-          { backgroundColor: isOutgoing ? "#fef3c7" : "#dbeafe" },
+          { backgroundColor: bgColor },
         ]}
       >
         <Ionicons
           name={isOutgoing ? "arrow-forward-outline" : "arrow-back-outline"}
           size={10}
-          color={isOutgoing ? "#92400e" : "#1e40af"}
+          color={textColor}
         />
         <Text
           style={[
             styles.badgeText,
-            { color: isOutgoing ? "#92400e" : "#1e40af" },
+            { color: textColor },
           ]}
         >
           {isOutgoing ? "Outgoing" : "Incoming"}
@@ -187,11 +197,11 @@ export default function WebhooksScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Webhooks</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Webhooks</Text>
         <Pressable onPress={() => setShowCreate(true)} hitSlop={8}>
-          <Ionicons name="add-circle-outline" size={24} color="#3b82f6" />
+          <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
         </Pressable>
       </View>
 
@@ -199,16 +209,16 @@ export default function WebhooksScreen() {
         data={webhooks}
         keyExtractor={keyExtractor}
         renderItem={({ item }) => (
-          <View style={styles.webhookItem}>
+          <View style={[styles.webhookItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <View style={styles.webhookTop}>
               <View style={styles.webhookInfo}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.webhookName}>{item.name}</Text>
+                  <Text style={[styles.webhookName, { color: colors.text }]}>{item.name}</Text>
                   {getDirectionBadge(item.direction)}
                 </View>
-                <Text style={styles.webhookType}>{item.webhook_type}</Text>
+                <Text style={[styles.webhookType, { color: colors.textTertiary }]}>{item.webhook_type}</Text>
                 {item.target_url ? (
-                  <Text style={styles.webhookUrl} numberOfLines={1}>
+                  <Text style={[styles.webhookUrl, { color: colors.textSecondary }]} numberOfLines={1}>
                     {item.http_method} {item.target_url}
                   </Text>
                 ) : null}
@@ -216,21 +226,21 @@ export default function WebhooksScreen() {
                   style={styles.tokenRow}
                   onPress={() => handleCopyToken(item.token)}
                 >
-                  <Text style={styles.tokenText} numberOfLines={1}>
+                  <Text style={[styles.tokenText, { color: colors.textTertiary }]} numberOfLines={1}>
                     {item.token}
                   </Text>
-                  <Ionicons name="copy-outline" size={14} color="#9ca3af" />
+                  <Ionicons name="copy-outline" size={14} color={colors.textTertiary} />
                 </Pressable>
               </View>
               <View style={styles.webhookActions}>
                 <Switch
                   value={item.enabled}
                   onValueChange={() => handleToggleEnabled(item)}
-                  trackColor={{ false: "#d1d5db", true: "#93c5fd" }}
-                  thumbColor={item.enabled ? "#3b82f6" : "#9ca3af"}
+                  trackColor={{ false: colors.textTertiary, true: isDark ? "#3b82f6" : "#93c5fd" }}
+                  thumbColor={item.enabled ? colors.primary : colors.textTertiary}
                 />
                 <Pressable onPress={() => handleDelete(item)} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                  <Ionicons name="trash-outline" size={18} color={colors.error} />
                 </Pressable>
               </View>
             </View>
@@ -261,21 +271,23 @@ export default function WebhooksScreen() {
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.modalScrollContent}
             >
-              <View style={styles.modal}>
-                <Text style={styles.modalTitle}>Create Webhook</Text>
+              <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Create Webhook</Text>
 
                 {/* Direction toggle */}
                 <View style={styles.directionRow}>
                   <Pressable
                     style={[
                       styles.directionBtn,
-                      direction === "incoming" && styles.directionBtnActive,
+                      { backgroundColor: colors.backgroundTertiary },
+                      direction === "incoming" && [styles.directionBtnActive, { backgroundColor: colors.primary }],
                     ]}
                     onPress={() => setDirection("incoming")}
                   >
                     <Text
                       style={[
                         styles.directionBtnText,
+                        { color: colors.textSecondary },
                         direction === "incoming" && styles.directionBtnTextActive,
                       ]}
                     >
@@ -285,13 +297,15 @@ export default function WebhooksScreen() {
                   <Pressable
                     style={[
                       styles.directionBtn,
-                      direction === "outgoing" && styles.directionBtnActive,
+                      { backgroundColor: colors.backgroundTertiary },
+                      direction === "outgoing" && [styles.directionBtnActive, { backgroundColor: colors.primary }],
                     ]}
                     onPress={() => setDirection("outgoing")}
                   >
                     <Text
                       style={[
                         styles.directionBtnText,
+                        { color: colors.textSecondary },
                         direction === "outgoing" && styles.directionBtnTextActive,
                       ]}
                     >
@@ -301,9 +315,9 @@ export default function WebhooksScreen() {
                 </View>
 
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                   placeholder="Webhook name"
-                  placeholderTextColor="#9ca3af"
+                  placeholderTextColor={colors.textTertiary}
                   value={name}
                   onChangeText={setName}
                 />
@@ -311,19 +325,21 @@ export default function WebhooksScreen() {
                 {/* Topic selector */}
                 {topics.length > 0 ? (
                   <View>
-                    <Text style={styles.fieldLabel}>Target Topic (optional)</Text>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Target Topic (optional)</Text>
                     <View style={styles.topicList}>
                       <Pressable
                         style={[
                           styles.topicChip,
-                          selectedTopicId === null && styles.topicChipActive,
+                          { backgroundColor: colors.backgroundTertiary },
+                          selectedTopicId === null && [styles.topicChipActive, { backgroundColor: isDark ? "#1e3a8a" : "#dbeafe" }],
                         ]}
                         onPress={() => setSelectedTopicId(null)}
                       >
                         <Text
                           style={[
                             styles.topicChipText,
-                            selectedTopicId === null && styles.topicChipTextActive,
+                            { color: colors.textSecondary },
+                            selectedTopicId === null && [styles.topicChipTextActive, { color: isDark ? "#93c5fd" : "#1e40af" }],
                           ]}
                         >
                           None
@@ -334,15 +350,17 @@ export default function WebhooksScreen() {
                           key={t.id}
                           style={[
                             styles.topicChip,
-                            selectedTopicId === t.id && styles.topicChipActive,
+                            { backgroundColor: colors.backgroundTertiary },
+                            selectedTopicId === t.id && [styles.topicChipActive, { backgroundColor: isDark ? "#1e3a8a" : "#dbeafe" }],
                           ]}
                           onPress={() => setSelectedTopicId(t.id)}
                         >
                           <Text
                             style={[
                               styles.topicChipText,
+                              { color: colors.textSecondary },
                               selectedTopicId === t.id &&
-                                styles.topicChipTextActive,
+                                [styles.topicChipTextActive, { color: isDark ? "#93c5fd" : "#1e40af" }],
                             ]}
                           >
                             {t.name}
@@ -357,9 +375,9 @@ export default function WebhooksScreen() {
                 {direction === "outgoing" ? (
                   <>
                     <TextInput
-                      style={styles.input}
+                      style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       placeholder="Target URL"
-                      placeholderTextColor="#9ca3af"
+                      placeholderTextColor={colors.textTertiary}
                       value={targetUrl}
                       onChangeText={setTargetUrl}
                       autoCapitalize="none"
@@ -371,13 +389,15 @@ export default function WebhooksScreen() {
                           key={m}
                           style={[
                             styles.methodBtn,
-                            httpMethod === m && styles.methodBtnActive,
+                            { backgroundColor: colors.backgroundTertiary },
+                            httpMethod === m && [styles.methodBtnActive, { backgroundColor: colors.primary }],
                           ]}
                           onPress={() => setHttpMethod(m)}
                         >
                           <Text
                             style={[
                               styles.methodBtnText,
+                              { color: colors.textSecondary },
                               httpMethod === m && styles.methodBtnTextActive,
                             ]}
                           >
@@ -387,9 +407,9 @@ export default function WebhooksScreen() {
                       ))}
                     </View>
                     <TextInput
-                      style={[styles.input, styles.multilineInput]}
+                      style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       placeholder="Body template (optional, use {{message}}, {{title}})"
-                      placeholderTextColor="#9ca3af"
+                      placeholderTextColor={colors.textTertiary}
                       value={bodyTemplate}
                       onChangeText={setBodyTemplate}
                       multiline
@@ -399,10 +419,10 @@ export default function WebhooksScreen() {
                 ) : null}
 
                 <View style={styles.modalButtons}>
-                  <Pressable style={styles.cancelButton} onPress={closeModal}>
-                    <Text style={styles.cancelText}>Cancel</Text>
+                  <Pressable style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary }]} onPress={closeModal}>
+                    <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
                   </Pressable>
-                  <Pressable style={styles.submitButton} onPress={handleCreate}>
+                  <Pressable style={[styles.submitButton, { backgroundColor: colors.primary }]} onPress={handleCreate}>
                     <Text style={styles.submitText}>Create</Text>
                   </Pressable>
                 </View>
@@ -416,24 +436,20 @@ export default function WebhooksScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f9fafb" },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
   },
-  headerTitle: { fontSize: 20, fontWeight: "700", color: "#111827" },
+  headerTitle: { fontSize: 20, fontWeight: "700" },
   emptyList: { flex: 1 },
   webhookItem: {
-    backgroundColor: "#fff",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
   },
   webhookTop: {
     flexDirection: "row",
@@ -442,9 +458,9 @@ const styles = StyleSheet.create({
   },
   webhookInfo: { flex: 1, marginRight: 12 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  webhookName: { fontSize: 15, fontWeight: "600", color: "#111827" },
-  webhookType: { fontSize: 12, color: "#9ca3af", marginTop: 2 },
-  webhookUrl: { fontSize: 12, color: "#6b7280", marginTop: 2 },
+  webhookName: { fontSize: 15, fontWeight: "600" },
+  webhookType: { fontSize: 12, marginTop: 2 },
+  webhookUrl: { fontSize: 12, marginTop: 2 },
   webhookActions: { alignItems: "center", gap: 12 },
   badge: {
     flexDirection: "row",
@@ -461,7 +477,7 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 4,
   },
-  tokenText: { fontSize: 12, color: "#9ca3af", fontFamily: "monospace" },
+  tokenText: { fontSize: 12, fontFamily: "monospace" },
   // Modal
   modalOverlay: {
     flex: 1,
@@ -477,53 +493,46 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modal: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 24,
     gap: 12,
   },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: "#111827" },
+  modalTitle: { fontSize: 18, fontWeight: "700" },
   directionRow: { flexDirection: "row", gap: 8 },
   directionBtn: {
     flex: 1,
     padding: 10,
     borderRadius: 8,
-    backgroundColor: "#f3f4f6",
     alignItems: "center",
   },
-  directionBtnActive: { backgroundColor: "#3b82f6" },
-  directionBtnText: { fontWeight: "600", color: "#6b7280" },
+  directionBtnActive: {},
+  directionBtnText: { fontWeight: "600" },
   directionBtnTextActive: { color: "#fff" },
-  fieldLabel: { fontSize: 12, color: "#6b7280", marginBottom: 4 },
+  fieldLabel: { fontSize: 12, marginBottom: 4 },
   topicList: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   topicChip: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 16,
-    backgroundColor: "#f3f4f6",
   },
-  topicChipActive: { backgroundColor: "#dbeafe" },
-  topicChipText: { fontSize: 13, color: "#6b7280" },
-  topicChipTextActive: { color: "#1e40af" },
+  topicChipActive: {},
+  topicChipText: { fontSize: 13 },
+  topicChipTextActive: {},
   methodRow: { flexDirection: "row", gap: 8 },
   methodBtn: {
     flex: 1,
     padding: 10,
     borderRadius: 8,
-    backgroundColor: "#f3f4f6",
     alignItems: "center",
   },
-  methodBtnActive: { backgroundColor: "#3b82f6" },
-  methodBtnText: { fontWeight: "600", color: "#6b7280", fontSize: 13 },
+  methodBtnActive: {},
+  methodBtnText: { fontWeight: "600", fontSize: 13 },
   methodBtnTextActive: { color: "#fff" },
   input: {
-    backgroundColor: "#f9fafb",
     borderWidth: 1,
-    borderColor: "#e5e7eb",
     borderRadius: 8,
     padding: 12,
     fontSize: 15,
-    color: "#111827",
   },
   multilineInput: { minHeight: 72, textAlignVertical: "top" },
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 4 },
@@ -531,15 +540,13 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 14,
     borderRadius: 8,
-    backgroundColor: "#f3f4f6",
     alignItems: "center",
   },
-  cancelText: { color: "#6b7280", fontWeight: "600" },
+  cancelText: { fontWeight: "600" },
   submitButton: {
     flex: 1,
     padding: 14,
     borderRadius: 8,
-    backgroundColor: "#3b82f6",
     alignItems: "center",
   },
   submitText: { color: "#fff", fontWeight: "600" },
