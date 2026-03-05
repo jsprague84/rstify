@@ -76,8 +76,8 @@ jobs:
         if: ${{ github.event.inputs.build_type == 'release' }}
         uses: actions/upload-artifact@v4
         with:
-          name: rstify-release-unsigned.apk
-          path: client/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          name: rstify-release.apk
+          path: client/android/app/build/outputs/apk/release/*.apk
           retention-days: 30
 
       - name: Comment on PR with APK
