@@ -14,7 +14,8 @@
       "backgroundColor": "#1A1B26"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "cc.js-node.rstify"
     },
     "android": {
       "package": "cc.js_node.rstify",
@@ -30,7 +31,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-image"
     ],
     "extra": {
       "router": {},
