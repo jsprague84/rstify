@@ -16,18 +16,18 @@ impl Database {
             .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
             .foreign_keys(true)
             // Performance optimizations
-            .busy_timeout(Duration::from_secs(5))  // Wait up to 5s for locks
-            .pragma("cache_size", "-64000")        // 64MB cache (negative = KB)
-            .pragma("temp_store", "memory")        // Store temp tables in memory
-            .pragma("mmap_size", "268435456")      // 256MB memory-mapped I/O
-            .pragma("synchronous", "NORMAL")       // Balance safety/performance
+            .busy_timeout(Duration::from_secs(5)) // Wait up to 5s for locks
+            .pragma("cache_size", "-64000") // 64MB cache (negative = KB)
+            .pragma("temp_store", "memory") // Store temp tables in memory
+            .pragma("mmap_size", "268435456") // 256MB memory-mapped I/O
+            .pragma("synchronous", "NORMAL") // Balance safety/performance
             .pragma("wal_autocheckpoint", "1000"); // Checkpoint every 1000 pages
 
         let pool = SqlitePoolOptions::new()
-            .max_connections(20)                   // Increased from 5
-            .min_connections(2)                    // Keep 2 warm connections
+            .max_connections(20) // Increased from 5
+            .min_connections(2) // Keep 2 warm connections
             .acquire_timeout(Duration::from_secs(3)) // Fail fast if pool exhausted
-            .idle_timeout(Duration::from_secs(600))  // Close idle after 10min
+            .idle_timeout(Duration::from_secs(600)) // Close idle after 10min
             .max_lifetime(Duration::from_secs(1800)) // Recreate after 30min
             .connect_with(opts)
             .await?;
