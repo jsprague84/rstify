@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import Toast from "react-native-toast-message";
 import { useAuthStore } from "../src/store/auth";
+import { useThemeStore, useTheme } from "../src/store/theme";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -24,22 +25,24 @@ function RootNavigator() {
 }
 
 export default function RootLayout() {
-  const initialize = useAuthStore((s) => s.initialize);
-  const isLoading = useAuthStore((s) => s.isLoading);
+  const initializeAuth = useAuthStore((s) => s.initialize);
+  const isLoadingAuth = useAuthStore((s) => s.isLoading);
+  const initializeTheme = useThemeStore((s) => s.initialize);
+  const { isDark } = useTheme();
 
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    Promise.all([initializeAuth(), initializeTheme()]);
+  }, [initializeAuth, initializeTheme]);
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoadingAuth) {
       SplashScreen.hide();
     }
-  }, [isLoading]);
+  }, [isLoadingAuth]);
 
   return (
     <KeyboardProvider>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <RootNavigator />
       <Toast />
     </KeyboardProvider>

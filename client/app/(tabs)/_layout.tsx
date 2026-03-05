@@ -1,15 +1,23 @@
 import React from "react";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useTheme } from "../../src/store/theme";
+import { Colors } from "../../src/theme/colors";
 
 export default function TabLayout() {
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#3b82f6",
-        tabBarInactiveTintColor: "#9ca3af",
-        tabBarStyle: { backgroundColor: "#fff" },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
       }}
     >
       <Tabs.Screen

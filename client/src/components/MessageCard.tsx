@@ -1,11 +1,13 @@
 import React from "react";
-import { View, Text, StyleSheet, Pressable, Linking, useColorScheme } from "react-native";
+import { View, Text, StyleSheet, Pressable, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import type { MessageResponse } from "../api";
 import { MessageContent } from "./MessageContent";
 import { MessageActions } from "./MessageActions";
 import { MessageIcon } from "./MessageIcon";
+import { useTheme } from "../store/theme";
+import { Colors } from "../theme/colors";
 
 interface MessageCardProps {
   message: MessageResponse;
@@ -26,8 +28,8 @@ const priorityColors: Record<number, string> = {
 };
 
 export const MessageCard = React.memo(function MessageCard({ message, onDelete }: MessageCardProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
 
   const borderColor = priorityColors[message.priority] ?? "#10b981";
   const timeStr = new Date(message.date).toLocaleString();
@@ -142,7 +144,7 @@ export const MessageCard = React.memo(function MessageCard({ message, onDelete }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: Colors.light.surface,
     borderRadius: 8,
     borderLeftWidth: 4,
     padding: 12,
@@ -155,7 +157,8 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   cardDark: {
-    backgroundColor: "#1F2937",
+    backgroundColor: Colors.dark.surface,
+    shadowOpacity: 0.3,
   },
   cardPressed: {
     opacity: 0.8,

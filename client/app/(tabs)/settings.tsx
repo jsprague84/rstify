@@ -15,6 +15,8 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../src/store/auth";
 import { useMessagesStore } from "../../src/store/messages";
+import { useThemeStore, useTheme } from "../../src/store/theme";
+import { Colors } from "../../src/theme/colors";
 import { getApiClient } from "../../src/api";
 import type {
   VersionResponse,
@@ -25,6 +27,10 @@ import type {
 } from "../../src/api";
 
 export default function SettingsScreen() {
+  const { isDark, mode } = useTheme();
+  const setMode = useThemeStore((s) => s.setMode);
+  const colors = isDark ? Colors.dark : Colors.light;
+
   const user = useAuthStore((s) => s.user);
   const serverUrl = useAuthStore((s) => s.serverUrl);
   const logout = useAuthStore((s) => s.logout);
@@ -232,9 +238,9 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
       </View>
 
       <KeyboardAwareScrollView
@@ -245,6 +251,63 @@ export default function SettingsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
+        {/* Appearance */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Appearance</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            {/* Light Mode */}
+            <Pressable
+              style={[styles.row, mode === "light" && styles.rowSelected]}
+              onPress={() => setMode("light")}
+            >
+              <Ionicons name="sunny" size={22} color={mode === "light" ? colors.primary : colors.textSecondary} />
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Light Mode</Text>
+                <Text style={[styles.rowDescription, { color: colors.textSecondary }]}>
+                  Bright and clean interface
+                </Text>
+              </View>
+              <View style={styles.radioOuter}>
+                {mode === "light" && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
+              </View>
+            </Pressable>
+
+            {/* Dark Mode */}
+            <Pressable
+              style={[styles.row, mode === "dark" && styles.rowSelected]}
+              onPress={() => setMode("dark")}
+            >
+              <Ionicons name="moon" size={22} color={mode === "dark" ? colors.primary : colors.textSecondary} />
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>Dark Mode</Text>
+                <Text style={[styles.rowDescription, { color: colors.textSecondary }]}>
+                  Easy on the eyes in low light
+                </Text>
+              </View>
+              <View style={styles.radioOuter}>
+                {mode === "dark" && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
+              </View>
+            </Pressable>
+
+            {/* System Mode */}
+            <Pressable
+              style={[styles.row, mode === "system" && styles.rowSelected]}
+              onPress={() => setMode("system")}
+            >
+              <Ionicons name="phone-portrait" size={22} color={mode === "system" ? colors.primary : colors.textSecondary} />
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>System</Text>
+                <Text style={[styles.rowDescription, { color: colors.textSecondary }]}>
+                  Match device theme automatically
+                </Text>
+              </View>
+              <View style={styles.radioOuter}>
+                {mode === "system" && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
+              </View>
+            </Pressable>
+          </View>
+        </View>
+
         {/* Admin Stats */}
         {user?.is_admin && stats ? (
           <View style={styles.section}>
@@ -577,8 +640,26 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowContent: { flex: 1 },
-  rowLabel: { fontSize: 12, color: "#9ca3af" },
-  rowValue: { fontSize: 15, color: "#111827", marginTop: 2 },
+  rowSelected: {
+    backgroundColor: "rgba(59, 130, 246, 0.05)",
+  },
+  rowLabel: { fontSize: 15, fontWeight: "500" },
+  rowDescription: { fontSize: 12, marginTop: 2 },
+  rowValue: { fontSize: 15, marginTop: 2 },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
   rowValueLink: {
     fontSize: 15,
     color: "#3b82f6",

@@ -15,10 +15,15 @@ import { MessageCard } from "../../src/components/MessageCard";
 import { EmptyState } from "../../src/components/EmptyState";
 import { useMessagesStore } from "../../src/store/messages";
 import { useUserWebSocket } from "../../src/hooks/useWebSocket";
+import { useTheme } from "../../src/store/theme";
+import { Colors } from "../../src/theme/colors";
 import { getApiClient } from "../../src/api";
 import type { Application, MessageResponse } from "../../src/api";
 
 export default function MessagesScreen() {
+  const { isDark } = useTheme();
+  const colors = isDark ? Colors.dark : Colors.light;
+
   const messages = useMessagesStore((s) => s.messages);
   const isLoading = useMessagesStore((s) => s.isLoading);
   const fetchMessages = useMessagesStore((s) => s.fetchMessages);
@@ -141,12 +146,12 @@ export default function MessagesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={["top"]}>
+      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>Messages</Text>
         {messages.length > 0 ? (
           <Pressable onPress={handleDeleteAll} hitSlop={8}>
-            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+            <Ionicons name="trash-outline" size={20} color={colors.error} />
           </Pressable>
         ) : null}
       </View>
