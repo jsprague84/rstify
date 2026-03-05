@@ -26,7 +26,7 @@ rstify-jobs = { path = "crates/rstify-jobs" }
 axum = { version = "0.8", features = ["ws", "multipart"] }
 axum-extra = { version = "0.10", features = ["typed-header"] }
 tower = { version = "0.5", features = ["full"] }
-tower-http = { version = "0.6", features = ["cors", "trace", "fs", "timeout", "limit"] }
+tower-http = { version = "0.6", features = ["cors", "trace", "fs", "timeout", "limit", "compression-gzip", "compression-br"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -68,3 +68,4 @@ rust-embed = { version = "8", features = ["mime-guess"] }
 humantime = "2"
 lettre = { version = "0.11", features = ["tokio1-native-tls", "builder", "smtp-transport"] }
 mime_guess = "2"
+moka = { version = "0.12", features = ["future"] }

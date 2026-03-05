@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { MessageResponse } from '../api/types';
 import { useMessageStream } from '../hooks/useMessageStream';
 import ConfirmDialog from '../components/ConfirmDialog';
+import MessageContent from '../components/MessageContent';
 
 const PAGE_SIZE = 50;
 
@@ -98,16 +99,40 @@ export default function Messages() {
         <div className="space-y-3">
           {filtered.map(m => (
             <div key={m.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start gap-3">
+                {m.icon_url && (
+                  <img
+                    src={m.icon_url}
+                    alt="Message icon"
+                    className="w-10 h-10 rounded flex-shrink-0 object-cover"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                )}
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    {m.title && <span className="font-semibold text-gray-900 dark:text-white">{m.title}</span>}
+                    {m.title && (
+                      m.click_url ? (
+                        <a
+                          href={m.click_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-semibold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1"
+                        >
+                          {m.title}
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      ) : (
+                        <span className="font-semibold text-gray-900 dark:text-white">{m.title}</span>
+                      )
+                    )}
                     <span className="text-xs text-gray-400">#{m.id}</span>
                     {m.topic && <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded">{m.topic}</span>}
                     {m.appid && <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">App #{m.appid}</span>}
                     <PriorityBadge priority={m.priority} />
                   </div>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{m.message}</p>
+                  <MessageContent message={m.message} extras={m.extras} />
                   {m.tags && m.tags.length > 0 && (
                     <div className="flex gap-1 mt-2">
                       {m.tags.map(t => (
@@ -115,6 +140,7 @@ export default function Messages() {
                       ))}
                     </div>
                   )}
+                  <MessageActions message={m} />
                   <p className="text-xs text-gray-400 mt-2">{m.date}</p>
                 </div>
                 <button onClick={() => setDeleteMsg(m)} className="text-red-500 hover:text-red-700 text-sm ml-4">Delete</button>
@@ -143,6 +169,77 @@ export default function Messages() {
       />
     </div>
   );
+}
+
+function MessageActions({ message }: { message: MessageResponse }) {
+  const [executing, setExecuting] = useState<string | null>(null);
+
+  if (!message.extras?.['android::action']?.actions && !parseActions(message.extras)) {
+    return null;
+  }
+
+  const actions = parseActions(message.extras);
+  if (!actions || actions.length === 0) return null;
+
+  const handleAction = async (action: any, index: number) => {
+    setExecuting(`${message.id}-${index}`);
+    try {
+      if (action.type === 'view' || action.action === 'view') {
+        const url = action.url;
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      } else if (action.type === 'http' || action.action === 'http') {
+        const method = action.method || 'POST';
+        const response = await fetch(action.url, {
+          method,
+          headers: action.headers || {},
+          body: action.body,
+        });
+        if (response.ok) {
+          alert(`Action executed successfully`);
+        } else {
+          alert(`Action failed: ${response.statusText}`);
+        }
+      } else if (action.type === 'broadcast' || action.action === 'broadcast') {
+        alert('Broadcast actions are only supported on Android devices');
+      }
+    } catch (error) {
+      console.error('Action failed:', error);
+      alert(`Action failed: ${error}`);
+    } finally {
+      setExecuting(null);
+    }
+  };
+
+  return (
+    <div className="flex gap-2 mt-2">
+      {actions.map((action: any, index: number) => (
+        <button
+          key={index}
+          onClick={() => handleAction(action, index)}
+          disabled={executing === `${message.id}-${index}`}
+          className="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {executing === `${message.id}-${index}` ? 'Loading...' : (action.label || action.name || 'Action')}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function parseActions(extras?: Record<string, any>): any[] | null {
+  if (!extras) return null;
+
+  // Try android::action format (Gotify)
+  if (extras['android::action']?.actions) {
+    return extras['android::action'].actions;
+  }
+
+  // Try direct actions array (rstify format)
+  if (Array.isArray(extras.actions)) {
+    return extras.actions;
+  }
+
+  return null;
 }
 
 function PriorityBadge({ priority }: { priority: number }) {

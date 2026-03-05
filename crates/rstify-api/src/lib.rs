@@ -13,6 +13,7 @@ pub mod websocket;
 use axum::Router;
 use middleware::rate_limit::RateLimiter;
 use state::AppState;
+use tower_http::compression::CompressionLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 
 pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
@@ -33,6 +34,7 @@ pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
         // instead of falling through to the web UI. This handler ensures those
         // requests are served by the web UI instead.
         .method_not_allowed_fallback(web_ui::web_ui_handler)
+        .layer(CompressionLayer::new().gzip(true).br(true)) // Enable gzip and brotli compression
         .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB body limit
         .layer(axum::Extension(limiter))
         .layer(axum::middleware::from_fn(

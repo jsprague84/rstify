@@ -100,9 +100,10 @@ export interface MessageResponse {
   message: string;
   priority: number;
   tags?: string[];
-  click_url?: string;
-  icon_url?: string;
-  content_type?: string;
+  click_url?: string;      // Gotify compatible - URL to open when message is clicked
+  icon_url?: string;       // Gotify compatible - Custom icon/image URL
+  content_type?: string;   // Gotify compatible - MIME type or format hint
+  extras?: Record<string, any>;  // Gotify compatible - client::display, client::notification, android::action
   date: string;
 }
 

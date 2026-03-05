@@ -24,9 +24,12 @@ pub async fn health(State(state): State<AppState>) -> Json<Value> {
 
 #[utoipa::path(get, path = "/version", responses((status = 200, body = Value)))]
 pub async fn version() -> Json<Value> {
+    // Build date can be set via BUILD_DATE env var during compilation
+    let build_date = option_env!("BUILD_DATE").unwrap_or("");
+
     Json(json!({
         "version": env!("CARGO_PKG_VERSION"),
         "name": "rstify",
-        "buildDate": ""
+        "buildDate": build_date
     }))
 }

@@ -37,29 +37,40 @@ pub struct WebhookConfig {
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateWebhookConfig {
     pub name: String,
+    #[serde(alias = "webhook_type")]
     pub webhook_type: String,
+    #[serde(alias = "target_topic_id")]
     pub target_topic_id: Option<i64>,
+    #[serde(alias = "target_application_id")]
     pub target_application_id: Option<i64>,
     pub template: serde_json::Value,
     pub enabled: Option<bool>,
     // Outgoing webhook fields
     pub direction: Option<String>,
+    #[serde(alias = "target_url")]
     pub target_url: Option<String>,
+    #[serde(alias = "http_method")]
     pub http_method: Option<String>,
     pub headers: Option<serde_json::Value>,
+    #[serde(alias = "body_template")]
     pub body_template: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateWebhookConfig {
     pub name: Option<String>,
     pub template: Option<serde_json::Value>,
     pub enabled: Option<bool>,
     // Outgoing webhook fields
+    #[serde(alias = "target_url")]
     pub target_url: Option<String>,
+    #[serde(alias = "http_method")]
     pub http_method: Option<String>,
     pub headers: Option<serde_json::Value>,
+    #[serde(alias = "body_template")]
     pub body_template: Option<String>,
 }
