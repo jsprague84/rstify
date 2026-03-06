@@ -52,6 +52,7 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > client/rstify-release.keystore
+          ls -la client/rstify-release.keystore
 
       - name: Configure signing
         working-directory: ./client/android
@@ -60,32 +61,17 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          cat >> gradle.properties <<EOF
-          RSTIFY_RELEASE_STORE_FILE=../rstify-release.keystore
-          RSTIFY_RELEASE_KEY_ALIAS=$KEY_ALIAS
-          RSTIFY_RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD
-          RSTIFY_RELEASE_KEY_PASSWORD=$KEY_PASSWORD
-          EOF
-          # Strip leading whitespace from properties
-          sed -i 's/^[[:space:]]*//' gradle.properties
+          echo "RSTIFY_RELEASE_STORE_FILE=../rstify-release.keystore" >> gradle.properties
+          echo "RSTIFY_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> gradle.properties
+          echo "RSTIFY_RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> gradle.properties
+          echo "RSTIFY_RELEASE_KEY_PASSWORD=$KEY_PASSWORD" >> gradle.properties
+          echo "--- gradle.properties signing entries ---"
+          grep RSTIFY gradle.properties
 
       - name: Update build.gradle for signing
         working-directory: ./client/android/app
         run: |
-          cat >> build.gradle <<'SIGNING'
-
-          android.signingConfigs {
-              release {
-                  def props = new Properties()
-                  file("../gradle.properties").withInputStream { props.load(it) }
-                  storeFile file(props.getProperty("RSTIFY_RELEASE_STORE_FILE"))
-                  storePassword props.getProperty("RSTIFY_RELEASE_STORE_PASSWORD")
-                  keyAlias props.getProperty("RSTIFY_RELEASE_KEY_ALIAS")
-                  keyPassword props.getProperty("RSTIFY_RELEASE_KEY_PASSWORD")
-              }
-          }
-          android.buildTypes.release.signingConfig android.signingConfigs.release
-          SIGNING
+          printf '\nandroid.signingConfigs {\n    release {\n        def props = new Properties()\n        file("../gradle.properties").withInputStream { props.load(it) }\n        storeFile file(props.getProperty("RSTIFY_RELEASE_STORE_FILE"))\n        storePassword props.getProperty("RSTIFY_RELEASE_STORE_PASSWORD")\n        keyAlias props.getProperty("RSTIFY_RELEASE_KEY_ALIAS")\n        keyPassword props.getProperty("RSTIFY_RELEASE_KEY_PASSWORD")\n    }\n}\nandroid.buildTypes.release.signingConfig android.signingConfigs.release\n' >> build.gradle
 
       - name: Make gradlew executable
         working-directory: ./client/android
@@ -113,4 +99,4 @@ jobs:
 
       - name: Clean up keystore
         if: always()
-        run: rm -f client/rstify-release.keystore client/android/gradle.properties
+        run: rm -f client/rstify-release.keystore
