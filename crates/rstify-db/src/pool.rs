@@ -100,6 +100,10 @@ impl Database {
                 "013_additional_indexes",
                 include_str!("../../../migrations/013_additional_indexes.sql"),
             ),
+            (
+                "014_fcm_tokens",
+                include_str!("../../../migrations/014_fcm_tokens.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {
