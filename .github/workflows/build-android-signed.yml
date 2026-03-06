@@ -66,12 +66,13 @@ jobs:
           RSTIFY_RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD
           RSTIFY_RELEASE_KEY_PASSWORD=$KEY_PASSWORD
           EOF
+          # Strip leading whitespace from properties
+          sed -i 's/^[[:space:]]*//' gradle.properties
 
       - name: Update build.gradle for signing
         working-directory: ./client/android/app
         run: |
-          # Add signing config to build.gradle
-          cat >> build.gradle <<'EOF'
+          cat >> build.gradle <<'SIGNING'
 
           android.signingConfigs {
               release {
@@ -84,7 +85,7 @@ jobs:
               }
           }
           android.buildTypes.release.signingConfig android.signingConfigs.release
-          EOF
+          SIGNING
 
       - name: Make gradlew executable
         working-directory: ./client/android

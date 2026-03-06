@@ -69,15 +69,17 @@ impl ClientRepository for SqliteClientRepo {
             .map_err(|e| CoreError::Database(e.to_string()))
     }
 
-    async fn update_fcm_token(&self, id: i64, fcm_token: Option<&str>) -> Result<Client, CoreError> {
-        sqlx::query_as::<_, Client>(
-            "UPDATE clients SET fcm_token = ? WHERE id = ? RETURNING *",
-        )
-        .bind(fcm_token)
-        .bind(id)
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+    async fn update_fcm_token(
+        &self,
+        id: i64,
+        fcm_token: Option<&str>,
+    ) -> Result<Client, CoreError> {
+        sqlx::query_as::<_, Client>("UPDATE clients SET fcm_token = ? WHERE id = ? RETURNING *")
+            .bind(fcm_token)
+            .bind(id)
+            .fetch_one(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))
     }
 
     async fn list_fcm_tokens_by_user(&self, user_id: i64) -> Result<Vec<String>, CoreError> {

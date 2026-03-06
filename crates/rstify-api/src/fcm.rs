@@ -84,7 +84,10 @@ impl FcmConfig {
         let sa_json = match std::fs::read_to_string(&sa_path) {
             Ok(json) => json,
             Err(e) => {
-                error!("Failed to read FCM service account file '{}': {}", sa_path, e);
+                error!(
+                    "Failed to read FCM service account file '{}': {}",
+                    sa_path, e
+                );
                 return None;
             }
         };
@@ -188,11 +191,7 @@ impl FcmClient {
 
     /// Send a push notification to a single FCM token.
     /// Uses the ID-only relay pattern for privacy — only sends message ID + title.
-    async fn send_to_token(
-        &self,
-        fcm_token: &str,
-        msg: &MessageResponse,
-    ) -> Result<(), String> {
+    async fn send_to_token(&self, fcm_token: &str, msg: &MessageResponse) -> Result<(), String> {
         let access_token = self.get_access_token().await?;
 
         let channel_id = if msg.priority >= 8 {
@@ -213,7 +212,10 @@ impl FcmClient {
             message: FcmMessage {
                 token: fcm_token.to_string(),
                 notification: FcmNotification {
-                    title: msg.title.clone().unwrap_or_else(|| "New Message".to_string()),
+                    title: msg
+                        .title
+                        .clone()
+                        .unwrap_or_else(|| "New Message".to_string()),
                     body: msg.message.clone(),
                 },
                 data,
@@ -242,7 +244,10 @@ impl FcmClient {
             .map_err(|e| format!("FCM send failed: {}", e))?;
 
         if resp.status().is_success() {
-            debug!("FCM sent to token {}...", &fcm_token[..fcm_token.len().min(12)]);
+            debug!(
+                "FCM sent to token {}...",
+                &fcm_token[..fcm_token.len().min(12)]
+            );
             Ok(())
         } else {
             let body = resp.text().await.unwrap_or_default();
@@ -269,7 +274,11 @@ impl FcmClient {
             return;
         }
 
-        debug!("Sending FCM to {} device(s) for user {}", tokens.len(), user_id);
+        debug!(
+            "Sending FCM to {} device(s) for user {}",
+            tokens.len(),
+            user_id
+        );
 
         for token in &tokens {
             if let Err(e) = self.send_to_token(token, msg).await {

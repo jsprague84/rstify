@@ -9,7 +9,8 @@ pub trait ClientRepository: Send + Sync {
     async fn find_by_token(&self, token: &str) -> Result<Option<Client>, CoreError>;
     async fn list_by_user(&self, user_id: i64) -> Result<Vec<Client>, CoreError>;
     async fn update(&self, id: i64, name: Option<&str>) -> Result<Client, CoreError>;
-    async fn update_fcm_token(&self, id: i64, fcm_token: Option<&str>) -> Result<Client, CoreError>;
+    async fn update_fcm_token(&self, id: i64, fcm_token: Option<&str>)
+        -> Result<Client, CoreError>;
     async fn list_fcm_tokens_by_user(&self, user_id: i64) -> Result<Vec<String>, CoreError>;
     async fn delete(&self, id: i64) -> Result<(), CoreError>;
 }

@@ -51,7 +51,10 @@ async fn main() -> anyhow::Result<()> {
     // Initialize FCM push notifications if configured
     if config.fcm_enabled {
         if let Some(fcm_config) = rstify_api::fcm::FcmConfig::from_env() {
-            info!("FCM push notifications enabled (project: {})", fcm_config.project_id);
+            info!(
+                "FCM push notifications enabled (project: {})",
+                fcm_config.project_id
+            );
             state = state.with_fcm(rstify_api::fcm::FcmClient::new(fcm_config));
         }
     }
@@ -82,7 +85,10 @@ async fn main() -> anyhow::Result<()> {
 
                 // FCM for scheduled topic messages
                 if let Some(ref fcm) = fcm {
-                    if let Ok(Some(topic)) = rstify_core::repositories::TopicRepository::find_by_name(&topic_repo, name).await {
+                    if let Ok(Some(topic)) =
+                        rstify_core::repositories::TopicRepository::find_by_name(&topic_repo, name)
+                            .await
+                    {
                         if let Some(owner_id) = topic.owner_id {
                             fcm.notify_user(&client_repo, owner_id, &msg).await;
                         }
