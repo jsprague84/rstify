@@ -1,0 +1,80 @@
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:9
+    container_name: forgejo
+    restart: unless-stopped
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+      # Server
+      - FORGEJO__server__ROOT_URL=https://git.js-node.cc
+      - FORGEJO__server__SSH_DOMAIN=git.js-node.cc
+      - FORGEJO__server__SSH_PORT=222
+      - FORGEJO__server__LFS_START_SERVER=true
+      # Database (SQLite, no external DB needed)
+      - FORGEJO__database__DB_TYPE=sqlite3
+      # Enable CI/CD
+      - FORGEJO__actions__ENABLED=true
+      - FORGEJO__actions__DEFAULT_ACTIONS_URL=https://github.com
+      # Security
+      - FORGEJO__service__DISABLE_REGISTRATION=true
+      # Appearance
+      - FORGEJO__ui__DEFAULT_THEME=forgejo-dark
+    volumes:
+      - /home/ubuntu/docker/forgejo/data:/data
+    ports:
+      - "222:22"
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+
+      - "traefik.http.routers.forgejo-secure.rule=Host(`git.js-node.cc`)"
+      - "traefik.http.routers.forgejo-secure.entrypoints=https"
+      - "traefik.http.routers.forgejo-secure.tls=true"
+      - "traefik.http.routers.forgejo-secure.tls.certresolver=cloudflare"
+      - "traefik.http.routers.forgejo-secure.service=forgejo"
+      - "traefik.http.services.forgejo.loadbalancer.server.port=3000"
+      - "traefik.http.routers.forgejo-secure.middlewares=secure-chain@file"
+
+  forgejo-runner:
+    image: code.forgejo.org/forgejo/runner:6
+    container_name: forgejo-runner
+    restart: unless-stopped
+    depends_on:
+      forgejo:
+        condition: service_started
+    environment:
+      - DOCKER_HOST=tcp://docker-in-docker:2376
+      - DOCKER_TLS_VERIFY=1
+      - DOCKER_CERT_PATH=/certs/client
+    volumes:
+      - /home/ubuntu/docker/forgejo/runner-data:/data
+      - docker-certs:/certs
+    networks:
+      - proxy
+      - forgejo-internal
+    # First-time setup: see SETUP.md for registration steps
+
+  docker-in-docker:
+    image: docker:dind
+    container_name: forgejo-dind
+    restart: unless-stopped
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    volumes:
+      - docker-certs:/certs
+      - /home/ubuntu/docker/forgejo/dind-data:/var/lib/docker
+    networks:
+      - forgejo-internal
+
+volumes:
+  docker-certs:
+
+networks:
+  proxy:
+    external: true
+  forgejo-internal:
+    driver: bridge
