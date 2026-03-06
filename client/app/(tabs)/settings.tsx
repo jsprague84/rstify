@@ -23,8 +23,11 @@ import type {
   Client,
   StatsResponse,
   UserResponse,
-  UpRegistration,
 } from "../../src/api";
+import {
+  getDevicePushToken,
+  requestNotificationPermissions,
+} from "../../src/services/notifications";
 
 export default function SettingsScreen() {
   const { isDark, mode } = useTheme();
@@ -41,8 +44,8 @@ export default function SettingsScreen() {
   const [clients, setClients] = useState<Client[]>([]);
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [users, setUsers] = useState<UserResponse[]>([]);
-  const [upRegistrations, setUpRegistrations] = useState<UpRegistration[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [pushStatus, setPushStatus] = useState<string>("Checking...");
 
   const [editingUrl, setEditingUrl] = useState(false);
   const [urlInput, setUrlInput] = useState(serverUrl);
@@ -53,9 +56,17 @@ export default function SettingsScreen() {
   // Admin sections
   const [showUsers, setShowUsers] = useState(false);
 
-  // UP registration
-  const [showUpSection, setShowUpSection] = useState(false);
-  const [upEndpoint, setUpEndpoint] = useState("");
+  // Push notification status check
+  useEffect(() => {
+    (async () => {
+      const token = await getDevicePushToken();
+      if (token) {
+        setPushStatus(`Registered (${token.substring(0, 20)}...)`);
+      } else {
+        setPushStatus("Not available — enable notifications in device settings");
+      }
+    })();
+  }, []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -63,7 +74,6 @@ export default function SettingsScreen() {
       const promises: Promise<unknown>[] = [
         api.version(),
         api.listClients(),
-        api.listUpRegistrations(),
       ];
 
       if (user?.is_admin) {
@@ -76,14 +86,12 @@ export default function SettingsScreen() {
         setVersion(results[0].value as VersionResponse);
       if (results[1].status === "fulfilled")
         setClients(results[1].value as Client[]);
-      if (results[2].status === "fulfilled")
-        setUpRegistrations(results[2].value as UpRegistration[]);
 
       if (user?.is_admin) {
+        if (results[2]?.status === "fulfilled")
+          setStats(results[2].value as StatsResponse);
         if (results[3]?.status === "fulfilled")
-          setStats(results[3].value as StatsResponse);
-        if (results[4]?.status === "fulfilled")
-          setUsers(results[4].value as UserResponse[]);
+          setUsers(results[3].value as UserResponse[]);
       }
     } catch {
       // ignore
@@ -190,46 +198,6 @@ export default function SettingsScreen() {
             Alert.alert(
               "Error",
               e instanceof Error ? e.message : "Delete failed",
-            );
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleRegisterUp = async () => {
-    if (!upEndpoint.trim()) {
-      Alert.alert("Error", "Endpoint URL is required");
-      return;
-    }
-    try {
-      const api = getApiClient();
-      await api.registerUpDevice({ endpoint: upEndpoint.trim() });
-      setUpEndpoint("");
-      fetchData();
-    } catch (e) {
-      Alert.alert(
-        "Error",
-        e instanceof Error ? e.message : "Failed to register",
-      );
-    }
-  };
-
-  const handleDeleteUpRegistration = (reg: UpRegistration) => {
-    Alert.alert("Unregister", "Remove this UnifiedPush registration?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            const api = getApiClient();
-            await api.deleteUpRegistration(reg.id);
-            fetchData();
-          } catch (e) {
-            Alert.alert(
-              "Error",
-              e instanceof Error ? e.message : "Failed to remove",
             );
           }
         },
@@ -475,65 +443,48 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* UnifiedPush */}
+        {/* Push Notifications */}
         <View style={styles.section}>
-          <Pressable
-            style={styles.sectionHeader}
-            onPress={() => setShowUpSection(!showUpSection)}
-          >
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              UnifiedPush ({upRegistrations.length})
-            </Text>
-            <Ionicons
-              name={showUpSection ? "chevron-up" : "chevron-down"}
-              size={18}
-              color={colors.textTertiary}
-            />
-          </Pressable>
-          {showUpSection ? (
-            <View style={[styles.card, { backgroundColor: colors.surface }]}>
-              {upRegistrations.map((reg) => (
-                <View key={reg.id} style={styles.row}>
-                  <Ionicons
-                    name="notifications-outline"
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                  <View style={styles.rowContent}>
-                    <Text style={[styles.rowValueMono, { color: colors.textSecondary }]} numberOfLines={2}>
-                      {reg.endpoint}
-                    </Text>
-                    <Text style={[styles.rowLabel, { color: colors.textTertiary }]}>
-                      Token: {reg.token.substring(0, 8)}...
-                    </Text>
-                  </View>
-                  <Pressable
-                    onPress={() => handleDeleteUpRegistration(reg)}
-                    hitSlop={8}
-                  >
-                    <Ionicons name="trash-outline" size={16} color={colors.error} />
-                  </Pressable>
-                </View>
-              ))}
-              <View style={styles.upRegisterRow}>
-                <TextInput
-                  style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                  placeholder="Endpoint URL"
-                  placeholderTextColor={colors.textTertiary}
-                  value={upEndpoint}
-                  onChangeText={setUpEndpoint}
-                  autoCapitalize="none"
-                  keyboardType="url"
-                />
-                <Pressable
-                  style={[styles.smallButton, { backgroundColor: colors.primary }]}
-                  onPress={handleRegisterUp}
-                >
-                  <Text style={styles.smallButtonText}>Register</Text>
-                </Pressable>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Push Notifications</Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <View style={styles.row}>
+              <Ionicons name="notifications-outline" size={20} color={colors.textSecondary} />
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: colors.text }]}>FCM Status</Text>
+                <Text style={[styles.rowValue, { color: colors.textSecondary }]}>{pushStatus}</Text>
               </View>
             </View>
-          ) : null}
+            <Pressable
+              style={[styles.row]}
+              onPress={async () => {
+                const granted = await requestNotificationPermissions();
+                if (granted) {
+                  const token = await getDevicePushToken();
+                  if (token) {
+                    setPushStatus(`Registered (${token.substring(0, 20)}...)`);
+                    // Re-register with server
+                    try {
+                      const api = getApiClient();
+                      const clientsList = await api.listClients();
+                      if (clientsList.length > 0) {
+                        await api.registerFcmToken(clientsList[0].id, token);
+                        Alert.alert("Success", "Push notifications registered");
+                      }
+                    } catch {
+                      // best effort
+                    }
+                  }
+                } else {
+                  Alert.alert("Permissions Denied", "Enable notifications in device settings");
+                }
+              }}
+            >
+              <Ionicons name="refresh-outline" size={20} color={colors.primary} />
+              <View style={styles.rowContent}>
+                <Text style={[styles.rowLabel, { color: colors.primary }]}>Re-register Push Token</Text>
+              </View>
+            </Pressable>
+          </View>
         </View>
 
         {/* Admin User Management */}
@@ -742,13 +693,6 @@ const styles = StyleSheet.create({
   userActions: { flexDirection: "row", alignItems: "center", gap: 12 },
   adminToggle: { flexDirection: "row", alignItems: "center", gap: 4 },
   adminLabel: { fontSize: 11, color: "#9ca3af" },
-  // UP
-  upRegisterRow: {
-    flexDirection: "row",
-    gap: 8,
-    padding: 12,
-    alignItems: "center",
-  },
   // Logout
   logoutButton: {
     flexDirection: "row",

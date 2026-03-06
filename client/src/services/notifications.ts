@@ -1,6 +1,6 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import { Platform, AppState } from "react-native";
+import { Platform } from "react-native";
 import type { MessageResponse } from "../api";
 
 Notifications.setNotificationHandler({
@@ -69,12 +69,10 @@ function getChannelForPriority(priority: number): string {
 }
 
 /**
- * Show a local notification for a WebSocket message (foreground fallback).
- * Only fires when app is NOT in foreground — FCM handles background delivery.
+ * Show a local notification for a message received via WebSocket.
+ * Fires in all app states so the user always sees Android notifications.
  */
 export async function showMessageNotification(msg: MessageResponse) {
-  if (AppState.currentState === "active") return;
-
   await Notifications.scheduleNotificationAsync({
     content: {
       title: msg.title || "New Message",
