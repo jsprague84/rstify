@@ -66,6 +66,17 @@ pub async fn create_app_message(
         .broadcast_to_user(auth.user.id, msg.to_response(None))
         .await;
 
+    // Send FCM push notifications to offline devices
+    if let Some(ref fcm) = state.fcm {
+        let fcm = fcm.clone();
+        let client_repo = state.client_repo.clone();
+        let user_id = auth.user.id;
+        let resp = response.clone();
+        tokio::spawn(async move {
+            fcm.notify_user(&client_repo, user_id, &resp).await;
+        });
+    }
+
     Ok(Json(response))
 }
 

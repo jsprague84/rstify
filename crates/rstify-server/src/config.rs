@@ -9,6 +9,7 @@ pub struct Config {
     pub cors_origins: Vec<String>,
     pub rate_limit_max: u32,
     pub rate_limit_rps: f64,
+    pub fcm_enabled: bool,
 }
 
 impl Config {
@@ -44,6 +45,8 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(10.0),
+            fcm_enabled: env::var("FCM_PROJECT_ID").is_ok()
+                && env::var("FCM_SERVICE_ACCOUNT_PATH").is_ok(),
         }
     }
 }

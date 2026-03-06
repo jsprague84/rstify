@@ -40,6 +40,8 @@ pub fn gotify_routes(_state: AppState) -> Router<AppState> {
         .route("/client", post(clients::create_client))
         .route("/client/{id}", put(clients::update_client))
         .route("/client/{id}", delete(clients::delete_client))
+        .route("/client/{id}/fcm-token", put(clients::register_fcm_token))
+        .route("/client/{id}/fcm-token", delete(clients::remove_fcm_token))
         // Current user
         .route("/current/user", get(users::current_user))
         .route("/current/user/password", post(users::change_password))

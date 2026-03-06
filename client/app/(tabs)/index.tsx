@@ -19,6 +19,10 @@ import { useTheme } from "../../src/store/theme";
 import { Colors } from "../../src/theme/colors";
 import { getApiClient } from "../../src/api";
 import type { Application, MessageResponse } from "../../src/api";
+import {
+  showMessageNotification,
+  getDevicePushToken,
+} from "../../src/services/notifications";
 
 export default function MessagesScreen() {
   const { isDark } = useTheme();
@@ -59,17 +63,28 @@ export default function MessagesScreen() {
     return map;
   }, [apps]);
 
-  // Get or create a client token for WebSocket
+  // Get or create a client token for WebSocket + register FCM token
   useEffect(() => {
     const setupClient = async () => {
       try {
         const api = getApiClient();
         const clients = await api.listClients();
+        let clientId: number;
         if (clients.length > 0) {
           setClientToken(clients[0].token);
+          clientId = clients[0].id;
         } else {
           const client = await api.createClient({ name: "rstify-mobile" });
           setClientToken(client.token);
+          clientId = client.id;
+        }
+
+        // Register FCM push token for background notifications
+        const pushToken = await getDevicePushToken();
+        if (pushToken) {
+          api.registerFcmToken(clientId, pushToken).catch(() => {
+            // FCM registration is best-effort — server may not have FCM configured
+          });
         }
       } catch {
         // Will retry on next render
@@ -82,6 +97,7 @@ export default function MessagesScreen() {
   const onMessage = useCallback(
     (msg: MessageResponse) => {
       addMessage(msg);
+      showMessageNotification(msg);
     },
     [addMessage],
   );

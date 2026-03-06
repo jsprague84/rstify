@@ -118,6 +118,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
   const [loading, setLoading] = useState(false);
   const [iconLoading, setIconLoading] = useState(false);
   const [iconVersion, setIconVersion] = useState(Date.now());
+  const [hasIcon, setHasIcon] = useState(!!app?.image);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -143,6 +144,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
     setError('');
     try {
       await api.uploadApplicationIcon(app.id, file);
+      setHasIcon(true);
       setIconVersion(Date.now());
       onIconChange?.();
     } catch (err) {
@@ -159,6 +161,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
     setError('');
     try {
       await api.deleteApplicationIcon(app.id);
+      setHasIcon(false);
       setIconVersion(Date.now());
       onIconChange?.();
     } catch (err) {
@@ -175,7 +178,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
         <div>
           <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Icon</label>
           <div className="flex items-center gap-3">
-            {app.image ? (
+            {hasIcon ? (
               <img
                 src={`${api.getApplicationIconUrl(app.id)}?v=${iconVersion}`}
                 alt="icon"
@@ -183,7 +186,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
               />
             ) : (
               <div className="w-10 h-10 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">
-                {app.name.charAt(0).toUpperCase()}
+                {(form.name || app.name).charAt(0).toUpperCase()}
               </div>
             )}
             <input
@@ -194,7 +197,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
               disabled={iconLoading}
               className="text-sm"
             />
-            {app.image && (
+            {hasIcon && (
               <button
                 type="button"
                 onClick={handleIconRemove}

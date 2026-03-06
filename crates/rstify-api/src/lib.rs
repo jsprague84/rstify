@@ -1,5 +1,6 @@
 pub mod error;
 pub mod extractors;
+pub mod fcm;
 pub mod middleware;
 pub mod ntfy_headers;
 pub mod openapi;

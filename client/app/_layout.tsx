@@ -1,10 +1,16 @@
 import React, { useEffect } from "react";
+import { Linking } from "react-native";
 import { Stack, SplashScreen } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import Toast from "react-native-toast-message";
+import * as Notifications from "expo-notifications";
 import { useAuthStore } from "../src/store/auth";
 import { useThemeStore, useTheme } from "../src/store/theme";
+import {
+  initializeNotifications,
+  requestNotificationPermissions,
+} from "../src/services/notifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -32,7 +38,21 @@ export default function RootLayout() {
 
   useEffect(() => {
     Promise.all([initializeAuth(), initializeTheme()]);
+    initializeNotifications().then(() => requestNotificationPermissions());
   }, [initializeAuth, initializeTheme]);
+
+  // Open click_url when user taps a notification
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const url = response.notification.request.content.data?.clickUrl;
+        if (typeof url === "string" && url) {
+          Linking.openURL(url);
+        }
+      },
+    );
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!isLoadingAuth) {

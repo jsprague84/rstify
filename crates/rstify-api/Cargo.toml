@@ -29,3 +29,4 @@ sqlx = { workspace = true }
 rust-embed = { workspace = true }
 mime_guess = { workspace = true }
 humantime = { workspace = true }
+jsonwebtoken = { workspace = true }

@@ -1,7 +1,7 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use rstify_auth::tokens::generate_client_token;
-use rstify_core::models::{Client, CreateClient, UpdateClient};
+use rstify_core::models::{Client, CreateClient, RegisterFcmToken, UpdateClient};
 use rstify_core::repositories::ClientRepository;
 
 use crate::error::ApiError;
@@ -103,4 +103,74 @@ pub async fn delete_client(
 
     state.client_repo.delete(id).await.map_err(ApiError::from)?;
     Ok(Json(serde_json::json!({"success": true})))
+}
+
+/// PUT /client/{id}/fcm-token - Register FCM push token for a client
+#[utoipa::path(
+    put,
+    path = "/client/{id}/fcm-token",
+    request_body = RegisterFcmToken,
+    responses((status = 200, body = Client))
+)]
+pub async fn register_fcm_token(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<i64>,
+    Json(req): Json<RegisterFcmToken>,
+) -> Result<Json<Client>, ApiError> {
+    let existing = state
+        .client_repo
+        .find_by_id(id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Client not found".to_string(),
+            ))
+        })?;
+
+    if existing.user_id != auth.user.id && !auth.user.is_admin {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Not your client".to_string(),
+        )));
+    }
+
+    let client = state
+        .client_repo
+        .update_fcm_token(id, Some(&req.fcm_token))
+        .await
+        .map_err(ApiError::from)?;
+    Ok(Json(client))
+}
+
+/// DELETE /client/{id}/fcm-token - Remove FCM push token from a client
+#[utoipa::path(delete, path = "/client/{id}/fcm-token", responses((status = 200, body = Client)))]
+pub async fn remove_fcm_token(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<i64>,
+) -> Result<Json<Client>, ApiError> {
+    let existing = state
+        .client_repo
+        .find_by_id(id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Client not found".to_string(),
+            ))
+        })?;
+
+    if existing.user_id != auth.user.id && !auth.user.is_admin {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Not your client".to_string(),
+        )));
+    }
+
+    let client = state
+        .client_repo
+        .update_fcm_token(id, None)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(Json(client))
 }

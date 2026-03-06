@@ -42,11 +42,19 @@ async fn main() -> anyhow::Result<()> {
         warn!("Created default admin user (username: admin, password: admin) — change the password immediately!");
     }
 
-    let state = AppState::new(
+    let mut state = AppState::new(
         pool.clone(),
         config.jwt_secret.clone(),
         config.upload_dir.clone(),
     );
+
+    // Initialize FCM push notifications if configured
+    if config.fcm_enabled {
+        if let Some(fcm_config) = rstify_api::fcm::FcmConfig::from_env() {
+            info!("FCM push notifications enabled (project: {})", fcm_config.project_id);
+            state = state.with_fcm(rstify_api::fcm::FcmClient::new(fcm_config));
+        }
+    }
 
     // Start periodic connection cleanup
     let connections_for_cleanup = state.connections.clone();
@@ -60,11 +68,26 @@ async fn main() -> anyhow::Result<()> {
 
     // Create broadcast callback for scheduled message delivery
     let connections = state.connections.clone();
+    let fcm_for_scheduled = state.fcm.clone();
+    let client_repo_for_scheduled = state.client_repo.clone();
+    let topic_repo_for_scheduled = state.topic_repo.clone();
     let broadcast_fn: rstify_jobs::scheduled::BroadcastFn = Arc::new(move |msg, topic_name| {
         let connections = connections.clone();
+        let fcm = fcm_for_scheduled.clone();
+        let client_repo = client_repo_for_scheduled.clone();
+        let topic_repo = topic_repo_for_scheduled.clone();
         Box::pin(async move {
             if let Some(ref name) = topic_name {
-                connections.broadcast_to_topic(name, msg).await;
+                connections.broadcast_to_topic(name, msg.clone()).await;
+
+                // FCM for scheduled topic messages
+                if let Some(ref fcm) = fcm {
+                    if let Ok(Some(topic)) = rstify_core::repositories::TopicRepository::find_by_name(&topic_repo, name).await {
+                        if let Some(owner_id) = topic.owner_id {
+                            fcm.notify_user(&client_repo, owner_id, &msg).await;
+                        }
+                    }
+                }
             }
         })
     });

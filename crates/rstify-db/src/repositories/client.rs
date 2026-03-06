@@ -69,6 +69,28 @@ impl ClientRepository for SqliteClientRepo {
             .map_err(|e| CoreError::Database(e.to_string()))
     }
 
+    async fn update_fcm_token(&self, id: i64, fcm_token: Option<&str>) -> Result<Client, CoreError> {
+        sqlx::query_as::<_, Client>(
+            "UPDATE clients SET fcm_token = ? WHERE id = ? RETURNING *",
+        )
+        .bind(fcm_token)
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))
+    }
+
+    async fn list_fcm_tokens_by_user(&self, user_id: i64) -> Result<Vec<String>, CoreError> {
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT fcm_token FROM clients WHERE user_id = ? AND fcm_token IS NOT NULL",
+        )
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))?;
+        Ok(rows.into_iter().map(|r| r.0).collect())
+    }
+
     async fn delete(&self, id: i64) -> Result<(), CoreError> {
         let result = sqlx::query("DELETE FROM clients WHERE id = ?")
             .bind(id)

@@ -50,6 +50,7 @@ export interface Client {
   user_id: number;
   name: string;
   token: string;
+  fcm_token: string | null;
   created_at: string;
 }
 

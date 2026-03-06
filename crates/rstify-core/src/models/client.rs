@@ -7,6 +7,7 @@ pub struct Client {
     pub user_id: i64,
     pub name: String,
     pub token: String,
+    pub fcm_token: Option<String>,
     pub created_at: String,
 }
 
@@ -18,4 +19,9 @@ pub struct CreateClient {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateClient {
     pub name: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct RegisterFcmToken {
+    pub fcm_token: String,
 }

@@ -38,6 +38,11 @@ jobs:
         working-directory: ./client
         run: npm ci
 
+      - name: Decode google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: echo "$GOOGLE_SERVICES_JSON" | base64 -d > client/google-services.json
+
       - name: Generate native code with Expo prebuild
         working-directory: ./client
         run: npx expo prebuild --platform android --clean

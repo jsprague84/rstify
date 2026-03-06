@@ -4,3 +4,6 @@
 *.db-shm
 /uploads
 .env
+# Firebase credentials
+*-firebase-adminsdk-*.json
+client/google-services.json

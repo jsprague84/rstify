@@ -4,6 +4,7 @@ use rstify_db::repositories::{
 use sqlx::SqlitePool;
 use std::sync::Arc;
 
+use crate::fcm::FcmClient;
 use crate::websocket::manager::ConnectionManager;
 
 #[derive(Clone)]
@@ -17,6 +18,7 @@ pub struct AppState {
     pub upload_dir: String,
     pub connections: Arc<ConnectionManager>,
     pub pool: SqlitePool,
+    pub fcm: Option<Arc<FcmClient>>,
 }
 
 impl AppState {
@@ -31,6 +33,12 @@ impl AppState {
             upload_dir,
             connections: Arc::new(ConnectionManager::new()),
             pool,
+            fcm: None,
         }
+    }
+
+    pub fn with_fcm(mut self, fcm: FcmClient) -> Self {
+        self.fcm = Some(Arc::new(fcm));
+        self
     }
 }

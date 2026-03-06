@@ -224,6 +224,10 @@ export class RstifyClient {
     await this.request("DELETE", `/client/${id}`);
   }
 
+  async registerFcmToken(clientId: number, fcmToken: string): Promise<Client> {
+    return this.request("PUT", `/client/${clientId}/fcm-token`, { fcm_token: fcmToken });
+  }
+
   // Messages
   async listMessages(
     limit = 100,

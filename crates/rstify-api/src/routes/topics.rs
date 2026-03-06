@@ -289,6 +289,20 @@ pub async fn publish_to_topic(
         });
     }
 
+    // Send FCM push notifications to topic owner
+    if req.scheduled_for.is_none() {
+        if let Some(ref fcm) = state.fcm {
+            if let Some(owner_id) = topic.owner_id {
+                let fcm = fcm.clone();
+                let client_repo = state.client_repo.clone();
+                let resp = response.clone();
+                tokio::spawn(async move {
+                    fcm.notify_user(&client_repo, owner_id, &resp).await;
+                });
+            }
+        }
+    }
+
     Ok(Json(response))
 }
 
