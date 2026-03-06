@@ -39,3 +39,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# EAS credentials (never commit)
+credentials.json
+credentials/
+*.jks
+*.keystore
+keystore.b64
