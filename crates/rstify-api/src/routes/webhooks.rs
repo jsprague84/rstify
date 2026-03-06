@@ -7,6 +7,7 @@ use rstify_core::repositories::{MessageRepository, TopicRepository};
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
+use crate::utils::validate_webhook_url;
 
 #[utoipa::path(
     post,
@@ -19,6 +20,12 @@ pub async fn create_webhook(
     auth: AuthUser,
     Json(req): Json<CreateWebhookConfig>,
 ) -> Result<Json<WebhookConfig>, ApiError> {
+    // SSRF protection: validate outgoing webhook target URLs
+    if let Some(ref url) = req.target_url {
+        validate_webhook_url(url)
+            .map_err(|e| ApiError::from(rstify_core::error::CoreError::Validation(e)))?;
+    }
+
     let token = generate_webhook_token();
     let template_json = serde_json::to_string(&req.template).unwrap_or_default();
 
@@ -79,6 +86,12 @@ pub async fn update_webhook(
         return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
             "Not your webhook config".to_string(),
         )));
+    }
+
+    // SSRF protection: validate outgoing webhook target URLs
+    if let Some(ref url) = req.target_url {
+        validate_webhook_url(url)
+            .map_err(|e| ApiError::from(rstify_core::error::CoreError::Validation(e)))?;
     }
 
     let template_json = req
