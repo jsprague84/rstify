@@ -51,8 +51,8 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > client/rstify-release.keystore
-          ls -la client/rstify-release.keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > client/android/rstify-release.keystore
+          ls -la client/android/rstify-release.keystore
 
       - name: Configure signing
         working-directory: ./client/android
@@ -61,7 +61,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "RSTIFY_RELEASE_STORE_FILE=../rstify-release.keystore" >> gradle.properties
+          echo "RSTIFY_RELEASE_STORE_FILE=rstify-release.keystore" >> gradle.properties
           echo "RSTIFY_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> gradle.properties
           echo "RSTIFY_RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> gradle.properties
           echo "RSTIFY_RELEASE_KEY_PASSWORD=$KEY_PASSWORD" >> gradle.properties
@@ -99,4 +99,4 @@ jobs:
 
       - name: Clean up keystore
         if: always()
-        run: rm -f client/rstify-release.keystore
+        run: rm -f client/android/rstify-release.keystore
