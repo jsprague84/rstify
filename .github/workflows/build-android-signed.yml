@@ -61,7 +61,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "RSTIFY_RELEASE_STORE_FILE=rstify-release.keystore" >> gradle.properties
+          echo "RSTIFY_RELEASE_STORE_FILE=../rstify-release.keystore" >> gradle.properties
           echo "RSTIFY_RELEASE_KEY_ALIAS=$KEY_ALIAS" >> gradle.properties
           echo "RSTIFY_RELEASE_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> gradle.properties
           echo "RSTIFY_RELEASE_KEY_PASSWORD=$KEY_PASSWORD" >> gradle.properties
