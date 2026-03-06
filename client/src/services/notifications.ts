@@ -69,6 +69,29 @@ function getChannelForPriority(priority: number): string {
 }
 
 /**
+ * Strip markdown syntax so notification body reads as clean plain text.
+ */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, "") // headings
+    .replace(/\*\*(.+?)\*\*/g, "$1") // bold
+    .replace(/\*(.+?)\*/g, "$1") // italic
+    .replace(/__(.+?)__/g, "$1") // bold alt
+    .replace(/_(.+?)_/g, "$1") // italic alt
+    .replace(/~~(.+?)~~/g, "$1") // strikethrough
+    .replace(/`{1,3}([^`]+)`{1,3}/g, "$1") // inline/block code
+    .replace(/^\s*[-*+]\s+/gm, "• ") // list items
+    .replace(/^\s*\d+\.\s+/gm, "") // numbered lists
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // links
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1") // images
+    .replace(/^\|.*\|$/gm, (line) => // table rows → space-separated
+      line.replace(/\|/g, " ").replace(/[-:]+/g, "").trim()
+    )
+    .replace(/\n{3,}/g, "\n\n") // collapse blank lines
+    .trim();
+}
+
+/**
  * Show a local notification for a message received via WebSocket.
  * Fires in all app states so the user always sees Android notifications.
  */
@@ -76,7 +99,7 @@ export async function showMessageNotification(msg: MessageResponse) {
   await Notifications.scheduleNotificationAsync({
     content: {
       title: msg.title || "New Message",
-      body: msg.message,
+      body: stripMarkdown(msg.message),
       data: { messageId: msg.id, clickUrl: msg.click_url },
       ...(Platform.OS === "android" && {
         channelId: getChannelForPriority(msg.priority),

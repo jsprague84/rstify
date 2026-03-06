@@ -16,6 +16,9 @@ SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isLoading = useAuthStore((s) => s.isLoading);
+
+  if (isLoading) return null;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
