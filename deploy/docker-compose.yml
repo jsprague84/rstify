@@ -8,6 +8,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - UPLOAD_DIR=/uploads
       - RUST_LOG=${RUST_LOG:-rstify=info,tower_http=info}
+      - FCM_PROJECT_ID=${FCM_PROJECT_ID:-}
+      - FCM_SERVICE_ACCOUNT_PATH=${FCM_SERVICE_ACCOUNT_PATH:-}
     volumes:
       - /home/ubuntu/docker/rstify/data:/data
       - /home/ubuntu/docker/rstify/uploads:/uploads
