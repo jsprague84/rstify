@@ -19,7 +19,7 @@ function AppIcon({ app, size = 32 }: { app: Application; size?: number }) {
       src={`${api.getApplicationIconUrl(app.id)}?v=${v}`}
       alt={app.name}
       style={{ width: size, height: size }}
-      className="rounded object-cover"
+      className="rounded object-contain"
     />
   );
 }
@@ -182,7 +182,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
               <img
                 src={`${api.getApplicationIconUrl(app.id)}?v=${iconVersion}`}
                 alt="icon"
-                className="w-10 h-10 rounded object-cover"
+                className="w-10 h-10 rounded object-contain"
               />
             ) : (
               <div className="w-10 h-10 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">

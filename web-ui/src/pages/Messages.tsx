@@ -104,7 +104,7 @@ export default function Messages() {
                   <img
                     src={m.icon_url}
                     alt="Message icon"
-                    className="w-10 h-10 rounded flex-shrink-0 object-cover"
+                    className="w-10 h-10 rounded flex-shrink-0 object-contain"
                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
                 )}
