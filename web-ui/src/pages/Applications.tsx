@@ -74,7 +74,7 @@ export default function Applications() {
         keyField="id"
         columns={[
           { key: 'id', header: 'ID' },
-          { key: 'image', header: 'Icon', render: a => <AppIcon app={a} size={28} /> },
+          { key: 'image', header: 'Icon', render: a => <button onClick={() => setEditApp(a)} className="cursor-pointer"><AppIcon app={a} size={28} /></button> },
           { key: 'name', header: 'Name' },
           { key: 'description', header: 'Description', render: a => a.description || '-' },
           { key: 'token', header: 'Token', render: a => <TokenDisplay token={a.token} /> },
@@ -195,8 +195,16 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
               accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp"
               onChange={handleIconUpload}
               disabled={iconLoading}
-              className="text-sm"
+              className="hidden"
             />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={iconLoading}
+              className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
+            >
+              {iconLoading ? 'Uploading...' : 'Choose File'}
+            </button>
             {hasIcon && (
               <button
                 type="button"
