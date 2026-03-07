@@ -7,6 +7,7 @@ members = [
     "crates/rstify-api",
     "crates/rstify-jobs",
     "crates/rstify-server",
+    "crates/rstify-cli",
 ]
 
 [workspace.package]
