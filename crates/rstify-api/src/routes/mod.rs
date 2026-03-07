@@ -102,6 +102,10 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
         .route("/api/webhooks", get(webhooks::list_webhooks))
         .route("/api/webhooks/{id}", put(webhooks::update_webhook))
         .route("/api/webhooks/{id}", delete(webhooks::delete_webhook))
+        .route(
+            "/api/webhooks/{id}/deliveries",
+            get(webhooks::list_webhook_deliveries),
+        )
         .route("/api/wh/{token}", post(webhooks::receive_webhook))
         // Permissions
         .route("/api/permissions", post(topics::create_permission))

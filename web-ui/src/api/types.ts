@@ -142,6 +142,17 @@ export interface UpdateWebhookConfig {
   enabled?: boolean;
 }
 
+export interface WebhookDeliveryLog {
+  id: number;
+  webhook_config_id: number;
+  message_id?: number;
+  status_code?: number;
+  response_body_preview?: string;
+  duration_ms: number;
+  attempted_at: string;
+  success: boolean;
+}
+
 export interface StatsResponse {
   users: number;
   topics: number;

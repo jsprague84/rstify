@@ -85,6 +85,36 @@ async fn cleanup_retention(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
     Ok(result.rows_affected())
 }
 
+/// Background task that cleans up old webhook delivery logs (older than 30 days)
+pub async fn run_delivery_log_cleanup(pool: SqlitePool, cancel: CancellationToken) {
+    info!("Delivery log cleanup worker started");
+
+    loop {
+        tokio::select! {
+            _ = cancel.cancelled() => {
+                info!("Delivery log cleanup worker shutting down");
+                break;
+            }
+            _ = tokio::time::sleep(std::time::Duration::from_secs(86400)) => {
+                match cleanup_old_delivery_logs(&pool).await {
+                    Ok(count) if count > 0 => info!("Cleaned up {} old delivery log entries", count),
+                    Err(e) => error!("Delivery log cleanup error: {}", e),
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+async fn cleanup_old_delivery_logs(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        "DELETE FROM webhook_delivery_log WHERE attempted_at < datetime('now', '-30 days')",
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
 async fn cleanup_expired(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     let expired = sqlx::query_as::<_, rstify_core::models::Attachment>(
         "SELECT * FROM attachments WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')",

@@ -116,6 +116,10 @@ impl Database {
                 "017_client_scopes",
                 include_str!("../../../migrations/017_client_scopes.sql"),
             ),
+            (
+                "018_webhook_delivery_log",
+                include_str!("../../../migrations/018_webhook_delivery_log.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {

@@ -1,8 +1,11 @@
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::Json;
 use rstify_auth::tokens::generate_webhook_token;
-use rstify_core::models::{CreateWebhookConfig, UpdateWebhookConfig, WebhookConfig};
+use rstify_core::models::{
+    CreateWebhookConfig, UpdateWebhookConfig, WebhookConfig, WebhookDeliveryLog,
+};
 use rstify_core::repositories::{MessageRepository, TopicRepository};
+use serde::Deserialize;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
@@ -288,4 +291,52 @@ pub async fn receive_webhook(
     Ok(Json(
         serde_json::json!({"success": true, "message_id": msg.id}),
     ))
+}
+
+#[derive(Deserialize)]
+pub struct DeliveryLogParams {
+    pub limit: Option<i64>,
+}
+
+/// GET /api/webhooks/{id}/deliveries - List recent delivery attempts
+#[utoipa::path(
+    get,
+    path = "/api/webhooks/{id}/deliveries",
+    responses((status = 200, body = Vec<WebhookDeliveryLog>))
+)]
+pub async fn list_webhook_deliveries(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<i64>,
+    Query(params): Query<DeliveryLogParams>,
+) -> Result<Json<Vec<WebhookDeliveryLog>>, ApiError> {
+    // Verify ownership
+    let existing = state
+        .message_repo
+        .find_webhook_config_by_id(id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Webhook config not found".to_string(),
+            ))
+        })?;
+
+    if existing.user_id != auth.user.id && !auth.user.is_admin {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Not your webhook config".to_string(),
+        )));
+    }
+
+    let limit = params.limit.unwrap_or(20).clamp(1, 100);
+    let logs = sqlx::query_as::<_, WebhookDeliveryLog>(
+        "SELECT * FROM webhook_delivery_log WHERE webhook_config_id = ? ORDER BY attempted_at DESC LIMIT ?",
+    )
+    .bind(id)
+    .bind(limit)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| ApiError::from(rstify_core::error::CoreError::Database(e.to_string())))?;
+
+    Ok(Json(logs))
 }

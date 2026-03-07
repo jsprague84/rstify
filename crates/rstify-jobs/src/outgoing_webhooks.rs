@@ -79,30 +79,66 @@ pub async fn fire_outgoing_webhooks(
         let max_retries = config.max_retries;
         let retry_delay = config.retry_delay_secs;
         let id = config.id;
+        let msg_id = message.id;
+        let log_pool = pool.clone();
 
         tokio::spawn(async move {
             for attempt in 0..=max_retries {
-                match req.try_clone().unwrap().send().await {
-                    Ok(resp) if resp.status().is_success() => {
-                        info!(
-                            "Outgoing webhook {} fired to {} (attempt {})",
-                            id,
-                            url,
-                            attempt + 1
-                        );
-                        return;
-                    }
+                let start = std::time::Instant::now();
+                let result = req.try_clone().unwrap().send().await;
+                let duration_ms = start.elapsed().as_millis() as i64;
+
+                match result {
                     Ok(resp) => {
+                        let status = resp.status().as_u16() as i32;
+                        let success = resp.status().is_success();
+                        let body_preview = resp
+                            .text()
+                            .await
+                            .ok()
+                            .map(|t| t.chars().take(512).collect::<String>());
+
+                        log_delivery(
+                            &log_pool,
+                            id,
+                            Some(msg_id),
+                            Some(status),
+                            body_preview.as_deref(),
+                            duration_ms,
+                            success,
+                        )
+                        .await;
+
+                        if success {
+                            info!(
+                                "Outgoing webhook {} fired to {} (attempt {})",
+                                id,
+                                url,
+                                attempt + 1
+                            );
+                            return;
+                        }
                         warn!(
                             "Outgoing webhook {} to {} returned {}, attempt {}/{}",
                             id,
                             url,
-                            resp.status(),
+                            status,
                             attempt + 1,
                             max_retries + 1
                         );
                     }
                     Err(e) => {
+                        log_delivery(
+                            &log_pool,
+                            id,
+                            Some(msg_id),
+                            None,
+                            Some(&e.to_string()),
+                            duration_ms,
+                            false,
+                        )
+                        .await;
+
                         warn!(
                             "Outgoing webhook {} to {} failed: {}, attempt {}/{}",
                             id,
@@ -120,6 +156,31 @@ pub async fn fire_outgoing_webhooks(
             }
             error!("Outgoing webhook {} to {} exhausted all retries", id, url);
         });
+    }
+}
+
+async fn log_delivery(
+    pool: &SqlitePool,
+    webhook_config_id: i64,
+    message_id: Option<i64>,
+    status_code: Option<i32>,
+    response_body_preview: Option<&str>,
+    duration_ms: i64,
+    success: bool,
+) {
+    if let Err(e) = sqlx::query(
+        "INSERT INTO webhook_delivery_log (webhook_config_id, message_id, status_code, response_body_preview, duration_ms, success) VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(webhook_config_id)
+    .bind(message_id)
+    .bind(status_code)
+    .bind(response_body_preview)
+    .bind(duration_ms)
+    .bind(success)
+    .execute(pool)
+    .await
+    {
+        error!("Failed to log webhook delivery: {}", e);
     }
 }
 

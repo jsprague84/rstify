@@ -6,6 +6,7 @@ import type {
   TopicPermission, CreateTopicPermission,
   PagedMessages, MessageResponse,
   WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig,
+  WebhookDeliveryLog,
   StatsResponse, LoginResponse,
 } from './types';
 
@@ -151,6 +152,9 @@ export const api = {
   },
   deleteWebhook(id: number): Promise<void> {
     return request(`/api/webhooks/${id}`, { method: 'DELETE' });
+  },
+  listWebhookDeliveries(id: number, limit = 20): Promise<WebhookDeliveryLog[]> {
+    return request(`/api/webhooks/${id}/deliveries?limit=${limit}`);
   },
 
   // Permissions

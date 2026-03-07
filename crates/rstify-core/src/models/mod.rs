@@ -6,6 +6,7 @@ pub mod message;
 pub mod topic;
 pub mod unified_push;
 pub mod user;
+pub mod webhook_delivery;
 
 pub use action::*;
 pub use application::*;
@@ -15,3 +16,4 @@ pub use message::*;
 pub use topic::*;
 pub use unified_push::*;
 pub use user::*;
+pub use webhook_delivery::*;
