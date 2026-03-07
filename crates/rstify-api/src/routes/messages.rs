@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query, State, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use axum::Json;
-use rstify_core::models::{CreateAppMessage, MessageResponse, PagedMessages, Paging};
+use rstify_core::models::{CreateAppMessage, MessageResponse, PagedMessages, Paging, UpdateMessage};
 use rstify_core::repositories::{ApplicationRepository, ClientRepository, MessageRepository};
 use serde::Deserialize;
 
@@ -165,6 +165,71 @@ pub async fn delete_all_messages(
         .await
         .map_err(ApiError::from)?;
     Ok(Json(serde_json::json!({"success": true})))
+}
+
+/// PUT /message/{id} - Update a specific message
+#[utoipa::path(
+    put,
+    path = "/message/{id}",
+    request_body = UpdateMessage,
+    responses((status = 200, body = MessageResponse))
+)]
+pub async fn update_message(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<i64>,
+    Json(req): Json<UpdateMessage>,
+) -> Result<Json<MessageResponse>, ApiError> {
+    let msg = state
+        .message_repo
+        .find_by_id(id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Message not found".to_string(),
+            ))
+        })?;
+
+    // Ownership check
+    if !auth.user.is_admin {
+        let is_owner = if let Some(app_id) = msg.application_id {
+            state
+                .app_repo
+                .find_by_id(app_id)
+                .await
+                .map_err(ApiError::from)?
+                .map(|app| app.user_id == auth.user.id)
+                .unwrap_or(false)
+        } else {
+            msg.user_id == Some(auth.user.id)
+        };
+
+        if !is_owner {
+            return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+                "Not your message".to_string(),
+            )));
+        }
+    }
+
+    let extras_json = req
+        .extras
+        .as_ref()
+        .map(|e| serde_json::to_string(e).unwrap_or_default());
+
+    let updated = state
+        .message_repo
+        .update(
+            id,
+            req.title.as_deref(),
+            req.message.as_deref(),
+            req.priority,
+            extras_json.as_deref(),
+        )
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(Json(updated.to_response(None)))
 }
 
 /// DELETE /message/{id} - Delete a specific message

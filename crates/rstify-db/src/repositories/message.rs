@@ -119,6 +119,37 @@ impl MessageRepository for SqliteMessageRepo {
         .map_err(|e| CoreError::Database(e.to_string()))
     }
 
+    async fn update(
+        &self,
+        id: i64,
+        title: Option<&str>,
+        message: Option<&str>,
+        priority: Option<i32>,
+        extras: Option<&str>,
+    ) -> Result<Message, CoreError> {
+        let current = self
+            .find_by_id(id)
+            .await?
+            .ok_or_else(|| CoreError::NotFound(format!("Message {} not found", id)))?;
+
+        let new_title = title.or(current.title.as_deref());
+        let new_message = message.unwrap_or(&current.message);
+        let new_priority = priority.unwrap_or(current.priority);
+        let new_extras = extras.map(|s| s.to_string()).or(current.extras);
+
+        sqlx::query_as::<_, Message>(
+            "UPDATE messages SET title = ?, message = ?, priority = ?, extras = ? WHERE id = ? RETURNING *",
+        )
+        .bind(new_title)
+        .bind(new_message)
+        .bind(new_priority)
+        .bind(&new_extras)
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))
+    }
+
     async fn delete_by_id(&self, id: i64) -> Result<(), CoreError> {
         let result = sqlx::query("DELETE FROM messages WHERE id = ?")
             .bind(id)

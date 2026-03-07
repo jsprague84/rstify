@@ -23,6 +23,7 @@ pub fn gotify_routes(_state: AppState) -> Router<AppState> {
         .route("/message", post(messages::create_app_message))
         .route("/message", get(messages::list_messages))
         .route("/message", delete(messages::delete_all_messages))
+        .route("/message/{id}", put(messages::update_message))
         .route("/message/{id}", delete(messages::delete_message))
         // Applications
         .route("/application", get(applications::list_applications))

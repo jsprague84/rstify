@@ -45,6 +45,15 @@ pub struct CreateTopicMessage {
     pub scheduled_for: Option<String>,
 }
 
+/// Update an existing message
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateMessage {
+    pub title: Option<String>,
+    pub message: Option<String>,
+    pub priority: Option<i32>,
+    pub extras: Option<serde_json::Value>,
+}
+
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct MessageResponse {
     pub id: i64,
