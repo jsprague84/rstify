@@ -20,6 +20,13 @@ pub struct CreateTopic {
     pub everyone_write: Option<bool>,
 }
 
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct UpdateTopic {
+    pub description: Option<String>,
+    pub everyone_read: Option<bool>,
+    pub everyone_write: Option<bool>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
 pub struct TopicPermission {
     pub id: i64,

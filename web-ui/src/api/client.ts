@@ -121,6 +121,9 @@ export const api = {
   createTopic(data: CreateTopic): Promise<Topic> {
     return request('/api/topics', { method: 'POST', body: JSON.stringify(data) });
   },
+  updateTopic(name: string, data: { description?: string; everyone_read?: boolean; everyone_write?: boolean }): Promise<Topic> {
+    return request(`/api/topics/${encodeURIComponent(name)}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
   deleteTopic(name: string): Promise<void> {
     return request(`/api/topics/${encodeURIComponent(name)}`, { method: 'DELETE' });
   },

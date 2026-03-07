@@ -4,7 +4,7 @@ use axum::Json;
 use rstify_auth::acl::topic_matches;
 use rstify_core::models::{
     CreateTopic, CreateTopicMessage, CreateTopicPermission, MessageResponse, PagedMessages, Paging,
-    Topic, TopicPermission,
+    Topic, TopicPermission, UpdateTopic,
 };
 use rstify_core::repositories::{MessageRepository, TopicRepository};
 
@@ -108,6 +108,50 @@ pub async fn get_topic(
     check_read_permission(&state, &auth.user, &topic).await?;
 
     Ok(Json(topic))
+}
+
+/// PUT /api/topics/{name} - Update a topic
+#[utoipa::path(
+    put,
+    path = "/api/topics/{name}",
+    request_body = UpdateTopic,
+    responses((status = 200, body = Topic))
+)]
+pub async fn update_topic(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(name): Path<String>,
+    Json(req): Json<UpdateTopic>,
+) -> Result<Json<Topic>, ApiError> {
+    let topic = state
+        .topic_repo
+        .find_by_name(&name)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Topic not found".to_string(),
+            ))
+        })?;
+
+    if topic.owner_id != Some(auth.user.id) && !auth.user.is_admin {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Not your topic".to_string(),
+        )));
+    }
+
+    let updated = state
+        .topic_repo
+        .update(
+            topic.id,
+            req.description.as_deref(),
+            req.everyone_read,
+            req.everyone_write,
+        )
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(Json(updated))
 }
 
 #[utoipa::path(delete, path = "/api/topics/{name}", responses((status = 200)))]

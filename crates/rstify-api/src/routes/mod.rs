@@ -75,6 +75,7 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
         .route("/api/topics", post(topics::create_topic))
         .route("/api/topics", get(topics::list_topics))
         .route("/api/topics/{name}", get(topics::get_topic))
+        .route("/api/topics/{name}", put(topics::update_topic))
         .route("/api/topics/{name}", delete(topics::delete_topic))
         .route("/api/topics/{name}/publish", post(topics::publish_to_topic))
         .route("/api/topics/{name}/ws", get(topics::topic_websocket))

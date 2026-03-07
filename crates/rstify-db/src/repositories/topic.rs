@@ -86,6 +86,34 @@ impl TopicRepository for SqliteTopicRepo {
         .map_err(|e| CoreError::Database(e.to_string()))
     }
 
+    async fn update(
+        &self,
+        id: i64,
+        description: Option<&str>,
+        everyone_read: Option<bool>,
+        everyone_write: Option<bool>,
+    ) -> Result<Topic, CoreError> {
+        let current = self
+            .find_by_id(id)
+            .await?
+            .ok_or_else(|| CoreError::NotFound(format!("Topic {} not found", id)))?;
+
+        let new_desc = description.or(current.description.as_deref());
+        let new_read = everyone_read.unwrap_or(current.everyone_read);
+        let new_write = everyone_write.unwrap_or(current.everyone_write);
+
+        sqlx::query_as::<_, Topic>(
+            "UPDATE topics SET description = ?, everyone_read = ?, everyone_write = ? WHERE id = ? RETURNING *",
+        )
+        .bind(new_desc)
+        .bind(new_read)
+        .bind(new_write)
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))
+    }
+
     async fn delete(&self, id: i64) -> Result<(), CoreError> {
         let result = sqlx::query("DELETE FROM topics WHERE id = ?")
             .bind(id)
