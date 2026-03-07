@@ -23,6 +23,7 @@ import type {
   Client,
   StatsResponse,
   UserResponse,
+  TopicPermission,
 } from "../../src/api";
 import {
   getDevicePushToken,
@@ -53,8 +54,19 @@ export default function SettingsScreen() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
+  // Client token creation
+  const [showCreateToken, setShowCreateToken] = useState(false);
+  const [newTokenName, setNewTokenName] = useState("");
+
   // Admin sections
   const [showUsers, setShowUsers] = useState(false);
+  const [permissions, setPermissions] = useState<TopicPermission[]>([]);
+  const [showPermissions, setShowPermissions] = useState(false);
+  const [showCreatePerm, setShowCreatePerm] = useState(false);
+  const [newPermUserId, setNewPermUserId] = useState("");
+  const [newPermPattern, setNewPermPattern] = useState("");
+  const [newPermRead, setNewPermRead] = useState(true);
+  const [newPermWrite, setNewPermWrite] = useState(false);
 
   // Push notification status check
   useEffect(() => {
@@ -77,7 +89,7 @@ export default function SettingsScreen() {
       ];
 
       if (user?.is_admin) {
-        promises.push(api.getStats(), api.listUsers());
+        promises.push(api.getStats(), api.listUsers(), api.listPermissions());
       }
 
       const results = await Promise.allSettled(promises);
@@ -92,6 +104,8 @@ export default function SettingsScreen() {
           setStats(results[2].value as StatsResponse);
         if (results[3]?.status === "fulfilled")
           setUsers(results[3].value as UserResponse[]);
+        if (results[4]?.status === "fulfilled")
+          setPermissions(results[4].value as TopicPermission[]);
       }
     } catch {
       // ignore
@@ -424,18 +438,60 @@ export default function SettingsScreen() {
 
         {/* Client Tokens */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-            Client Tokens ({clients.length})
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+              Client Tokens ({clients.length})
+            </Text>
+            <Pressable
+              onPress={() => {
+                Alert.prompt
+                  ? Alert.prompt("New Client Token", "Enter a name:", async (name) => {
+                      if (!name?.trim()) return;
+                      try {
+                        const api = getApiClient();
+                        await api.createClient({ name: name.trim() });
+                        fetchData();
+                      } catch (e) {
+                        Alert.alert("Error", e instanceof Error ? e.message : "Failed to create");
+                      }
+                    })
+                  : setShowCreateToken(true);
+              }}
+              hitSlop={8}
+            >
+              <Ionicons name="add-circle-outline" size={20} color={colors.primary} />
+            </Pressable>
+          </View>
           <View style={[styles.card, { backgroundColor: colors.surface }]}>
             {clients.map((client) => (
-              <View key={client.id} style={styles.row}>
+              <Pressable
+                key={client.id}
+                style={styles.row}
+                onLongPress={() => {
+                  Alert.alert("Delete Token", `Delete "${client.name}"?`, [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Delete",
+                      style: "destructive",
+                      onPress: async () => {
+                        try {
+                          const api = getApiClient();
+                          await api.deleteClient(client.id);
+                          fetchData();
+                        } catch (e) {
+                          Alert.alert("Error", e instanceof Error ? e.message : "Delete failed");
+                        }
+                      },
+                    },
+                  ]);
+                }}
+              >
                 <Ionicons name="key-outline" size={20} color={colors.textSecondary} />
                 <View style={styles.rowContent}>
                   <Text style={[styles.rowLabel, { color: colors.text }]}>{client.name}</Text>
                   <Text style={[styles.rowValueMono, { color: colors.textSecondary }]}>{client.token}</Text>
                 </View>
-              </View>
+              </Pressable>
             ))}
             {clients.length === 0 ? (
               <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No client tokens</Text>
@@ -547,12 +603,193 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
+        {/* Permissions (Admin) */}
+        {user?.is_admin ? (
+          <View style={styles.section}>
+            <Pressable
+              style={styles.sectionHeader}
+              onPress={() => setShowPermissions(!showPermissions)}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                Topic Permissions ({permissions.length})
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Pressable
+                  onPress={() => setShowCreatePerm(true)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                </Pressable>
+                <Ionicons
+                  name={showPermissions ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={colors.textTertiary}
+                />
+              </View>
+            </Pressable>
+            {showPermissions ? (
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                {permissions.map((p) => (
+                  <Pressable
+                    key={p.id}
+                    style={styles.userRow}
+                    onLongPress={() => {
+                      Alert.alert("Delete Permission", `Delete permission for pattern "${p.topic_pattern}"?`, [
+                        { text: "Cancel", style: "cancel" },
+                        {
+                          text: "Delete",
+                          style: "destructive",
+                          onPress: async () => {
+                            try {
+                              const api = getApiClient();
+                              await api.deletePermission(p.id);
+                              fetchData();
+                            } catch (e) {
+                              Alert.alert("Error", e instanceof Error ? e.message : "Delete failed");
+                            }
+                          },
+                        },
+                      ]);
+                    }}
+                  >
+                    <View style={styles.userInfo}>
+                      <Text style={[styles.userName, { color: colors.text }]}>
+                        User #{p.user_id} — {p.topic_pattern}
+                      </Text>
+                      <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
+                        {p.can_read ? "Read" : ""}{p.can_read && p.can_write ? " + " : ""}{p.can_write ? "Write" : ""}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+                {permissions.length === 0 ? (
+                  <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No permissions configured</Text>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Logout */}
         <Pressable style={[styles.logoutButton, { backgroundColor: colors.surface, borderColor: isDark ? colors.error + "40" : "#fecaca" }]} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
           <Text style={[styles.logoutText, { color: colors.error }]}>Logout</Text>
         </Pressable>
       </KeyboardAwareScrollView>
+
+      <Modal visible={showCreatePerm} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowCreatePerm(false)}>
+          <Pressable style={{ maxHeight: "80%" }} onPress={() => {}}>
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>New Permission</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                placeholder="User ID"
+                placeholderTextColor={colors.textTertiary}
+                value={newPermUserId}
+                onChangeText={setNewPermUserId}
+                keyboardType="numeric"
+              />
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                placeholder="Topic pattern (e.g. alerts.*)"
+                placeholderTextColor={colors.textTertiary}
+                value={newPermPattern}
+                onChangeText={setNewPermPattern}
+                autoCapitalize="none"
+              />
+              <View style={styles.permToggleRow}>
+                <Text style={[{ fontSize: 15 }, { color: colors.text }]}>Can Read</Text>
+                <Switch value={newPermRead} onValueChange={setNewPermRead} />
+              </View>
+              <View style={styles.permToggleRow}>
+                <Text style={[{ fontSize: 15 }, { color: colors.text }]}>Can Write</Text>
+                <Switch value={newPermWrite} onValueChange={setNewPermWrite} />
+              </View>
+              <View style={styles.modalButtons}>
+                <Pressable
+                  style={[styles.modalCancelButton, { backgroundColor: colors.backgroundTertiary }]}
+                  onPress={() => { setShowCreatePerm(false); }}
+                >
+                  <Text style={[{ fontWeight: "600" }, { color: colors.textSecondary }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalSubmitButton, { backgroundColor: colors.primary }]}
+                  onPress={async () => {
+                    const userId = parseInt(newPermUserId, 10);
+                    if (isNaN(userId) || !newPermPattern.trim()) {
+                      Alert.alert("Error", "User ID and pattern are required");
+                      return;
+                    }
+                    try {
+                      const api = getApiClient();
+                      await api.createPermission({
+                        user_id: userId,
+                        topic_pattern: newPermPattern.trim(),
+                        can_read: newPermRead,
+                        can_write: newPermWrite,
+                      });
+                      setNewPermUserId("");
+                      setNewPermPattern("");
+                      setNewPermRead(true);
+                      setNewPermWrite(false);
+                      setShowCreatePerm(false);
+                      fetchData();
+                    } catch (e) {
+                      Alert.alert("Error", e instanceof Error ? e.message : "Failed to create");
+                    }
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "600" }}>Create</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showCreateToken} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowCreateToken(false)}>
+          <Pressable style={{ maxHeight: "80%" }} onPress={() => {}}>
+            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>New Client Token</Text>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                placeholder="Token name"
+                placeholderTextColor={colors.textTertiary}
+                value={newTokenName}
+                onChangeText={setNewTokenName}
+                autoCapitalize="none"
+              />
+              <View style={styles.modalButtons}>
+                <Pressable
+                  style={[styles.modalCancelButton, { backgroundColor: colors.backgroundTertiary }]}
+                  onPress={() => { setShowCreateToken(false); setNewTokenName(""); }}
+                >
+                  <Text style={[{ fontWeight: "600" }, { color: colors.textSecondary }]}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.modalSubmitButton, { backgroundColor: colors.primary }]}
+                  onPress={async () => {
+                    if (!newTokenName.trim()) return;
+                    try {
+                      const api = getApiClient();
+                      await api.createClient({ name: newTokenName.trim() });
+                      setNewTokenName("");
+                      setShowCreateToken(false);
+                      fetchData();
+                    } catch (e) {
+                      Alert.alert("Error", e instanceof Error ? e.message : "Failed to create");
+                    }
+                  }}
+                >
+                  <Text style={{ color: "#fff", fontWeight: "600" }}>Create</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -706,4 +943,37 @@ const styles = StyleSheet.create({
     borderColor: "#fecaca",
   },
   logoutText: { color: "#ef4444", fontSize: 16, fontWeight: "600" },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modalContent: {
+    borderRadius: 16,
+    padding: 24,
+    gap: 12,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "700" },
+  modalButtons: { flexDirection: "row", gap: 12, marginTop: 4 },
+  modalCancelButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  modalSubmitButton: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  permToggleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    marginVertical: 4,
+  },
 });

@@ -53,7 +53,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ServerInfo({ health }: { health: HealthResponse }) {
+function ServerInfo({ health, version }: { health: HealthResponse; version: VersionResponse | null }) {
   const isHealthy = health.health === 'green';
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
@@ -64,7 +64,8 @@ function ServerInfo({ health }: { health: HealthResponse }) {
           <span className="text-gray-700 dark:text-gray-300">{isHealthy ? 'Healthy' : 'Degraded'}</span>
         </span>
         <span className="text-gray-500 dark:text-gray-400">DB: {health.database}</span>
-        {health.version && <span className="text-gray-500 dark:text-gray-400">v{health.version}</span>}
+        {version && <span className="text-gray-500 dark:text-gray-400">v{version.version}</span>}
+        {version?.buildDate && <span className="text-gray-500 dark:text-gray-400">Built: {version.buildDate}</span>}
       </div>
     </div>
   );

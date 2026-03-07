@@ -20,7 +20,7 @@ import { useUserWebSocket } from "../../src/hooks/useWebSocket";
 import { useTheme } from "../../src/store/theme";
 import { Colors } from "../../src/theme/colors";
 import { getApiClient } from "../../src/api";
-import type { Application, MessageResponse } from "../../src/api";
+import type { MessageResponse } from "../../src/api";
 import {
   showMessageNotification,
   getDevicePushToken,
@@ -40,9 +40,9 @@ export default function MessagesScreen() {
   const deleteAllMessages = useMessagesStore((s) => s.deleteAllMessages);
 
   const [clientToken, setClientToken] = useState<string | null>(null);
-  const [apps, setApps] = useState<Application[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<MessageResponse[] | null>(null);
+  const [sourceFilter, setSourceFilter] = useState<"all" | "app" | "topic">("all");
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSearch = (query: string) => {
@@ -63,30 +63,12 @@ export default function MessagesScreen() {
     }, 300);
   };
 
-  // Load apps for icon URLs
-  useEffect(() => {
-    const loadApps = async () => {
-      try {
-        const api = getApiClient();
-        const result = await api.listApplications();
-        setApps(result);
-      } catch {
-        // non-critical
-      }
-    };
-    loadApps();
-  }, []);
-
-  const appIconMap = useMemo(() => {
-    const api = getApiClient();
-    const map: Record<number, string> = {};
-    for (const app of apps) {
-      if (app.image) {
-        map[app.id] = api.applicationIconUrl(app.id);
-      }
-    }
-    return map;
-  }, [apps]);
+  const filteredMessages = useMemo(() => {
+    const source = searchResults ?? messages;
+    if (sourceFilter === "app") return source.filter((m) => m.appid != null);
+    if (sourceFilter === "topic") return source.filter((m) => m.topic != null);
+    return source;
+  }, [messages, searchResults, sourceFilter]);
 
   // Get or create a client token for WebSocket + register FCM token
   useEffect(() => {
@@ -151,10 +133,9 @@ export default function MessagesScreen() {
       <MessageCard
         message={item}
         onDelete={handleDelete}
-        appIconUrl={item.appid ? appIconMap[item.appid] : undefined}
       />
     ),
-    [appIconMap],
+    [handleDelete],
   );
 
   const keyExtractor = useCallback(
@@ -202,7 +183,7 @@ export default function MessagesScreen() {
           </Pressable>
         ) : null}
       </View>
-      <View style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4, backgroundColor: colors.surface }}>
         <TextInput
           placeholder="Search messages..."
           placeholderTextColor={colors.textSecondary}
@@ -217,10 +198,32 @@ export default function MessagesScreen() {
             fontSize: 14,
           }}
         />
+        <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+          {(["all", "app", "topic"] as const).map((f) => (
+            <Pressable
+              key={f}
+              onPress={() => setSourceFilter(f)}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 4,
+                borderRadius: 16,
+                backgroundColor: sourceFilter === f ? colors.primary : colors.backgroundSecondary,
+              }}
+            >
+              <Text style={{
+                fontSize: 12,
+                fontWeight: "600",
+                color: sourceFilter === f ? "#fff" : colors.textSecondary,
+              }}>
+                {f === "all" ? "All" : f === "app" ? "App" : "Topic"}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       <FlatList
-        data={searchResults ?? messages}
+        data={filteredMessages}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         removeClippedSubviews

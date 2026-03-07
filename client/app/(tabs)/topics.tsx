@@ -9,6 +9,7 @@ import {
   Alert,
   TextInput,
   Modal,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
@@ -29,9 +30,16 @@ export default function TopicsScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newTopicName, setNewTopicName] = useState("");
+  const [newTopicEveryoneRead, setNewTopicEveryoneRead] = useState(false);
+  const [newTopicEveryoneWrite, setNewTopicEveryoneWrite] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
   const [publishTitle, setPublishTitle] = useState("");
   const [publishMessage, setPublishMessage] = useState("");
+  const [showEdit, setShowEdit] = useState(false);
+  const [editTopic, setEditTopic] = useState<Topic | null>(null);
+  const [editDesc, setEditDesc] = useState("");
+  const [editEveryoneRead, setEditEveryoneRead] = useState(false);
+  const [editEveryoneWrite, setEditEveryoneWrite] = useState(false);
 
   const fetchTopics = useCallback(async () => {
     setIsLoading(true);
@@ -65,12 +73,35 @@ export default function TopicsScreen() {
     if (!newTopicName.trim()) return;
     try {
       const api = getApiClient();
-      await api.createTopic({ name: newTopicName.trim() });
+      await api.createTopic({
+        name: newTopicName.trim(),
+        everyone_read: newTopicEveryoneRead,
+        everyone_write: newTopicEveryoneWrite,
+      });
       setNewTopicName("");
+      setNewTopicEveryoneRead(false);
+      setNewTopicEveryoneWrite(false);
       setShowCreate(false);
       fetchTopics();
     } catch (e) {
       Alert.alert("Error", e instanceof Error ? e.message : "Failed to create topic");
+    }
+  };
+
+  const handleEditTopic = async () => {
+    if (!editTopic) return;
+    try {
+      const api = getApiClient();
+      await api.updateTopic(editTopic.name, {
+        description: editDesc || undefined,
+        everyone_read: editEveryoneRead,
+        everyone_write: editEveryoneWrite,
+      });
+      setShowEdit(false);
+      setEditTopic(null);
+      fetchTopics();
+    } catch (e) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Failed to update topic");
     }
   };
 
@@ -230,7 +261,22 @@ export default function TopicsScreen() {
           <Pressable
             style={[styles.topicItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
             onPress={() => handleSelectTopic(item)}
-            onLongPress={() => handleDeleteTopic(item)}
+            onLongPress={() => {
+              Alert.alert(item.name, "Choose an action", [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Edit",
+                  onPress: () => {
+                    setEditTopic(item);
+                    setEditDesc(item.description || "");
+                    setEditEveryoneRead(item.everyone_read);
+                    setEditEveryoneWrite(item.everyone_write);
+                    setShowEdit(true);
+                  },
+                },
+                { text: "Delete", style: "destructive", onPress: () => handleDeleteTopic(item) },
+              ]);
+            }}
           >
             <View style={styles.topicInfo}>
               <Text style={[styles.topicName, { color: colors.text }]}>{item.name}</Text>
@@ -296,6 +342,14 @@ export default function TopicsScreen() {
                   returnKeyType="done"
                   onSubmitEditing={handleCreateTopic}
                 />
+                <View style={styles.toggleRow}>
+                  <Text style={[styles.toggleLabel, { color: colors.text }]}>Public Read</Text>
+                  <Switch value={newTopicEveryoneRead} onValueChange={setNewTopicEveryoneRead} />
+                </View>
+                <View style={styles.toggleRow}>
+                  <Text style={[styles.toggleLabel, { color: colors.text }]}>Public Write</Text>
+                  <Switch value={newTopicEveryoneWrite} onValueChange={setNewTopicEveryoneWrite} />
+                </View>
                 <View style={styles.modalButtons}>
                   <Pressable
                     style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary }]}
@@ -308,6 +362,53 @@ export default function TopicsScreen() {
                     onPress={handleCreateTopic}
                   >
                     <Text style={styles.submitText}>Create</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </KeyboardAwareScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showEdit} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowEdit(false)}>
+          <Pressable style={styles.modalOuter} onPress={() => {}}>
+            <KeyboardAwareScrollView
+              bottomOffset={20}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.modalScrollContent}
+            >
+              <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>
+                  Edit {editTopic?.name}
+                </Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Description"
+                  placeholderTextColor={colors.textTertiary}
+                  value={editDesc}
+                  onChangeText={setEditDesc}
+                />
+                <View style={styles.toggleRow}>
+                  <Text style={[styles.toggleLabel, { color: colors.text }]}>Public Read</Text>
+                  <Switch value={editEveryoneRead} onValueChange={setEditEveryoneRead} />
+                </View>
+                <View style={styles.toggleRow}>
+                  <Text style={[styles.toggleLabel, { color: colors.text }]}>Public Write</Text>
+                  <Switch value={editEveryoneWrite} onValueChange={setEditEveryoneWrite} />
+                </View>
+                <View style={styles.modalButtons}>
+                  <Pressable
+                    style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary }]}
+                    onPress={() => setShowEdit(false)}
+                  >
+                    <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.submitButton, { backgroundColor: colors.primary }]}
+                    onPress={handleEditTopic}
+                  >
+                    <Text style={styles.submitText}>Save</Text>
                   </Pressable>
                 </View>
               </View>
@@ -397,4 +498,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   submitText: { color: "#fff", fontWeight: "600" },
+  toggleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  toggleLabel: { fontSize: 15 },
 });

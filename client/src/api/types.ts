@@ -83,6 +83,13 @@ export interface TopicPermission {
   can_write: boolean;
 }
 
+export interface CreateTopicPermission {
+  user_id: number;
+  topic_pattern: string;
+  can_read?: boolean;
+  can_write?: boolean;
+}
+
 export interface MessageAction {
   action: "view" | "http" | "broadcast";
   label: string;

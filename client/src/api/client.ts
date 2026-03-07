@@ -1,12 +1,14 @@
 import type {
   ApiError,
   Application,
+  AttachmentInfo,
   ChangePassword,
   Client,
   CreateApplication,
   CreateClient,
   CreateTopic,
   CreateTopicMessage,
+  CreateTopicPermission,
   CreateAppMessage,
   CreateWebhookConfig,
   HealthResponse,
@@ -355,14 +357,70 @@ export class RstifyClient {
     );
   }
 
+  // Topics - update
+  async updateTopic(
+    name: string,
+    data: { description?: string; everyone_read?: boolean; everyone_write?: boolean },
+  ): Promise<Topic> {
+    return this.request("PUT", `/api/topics/${encodeURIComponent(name)}`, data);
+  }
+
   // Permissions
   async listPermissions(): Promise<TopicPermission[]> {
     return this.request("GET", "/api/permissions");
   }
 
+  async createPermission(req: CreateTopicPermission): Promise<TopicPermission> {
+    return this.request("POST", "/api/permissions", req);
+  }
+
+  async deletePermission(id: number): Promise<void> {
+    await this.request("DELETE", `/api/permissions/${id}`);
+  }
+
   // Attachments
   downloadAttachmentUrl(id: number): string {
     return `${this.baseUrl}/api/attachments/${id}`;
+  }
+
+  async uploadAttachment(
+    messageId: number,
+    uri: string,
+    filename: string,
+    mimeType: string,
+  ): Promise<AttachmentInfo> {
+    const form = new FormData();
+    form.append("file", {
+      uri,
+      name: filename,
+      type: mimeType,
+    } as unknown as Blob);
+
+    const headers: Record<string, string> = {};
+    if (this.token) {
+      headers["Authorization"] = `Bearer ${this.token}`;
+    }
+
+    const response = await fetch(`${this.baseUrl}/api/messages/${messageId}/attachments`, {
+      method: "POST",
+      headers,
+      body: form,
+    });
+
+    if (!response.ok) {
+      let errorBody: ApiError;
+      try {
+        errorBody = await response.json();
+      } catch {
+        errorBody = {
+          error: response.statusText,
+          errorCode: response.status,
+        };
+      }
+      throw new RstifyApiError(response.status, errorBody);
+    }
+
+    return response.json();
   }
 
   async deleteAttachment(id: number): Promise<void> {
