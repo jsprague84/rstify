@@ -64,6 +64,7 @@ pub fn gotify_routes(_state: AppState) -> Router<AppState> {
         // Health & version
         .route("/health", get(health::health))
         .route("/version", get(health::version))
+        .route("/metrics", get(health::metrics))
 }
 
 /// Enhanced API routes (ntfy-inspired)

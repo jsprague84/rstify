@@ -27,6 +27,15 @@ impl ConnectionManager {
         }
     }
 
+    /// Count active connections (receivers) across all channels
+    pub async fn active_count(&self) -> usize {
+        let users = self.user_channels.read().await;
+        let topics = self.topic_channels.read().await;
+        let user_count: usize = users.values().map(|s| s.receiver_count()).sum();
+        let topic_count: usize = topics.values().map(|s| s.receiver_count()).sum();
+        user_count + topic_count
+    }
+
     /// Subscribe to a user's message stream (Gotify /stream)
     pub async fn subscribe_user(&self, user_id: i64) -> broadcast::Receiver<Arc<MessageResponse>> {
         let mut channels = self.user_channels.write().await;
