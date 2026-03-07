@@ -4,10 +4,12 @@ import type { MessageResponse } from '../api/types';
 import { useMessageStream } from '../hooks/useMessageStream';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
+import { useToast } from '../components/Toast';
 
 const PAGE_SIZE = 50;
 
 export default function Messages() {
+  const { toast } = useToast();
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [error, setError] = useState('');
   const [deleteMsg, setDeleteMsg] = useState<MessageResponse | null>(null);
@@ -172,6 +174,7 @@ export default function Messages() {
 }
 
 function MessageActions({ message }: { message: MessageResponse }) {
+  const { toast } = useToast();
   const [executing, setExecuting] = useState<string | null>(null);
 
   if (!message.extras?.['android::action']?.actions && !parseActions(message.extras)) {
@@ -195,16 +198,16 @@ function MessageActions({ message }: { message: MessageResponse }) {
           body: action.body,
         });
         if (response.ok) {
-          alert(`Action executed successfully`);
+          toast('Action executed successfully', 'success');
         } else {
-          alert(`Action failed: ${response.statusText}`);
+          toast(`Action failed: ${response.statusText}`, 'error');
         }
       } else if (action.type === 'broadcast' || action.action === 'broadcast') {
-        alert('Broadcast actions are only supported on Android devices');
+        toast('Broadcast actions are only supported on Android devices', 'info');
       }
     } catch (error) {
       console.error('Action failed:', error);
-      alert(`Action failed: ${error}`);
+      toast(`Action failed: ${error}`, 'error');
     } finally {
       setExecuting(null);
     }

@@ -1,6 +1,8 @@
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AuthContext, useAuthProvider } from './hooks/useAuth';
 import { ThemeContext, useThemeProvider } from './hooks/useTheme';
+import ErrorBoundary from './components/ErrorBoundary';
+import { ToastProvider } from './components/Toast';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -17,6 +19,8 @@ export default function App() {
   const themeCtx = useThemeProvider();
 
   return (
+    <ErrorBoundary>
+    <ToastProvider>
     <ThemeContext.Provider value={themeCtx}>
       <AuthContext.Provider value={auth}>
         <HashRouter>
@@ -41,5 +45,7 @@ export default function App() {
         </HashRouter>
       </AuthContext.Provider>
     </ThemeContext.Provider>
+    </ToastProvider>
+    </ErrorBoundary>
   );
 }
