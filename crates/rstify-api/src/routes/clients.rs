@@ -33,9 +33,13 @@ pub async fn create_client(
     Json(req): Json<CreateClient>,
 ) -> Result<Json<Client>, ApiError> {
     let token = generate_client_token();
+    let scopes = req
+        .scopes
+        .unwrap_or_else(|| vec!["read".into(), "write".into()]);
+    let scopes_json = serde_json::to_string(&scopes).unwrap();
     let client = state
         .client_repo
-        .create(auth.user.id, &req.name, &token)
+        .create(auth.user.id, &req.name, &token, &scopes_json)
         .await
         .map_err(ApiError::from)?;
     Ok(Json(client))
@@ -70,9 +74,10 @@ pub async fn update_client(
         )));
     }
 
+    let scopes_json = req.scopes.map(|s| serde_json::to_string(&s).unwrap());
     let client = state
         .client_repo
-        .update(id, req.name.as_deref())
+        .update(id, req.name.as_deref(), scopes_json.as_deref())
         .await
         .map_err(ApiError::from)?;
     Ok(Json(client))

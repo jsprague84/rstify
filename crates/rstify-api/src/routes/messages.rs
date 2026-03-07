@@ -89,6 +89,7 @@ pub async fn list_messages(
     auth: AuthUser,
     Query(params): Query<ListParams>,
 ) -> Result<Json<PagedMessages>, ApiError> {
+    auth.require_scope("read")?;
     let limit = params.limit.unwrap_or(100).clamp(1, 500);
     let since = params.since.unwrap_or(0).max(0);
 
@@ -130,6 +131,7 @@ pub async fn search_messages(
     auth: AuthUser,
     Query(params): Query<SearchParams>,
 ) -> Result<Json<Vec<MessageResponse>>, ApiError> {
+    auth.require_scope("read")?;
     let limit = params.limit.unwrap_or(100).clamp(1, 500);
     let messages = state
         .message_repo
@@ -163,6 +165,7 @@ pub async fn list_application_messages(
     Path(app_id): Path<i64>,
     Query(params): Query<ListParams>,
 ) -> Result<Json<PagedMessages>, ApiError> {
+    auth.require_scope("read")?;
     let app = state
         .app_repo
         .find_by_id(app_id)
@@ -205,6 +208,7 @@ pub async fn delete_all_messages(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    auth.require_scope("write")?;
     state
         .message_repo
         .delete_all_for_user(auth.user.id)
@@ -225,6 +229,7 @@ pub async fn delete_batch_messages(
     auth: AuthUser,
     Json(req): Json<BatchDeleteRequest>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    auth.require_scope("write")?;
     if req.ids.len() > 1000 {
         return Err(ApiError::from(rstify_core::error::CoreError::Validation(
             "Maximum 1000 IDs per batch delete".to_string(),
@@ -252,6 +257,7 @@ pub async fn delete_all_app_messages(
     auth: AuthUser,
     Query(params): Query<DeleteAllParams>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    auth.require_scope("write")?;
     if let Some(app_id) = params.appid {
         // Verify ownership
         let app = state
@@ -297,6 +303,7 @@ pub async fn update_message(
     Path(id): Path<i64>,
     Json(req): Json<UpdateMessage>,
 ) -> Result<Json<MessageResponse>, ApiError> {
+    auth.require_scope("write")?;
     let msg = state
         .message_repo
         .find_by_id(id)
@@ -356,6 +363,7 @@ pub async fn delete_message(
     auth: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    auth.require_scope("write")?;
     // Verify ownership through the message's application
     let msg = state
         .message_repo
@@ -422,6 +430,12 @@ pub async fn websocket_stream(
                 "Invalid token".to_string(),
             ))
         })?;
+
+    if !client.has_scope("read") {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Token missing required scope: read".to_string(),
+        )));
+    }
 
     let user_id = client.user_id;
     let connections = state.connections.clone();

@@ -49,15 +49,18 @@ export interface Client {
   user_id: number;
   name: string;
   token: string;
+  scopes: string;
   created_at: string;
 }
 
 export interface CreateClient {
   name: string;
+  scopes?: string[];
 }
 
 export interface UpdateClient {
   name?: string;
+  scopes?: string[];
 }
 
 export interface Topic {

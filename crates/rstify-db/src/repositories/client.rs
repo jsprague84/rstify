@@ -17,13 +17,20 @@ impl SqliteClientRepo {
 
 #[async_trait]
 impl ClientRepository for SqliteClientRepo {
-    async fn create(&self, user_id: i64, name: &str, token: &str) -> Result<Client, CoreError> {
+    async fn create(
+        &self,
+        user_id: i64,
+        name: &str,
+        token: &str,
+        scopes: &str,
+    ) -> Result<Client, CoreError> {
         sqlx::query_as::<_, Client>(
-            "INSERT INTO clients (user_id, name, token) VALUES (?, ?, ?) RETURNING *",
+            "INSERT INTO clients (user_id, name, token, scopes) VALUES (?, ?, ?, ?) RETURNING *",
         )
         .bind(user_id)
         .bind(name)
         .bind(token)
+        .bind(scopes)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| CoreError::Database(e.to_string()))
@@ -53,20 +60,29 @@ impl ClientRepository for SqliteClientRepo {
             .map_err(|e| CoreError::Database(e.to_string()))
     }
 
-    async fn update(&self, id: i64, name: Option<&str>) -> Result<Client, CoreError> {
+    async fn update(
+        &self,
+        id: i64,
+        name: Option<&str>,
+        scopes: Option<&str>,
+    ) -> Result<Client, CoreError> {
         let current = self
             .find_by_id(id)
             .await?
             .ok_or_else(|| CoreError::NotFound(format!("Client {} not found", id)))?;
 
         let new_name = name.unwrap_or(&current.name);
+        let new_scopes = scopes.unwrap_or(&current.scopes);
 
-        sqlx::query_as::<_, Client>("UPDATE clients SET name = ? WHERE id = ? RETURNING *")
-            .bind(new_name)
-            .bind(id)
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+        sqlx::query_as::<_, Client>(
+            "UPDATE clients SET name = ?, scopes = ? WHERE id = ? RETURNING *",
+        )
+        .bind(new_name)
+        .bind(new_scopes)
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))
     }
 
     async fn update_fcm_token(

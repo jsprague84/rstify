@@ -112,6 +112,10 @@ impl Database {
                 "016_retention_days",
                 include_str!("../../../migrations/016_retention_days.sql"),
             ),
+            (
+                "017_client_scopes",
+                include_str!("../../../migrations/017_client_scopes.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {

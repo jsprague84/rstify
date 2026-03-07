@@ -4,11 +4,22 @@ use async_trait::async_trait;
 
 #[async_trait]
 pub trait ClientRepository: Send + Sync {
-    async fn create(&self, user_id: i64, name: &str, token: &str) -> Result<Client, CoreError>;
+    async fn create(
+        &self,
+        user_id: i64,
+        name: &str,
+        token: &str,
+        scopes: &str,
+    ) -> Result<Client, CoreError>;
     async fn find_by_id(&self, id: i64) -> Result<Option<Client>, CoreError>;
     async fn find_by_token(&self, token: &str) -> Result<Option<Client>, CoreError>;
     async fn list_by_user(&self, user_id: i64) -> Result<Vec<Client>, CoreError>;
-    async fn update(&self, id: i64, name: Option<&str>) -> Result<Client, CoreError>;
+    async fn update(
+        &self,
+        id: i64,
+        name: Option<&str>,
+        scopes: Option<&str>,
+    ) -> Result<Client, CoreError>;
     async fn update_fcm_token(&self, id: i64, fcm_token: Option<&str>)
         -> Result<Client, CoreError>;
     async fn list_fcm_tokens_by_user(&self, user_id: i64) -> Result<Vec<String>, CoreError>;

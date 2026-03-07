@@ -15,6 +15,41 @@ use crate::state::AppState;
 pub struct AuthUser {
     pub user: User,
     pub claims: Option<Claims>,
+    /// Present when auth'd via client token — use for scope checks
+    pub client: Option<Client>,
+}
+
+impl AuthUser {
+    /// Check if this auth context has a required scope.
+    /// JWT users (no client) are unrestricted. Client tokens check scopes.
+    pub fn has_scope(&self, scope: &str) -> bool {
+        match &self.client {
+            None => true, // JWT auth — full access
+            Some(client) => client.has_scope(scope),
+        }
+    }
+
+    /// Check if this auth context can access a specific app.
+    pub fn can_access_app(&self, app_id: i64) -> bool {
+        match &self.client {
+            None => true,
+            Some(client) => client.can_access_app(app_id),
+        }
+    }
+
+    /// Return a Forbidden error if scope is missing
+    pub fn require_scope(&self, scope: &str) -> Result<(), crate::error::ApiError> {
+        if self.has_scope(scope) {
+            Ok(())
+        } else {
+            Err(crate::error::ApiError::from(
+                rstify_core::error::CoreError::Forbidden(format!(
+                    "Token missing required scope: {}",
+                    scope
+                )),
+            ))
+        }
+    }
 }
 
 /// Authenticated app (from app token)
@@ -101,6 +136,7 @@ impl FromRequestParts<AppState> for AuthUser {
                 Ok(AuthUser {
                     user,
                     claims: Some(claims),
+                    client: None,
                 })
             }
             TokenType::ClientToken => {
@@ -119,7 +155,11 @@ impl FromRequestParts<AppState> for AuthUser {
                     .await
                     .map_err(|_| internal_error())?
                     .ok_or_else(|| unauthorized("User not found"))?;
-                Ok(AuthUser { user, claims: None })
+                Ok(AuthUser {
+                    user,
+                    claims: None,
+                    client: Some(client),
+                })
             }
             _ => {
                 warn!(path = %uri, "Auth rejected: invalid token type");
