@@ -56,7 +56,11 @@ async fn main() -> anyhow::Result<()> {
                 fcm_config.project_id
             );
             state = state.with_fcm(rstify_api::fcm::FcmClient::new(fcm_config));
+        } else {
+            tracing::error!("FCM_PROJECT_ID is set but FCM configuration is incomplete — check FCM_SERVICE_ACCOUNT_PATH");
         }
+    } else {
+        info!("FCM push notifications disabled (set FCM_PROJECT_ID and FCM_SERVICE_ACCOUNT_PATH to enable)");
     }
 
     // Start periodic connection cleanup
