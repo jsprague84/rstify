@@ -67,6 +67,25 @@ impl TopicRepository for SqliteTopicRepo {
             .map_err(|e| CoreError::Database(e.to_string()))
     }
 
+    async fn list_visible(&self, user_id: i64) -> Result<Vec<Topic>, CoreError> {
+        sqlx::query_as::<_, Topic>(
+            r#"SELECT DISTINCT t.* FROM topics t
+            LEFT JOIN topic_permissions tp ON tp.user_id = ? AND tp.can_read = 1
+            WHERE t.everyone_read = 1
+               OR t.owner_id = ?
+               OR (tp.id IS NOT NULL AND (
+                   t.name = tp.topic_pattern
+                   OR t.name LIKE REPLACE(REPLACE(tp.topic_pattern, '*', '%'), '?', '_')
+               ))
+            ORDER BY t.id"#,
+        )
+        .bind(user_id)
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))
+    }
+
     async fn delete(&self, id: i64) -> Result<(), CoreError> {
         let result = sqlx::query("DELETE FROM topics WHERE id = ?")
             .bind(id)

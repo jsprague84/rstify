@@ -72,29 +72,17 @@ pub async fn list_topics(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<Vec<Topic>>, ApiError> {
-    let all_topics = state.topic_repo.list_all().await.map_err(ApiError::from)?;
-
     // Admins see everything; others see only readable topics
     if auth.user.is_admin {
+        let all_topics = state.topic_repo.list_all().await.map_err(ApiError::from)?;
         return Ok(Json(all_topics));
     }
 
-    let permissions = state
+    let visible = state
         .topic_repo
-        .list_permissions_for_user(auth.user.id)
+        .list_visible(auth.user.id)
         .await
         .map_err(ApiError::from)?;
-
-    let visible: Vec<Topic> = all_topics
-        .into_iter()
-        .filter(|t| {
-            t.everyone_read
-                || t.owner_id == Some(auth.user.id)
-                || permissions
-                    .iter()
-                    .any(|p| p.can_read && topic_matches(&p.topic_pattern, &t.name))
-        })
-        .collect();
 
     Ok(Json(visible))
 }

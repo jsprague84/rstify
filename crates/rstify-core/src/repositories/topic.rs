@@ -15,6 +15,7 @@ pub trait TopicRepository: Send + Sync {
     async fn find_by_id(&self, id: i64) -> Result<Option<Topic>, CoreError>;
     async fn find_by_name(&self, name: &str) -> Result<Option<Topic>, CoreError>;
     async fn list_all(&self) -> Result<Vec<Topic>, CoreError>;
+    async fn list_visible(&self, user_id: i64) -> Result<Vec<Topic>, CoreError>;
     async fn delete(&self, id: i64) -> Result<(), CoreError>;
     async fn count(&self) -> Result<i64, CoreError>;
 
