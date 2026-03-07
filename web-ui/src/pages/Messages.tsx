@@ -35,7 +35,7 @@ export default function Messages() {
   }, [load]);
 
   // Real-time: prepend new messages from WebSocket
-  useMessageStream(useCallback((msg: MessageResponse) => {
+  const wsStatus = useMessageStream(useCallback((msg: MessageResponse) => {
     setMessages(prev => {
       if (prev.some(m => m.id === msg.id)) return prev;
       return [msg, ...prev];
@@ -69,12 +69,20 @@ export default function Messages() {
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-3">
           <h2 className="text-2xl font-bold dark:text-white">Messages</h2>
-          <span className="flex items-center gap-1.5 text-xs text-green-600">
+          <span className={`flex items-center gap-1.5 text-xs ${
+            wsStatus === 'connected' ? 'text-green-600' :
+            wsStatus === 'reconnecting' ? 'text-yellow-600' : 'text-red-600'
+          }`}>
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              {wsStatus === 'connected' && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              )}
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                wsStatus === 'connected' ? 'bg-green-500' :
+                wsStatus === 'reconnecting' ? 'bg-yellow-500' : 'bg-red-500'
+              }`}></span>
             </span>
-            Live
+            {wsStatus === 'connected' ? 'Live' : wsStatus === 'reconnecting' ? 'Reconnecting...' : 'Disconnected'}
           </span>
           {liveCount > 0 && (
             <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">

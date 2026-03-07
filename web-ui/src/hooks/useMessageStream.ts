@@ -1,12 +1,16 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import type { MessageResponse } from '../api/types';
+
+export type WsStatus = 'connected' | 'reconnecting' | 'disconnected';
 
 /**
  * Hook that connects to the Gotify-compatible /stream WebSocket endpoint.
  * Calls onMessage for each new message received.
  * Automatically reconnects with exponential backoff on disconnect.
+ * Returns connection status.
  */
-export function useMessageStream(onMessage: (msg: MessageResponse) => void) {
+export function useMessageStream(onMessage: (msg: MessageResponse) => void): WsStatus {
+  const [status, setStatus] = useState<WsStatus>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const backoff = useRef(1000);
@@ -17,6 +21,7 @@ export function useMessageStream(onMessage: (msg: MessageResponse) => void) {
     const token = localStorage.getItem('rstify_token');
     if (!token) return;
 
+    setStatus('reconnecting');
     const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
     const url = `${proto}//${location.host}/stream?token=${encodeURIComponent(token)}`;
 
@@ -25,6 +30,7 @@ export function useMessageStream(onMessage: (msg: MessageResponse) => void) {
 
     ws.onopen = () => {
       backoff.current = 1000;
+      setStatus('connected');
     };
 
     ws.onmessage = (event) => {
@@ -38,6 +44,7 @@ export function useMessageStream(onMessage: (msg: MessageResponse) => void) {
 
     ws.onclose = () => {
       wsRef.current = null;
+      setStatus('reconnecting');
       reconnectTimer.current = setTimeout(() => {
         backoff.current = Math.min(backoff.current * 2, 30000);
         connect();
@@ -55,6 +62,9 @@ export function useMessageStream(onMessage: (msg: MessageResponse) => void) {
       clearTimeout(reconnectTimer.current);
       wsRef.current?.close();
       wsRef.current = null;
+      setStatus('disconnected');
     };
   }, [connect]);
+
+  return status;
 }
