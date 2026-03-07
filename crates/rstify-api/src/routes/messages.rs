@@ -211,6 +211,75 @@ pub async fn delete_all_messages(
     Ok(Json(serde_json::json!({"success": true})))
 }
 
+#[derive(Deserialize, utoipa::ToSchema)]
+pub struct BatchDeleteRequest {
+    pub ids: Vec<i64>,
+}
+
+/// DELETE /message/batch - Delete multiple messages at once
+#[utoipa::path(delete, path = "/message/batch", responses((status = 200)))]
+pub async fn delete_batch_messages(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<BatchDeleteRequest>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    if req.ids.len() > 1000 {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "Maximum 1000 IDs per batch delete".to_string(),
+        )));
+    }
+    let deleted = state
+        .message_repo
+        .delete_batch(&req.ids, auth.user.id)
+        .await
+        .map_err(ApiError::from)?;
+    Ok(Json(serde_json::json!({"success": true, "deleted": deleted})))
+}
+
+#[derive(Deserialize)]
+pub struct DeleteAllParams {
+    pub appid: Option<i64>,
+}
+
+/// DELETE /message/all - Delete all messages for an app
+#[utoipa::path(delete, path = "/message/all", responses((status = 200)))]
+pub async fn delete_all_app_messages(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Query(params): Query<DeleteAllParams>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    if let Some(app_id) = params.appid {
+        // Verify ownership
+        let app = state
+            .app_repo
+            .find_by_id(app_id)
+            .await
+            .map_err(ApiError::from)?
+            .ok_or_else(|| {
+                ApiError::from(rstify_core::error::CoreError::NotFound(
+                    "Application not found".to_string(),
+                ))
+            })?;
+        if app.user_id != auth.user.id && !auth.user.is_admin {
+            return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+                "Not your application".to_string(),
+            )));
+        }
+        state
+            .message_repo
+            .delete_all_for_application(app_id)
+            .await
+            .map_err(ApiError::from)?;
+    } else {
+        state
+            .message_repo
+            .delete_all_for_user(auth.user.id)
+            .await
+            .map_err(ApiError::from)?;
+    }
+    Ok(Json(serde_json::json!({"success": true})))
+}
+
 /// PUT /message/{id} - Update a specific message
 #[utoipa::path(
     put,

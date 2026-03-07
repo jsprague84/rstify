@@ -207,6 +207,27 @@ impl MessageRepository for SqliteMessageRepo {
             .map_err(|e| CoreError::Database(e.to_string()))
     }
 
+    async fn delete_batch(&self, ids: &[i64], user_id: i64) -> Result<u64, CoreError> {
+        if ids.is_empty() {
+            return Ok(0);
+        }
+        let placeholders: Vec<&str> = ids.iter().map(|_| "?").collect();
+        let sql = format!(
+            "DELETE FROM messages WHERE id IN ({}) AND (application_id IN (SELECT id FROM applications WHERE user_id = ?) OR user_id = ?)",
+            placeholders.join(",")
+        );
+        let mut q = sqlx::query(&sql);
+        for id in ids {
+            q = q.bind(id);
+        }
+        q = q.bind(user_id).bind(user_id);
+        let result = q
+            .execute(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))?;
+        Ok(result.rows_affected())
+    }
+
     async fn delete_by_id(&self, id: i64) -> Result<(), CoreError> {
         let result = sqlx::query("DELETE FROM messages WHERE id = ?")
             .bind(id)
