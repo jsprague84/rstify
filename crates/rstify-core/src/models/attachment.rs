@@ -73,4 +73,8 @@ pub struct UpdateWebhookConfig {
     pub headers: Option<serde_json::Value>,
     #[serde(alias = "body_template")]
     pub body_template: Option<String>,
+    #[serde(alias = "max_retries")]
+    pub max_retries: Option<i32>,
+    #[serde(alias = "retry_delay_secs")]
+    pub retry_delay_secs: Option<i32>,
 }

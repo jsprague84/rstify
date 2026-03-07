@@ -131,6 +131,11 @@ pub async fn update_webhook(
         }
     }
 
+    let headers_json = req
+        .headers
+        .as_ref()
+        .map(|h| serde_json::to_string(h).unwrap_or_default());
+
     let config = state
         .message_repo
         .update_webhook_config(
@@ -138,6 +143,12 @@ pub async fn update_webhook(
             req.name.as_deref(),
             template_json.as_deref(),
             req.enabled,
+            req.target_url.as_deref(),
+            req.http_method.as_deref(),
+            headers_json.as_deref(),
+            req.body_template.as_deref(),
+            req.max_retries,
+            req.retry_delay_secs,
         )
         .await
         .map_err(ApiError::from)?;

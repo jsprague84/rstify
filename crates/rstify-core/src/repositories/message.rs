@@ -96,6 +96,12 @@ pub trait MessageRepository: Send + Sync {
         name: Option<&str>,
         template: Option<&str>,
         enabled: Option<bool>,
+        target_url: Option<&str>,
+        http_method: Option<&str>,
+        headers: Option<&str>,
+        body_template: Option<&str>,
+        max_retries: Option<i32>,
+        retry_delay_secs: Option<i32>,
     ) -> Result<WebhookConfig, CoreError>;
     async fn delete_webhook_config(&self, id: i64) -> Result<(), CoreError>;
 }
