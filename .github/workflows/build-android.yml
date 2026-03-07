@@ -11,11 +11,6 @@ on:
         options:
           - debug
           - release
-  push:
-    branches:
-      - master
-    paths:
-      - 'client/**'
 
 jobs:
   build:
