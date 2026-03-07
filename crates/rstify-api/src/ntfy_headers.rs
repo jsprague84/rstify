@@ -61,9 +61,7 @@ impl NtfyHeaders {
             parsed.filename = Some(v);
         }
 
-        if let Some(v) =
-            get_header(headers, "x-attach").or_else(|| get_header(headers, "attach"))
-        {
+        if let Some(v) = get_header(headers, "x-attach").or_else(|| get_header(headers, "attach")) {
             parsed.attach_url = Some(v);
         }
 

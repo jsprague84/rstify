@@ -92,7 +92,11 @@ pub async fn ntfy_publish(
             Some(topic.id),
             Some(auth.user.id),
             h.title.as_deref(),
-            if message_text.is_empty() { "Attachment" } else { &message_text },
+            if message_text.is_empty() {
+                "Attachment"
+            } else {
+                &message_text
+            },
             h.priority.unwrap_or(3),
             tags_json.as_deref(),
             h.click_url.as_deref(),
@@ -110,7 +114,16 @@ pub async fn ntfy_publish(
 
     if let Some(data) = file_data {
         // PUT with body as file
-        if let Some(att) = save_attachment(&state, msg.id, &h.filename.clone().unwrap_or_else(|| "attachment".to_string()), &data).await? {
+        if let Some(att) = save_attachment(
+            &state,
+            msg.id,
+            &h.filename
+                .clone()
+                .unwrap_or_else(|| "attachment".to_string()),
+            &data,
+        )
+        .await?
+        {
             attachment_infos.push(att);
         }
     } else if let Some(ref url) = h.attach_url {
@@ -272,7 +285,10 @@ async fn download_and_attach(
 
     if !response.status().is_success() {
         return Err(ApiError::from(rstify_core::error::CoreError::Internal(
-            format!("Attachment download failed with status {}", response.status()),
+            format!(
+                "Attachment download failed with status {}",
+                response.status()
+            ),
         )));
     }
 

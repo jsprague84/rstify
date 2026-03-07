@@ -3,9 +3,12 @@ use axum::response::IntoResponse;
 use axum::Json;
 use rstify_auth::tokens::{classify_token, validate_jwt, TokenType};
 use rstify_core::models::{
-    AttachmentInfo, CreateAppMessage, Message, MessageResponse, PagedMessages, Paging, UpdateMessage,
+    AttachmentInfo, CreateAppMessage, Message, MessageResponse, PagedMessages, Paging,
+    UpdateMessage,
 };
-use rstify_core::repositories::{ApplicationRepository, ClientRepository, MessageRepository, UserRepository};
+use rstify_core::repositories::{
+    ApplicationRepository, ClientRepository, MessageRepository, UserRepository,
+};
 use serde::Deserialize;
 use std::collections::HashMap;
 

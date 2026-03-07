@@ -348,7 +348,10 @@ impl MessageRepository for SqliteMessageRepo {
         .map_err(|e| CoreError::Database(e.to_string()))
     }
 
-    async fn list_attachments_by_message(&self, message_id: i64) -> Result<Vec<Attachment>, CoreError> {
+    async fn list_attachments_by_message(
+        &self,
+        message_id: i64,
+    ) -> Result<Vec<Attachment>, CoreError> {
         sqlx::query_as::<_, Attachment>("SELECT * FROM attachments WHERE message_id = ?")
             .bind(message_id)
             .fetch_all(&self.pool)
@@ -356,7 +359,10 @@ impl MessageRepository for SqliteMessageRepo {
             .map_err(|e| CoreError::Database(e.to_string()))
     }
 
-    async fn list_attachments_by_messages(&self, message_ids: &[i64]) -> Result<Vec<Attachment>, CoreError> {
+    async fn list_attachments_by_messages(
+        &self,
+        message_ids: &[i64],
+    ) -> Result<Vec<Attachment>, CoreError> {
         if message_ids.is_empty() {
             return Ok(vec![]);
         }
