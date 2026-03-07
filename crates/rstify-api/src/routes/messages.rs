@@ -1,7 +1,9 @@
 use axum::extract::{Path, Query, State, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use axum::Json;
-use rstify_core::models::{CreateAppMessage, MessageResponse, PagedMessages, Paging, UpdateMessage};
+use rstify_core::models::{
+    CreateAppMessage, MessageResponse, PagedMessages, Paging, UpdateMessage,
+};
 use rstify_core::repositories::{ApplicationRepository, ClientRepository, MessageRepository};
 use serde::Deserialize;
 
@@ -233,7 +235,9 @@ pub async fn delete_batch_messages(
         .delete_batch(&req.ids, auth.user.id)
         .await
         .map_err(ApiError::from)?;
-    Ok(Json(serde_json::json!({"success": true, "deleted": deleted})))
+    Ok(Json(
+        serde_json::json!({"success": true, "deleted": deleted}),
+    ))
 }
 
 #[derive(Deserialize)]

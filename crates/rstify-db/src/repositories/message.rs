@@ -168,7 +168,9 @@ impl MessageRepository for SqliteMessageRepo {
         let mut binds: Vec<String> = vec![user_id.to_string(), user_id.to_string()];
 
         if let Some(q) = query {
-            sql.push_str(" AND m.id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?)");
+            sql.push_str(
+                " AND m.id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?)",
+            );
             binds.push(q.to_string());
         }
         if let Some(t) = tag {
@@ -459,7 +461,9 @@ impl MessageRepository for SqliteMessageRepo {
         // For Option<String> fields, use provided value or fall back to current
         let new_target_url = target_url.map(|s| s.to_string()).or(current.target_url);
         let new_headers = headers.map(|s| s.to_string()).or(current.headers);
-        let new_body_template = body_template.map(|s| s.to_string()).or(current.body_template);
+        let new_body_template = body_template
+            .map(|s| s.to_string())
+            .or(current.body_template);
 
         sqlx::query_as::<_, WebhookConfig>(
             "UPDATE webhook_configs SET name = ?, template = ?, enabled = ?, target_url = ?, http_method = ?, headers = ?, body_template = ?, max_retries = ?, retry_delay_secs = ? WHERE id = ? RETURNING *",

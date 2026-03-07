@@ -38,7 +38,10 @@ pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
         .method_not_allowed_fallback(web_ui::web_ui_handler)
         .layer(CompressionLayer::new().gzip(true).br(true))
         .layer(RequestBodyLimitLayer::new(1024 * 1024))
-        .layer(axum::middleware::from_fn_with_state(state.clone(), security_headers_middleware))
+        .layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            security_headers_middleware,
+        ))
         .layer(axum::Extension(limiter))
         .layer(axum::middleware::from_fn(
             middleware::rate_limit::rate_limit_middleware,
@@ -55,9 +58,15 @@ async fn security_headers_middleware(
     state.metrics.inc_requests();
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
-    headers.insert("x-content-type-options", HeaderValue::from_static("nosniff"));
+    headers.insert(
+        "x-content-type-options",
+        HeaderValue::from_static("nosniff"),
+    );
     headers.insert("x-frame-options", HeaderValue::from_static("DENY"));
-    headers.insert("x-xss-protection", HeaderValue::from_static("1; mode=block"));
+    headers.insert(
+        "x-xss-protection",
+        HeaderValue::from_static("1; mode=block"),
+    );
     headers.insert(
         "referrer-policy",
         HeaderValue::from_static("strict-origin-when-cross-origin"),
