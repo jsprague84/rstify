@@ -27,6 +27,7 @@ export interface Application {
   description?: string;
   token: string;
   default_priority: number;
+  retention_days?: number;
   image?: string;
   created_at: string;
   updated_at: string;
@@ -42,6 +43,7 @@ export interface UpdateApplication {
   name?: string;
   description?: string;
   default_priority?: number;
+  retention_days?: number;
 }
 
 export interface Client {
@@ -95,6 +97,14 @@ export interface CreateTopicPermission {
   can_write?: boolean;
 }
 
+export interface AttachmentInfo {
+  id: number;
+  name: string;
+  type?: string;
+  size: number;
+  url: string;
+}
+
 export interface MessageResponse {
   id: number;
   appid?: number;
@@ -103,10 +113,11 @@ export interface MessageResponse {
   message: string;
   priority: number;
   tags?: string[];
-  click_url?: string;      // Gotify compatible - URL to open when message is clicked
-  icon_url?: string;       // Gotify compatible - Custom icon/image URL
-  content_type?: string;   // Gotify compatible - MIME type or format hint
-  extras?: Record<string, any>;  // Gotify compatible - client::display, client::notification, android::action
+  click_url?: string;
+  icon_url?: string;
+  content_type?: string;
+  extras?: Record<string, any>;
+  attachments?: AttachmentInfo[];
   date: string;
 }
 
@@ -125,6 +136,13 @@ export interface WebhookConfig {
   target_application_id?: number;
   template: string;
   enabled: boolean;
+  direction: string;
+  target_url?: string;
+  http_method: string;
+  headers?: string;
+  body_template?: string;
+  max_retries: number;
+  retry_delay_secs: number;
   created_at: string;
 }
 
@@ -134,12 +152,23 @@ export interface CreateWebhookConfig {
   target_topic_id?: number;
   target_application_id?: number;
   template?: string;
+  direction?: string;
+  target_url?: string;
+  http_method?: string;
+  headers?: Record<string, string>;
+  body_template?: string;
 }
 
 export interface UpdateWebhookConfig {
   name?: string;
   template?: string;
   enabled?: boolean;
+  target_url?: string;
+  http_method?: string;
+  headers?: Record<string, string>;
+  body_template?: string;
+  max_retries?: number;
+  retry_delay_secs?: number;
 }
 
 export interface WebhookDeliveryLog {
@@ -162,4 +191,16 @@ export interface StatsResponse {
 
 export interface LoginResponse {
   token: string;
+}
+
+export interface HealthResponse {
+  health: string;
+  database: string;
+  version: string;
+}
+
+export interface VersionResponse {
+  version: string;
+  name: string;
+  buildDate: string;
 }

@@ -47,6 +47,7 @@ use crate::state::AppState;
         routes::topics::delete_permission,
         routes::attachments::upload_attachment,
         routes::attachments::download_attachment,
+        routes::attachments::delete_attachment,
         routes::webhooks::create_webhook,
         routes::webhooks::list_webhooks,
         routes::webhooks::update_webhook,
@@ -57,10 +58,6 @@ use crate::state::AppState;
         routes::topics::list_topic_messages,
         routes::stats::get_stats,
         routes::ntfy_publish::ntfy_publish,
-        routes::unified_push::receive_up_message,
-        routes::unified_push::register_up_device,
-        routes::unified_push::list_up_registrations,
-        routes::unified_push::delete_up_registration,
     ),
     components(schemas(
         UserResponse,
@@ -90,8 +87,6 @@ use crate::state::AppState;
         routes::auth::LoginResponse,
         routes::stats::StatsResponse,
         UpdateUser,
-        UpRegistration,
-        CreateUpRegistration,
     ))
 )]
 struct ApiDoc;

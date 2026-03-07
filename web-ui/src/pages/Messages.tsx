@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api/client';
-import type { MessageResponse } from '../api/types';
+import type { MessageResponse, AttachmentInfo } from '../api/types';
 import { useMessageStream } from '../hooks/useMessageStream';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
@@ -13,7 +13,10 @@ export default function Messages() {
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [error, setError] = useState('');
   const [deleteMsg, setDeleteMsg] = useState<MessageResponse | null>(null);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [filter, setFilter] = useState<'all' | 'app' | 'topic'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
   const [liveCount, setLiveCount] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -53,6 +56,31 @@ export default function Messages() {
     setMessages(prev => prev.filter(m => m.id !== deleteMsg.id));
   };
 
+  const handleDeleteAll = async () => {
+    await api.deleteAllMessages();
+    setShowDeleteAll(false);
+    setMessages([]);
+    setLiveCount(0);
+  };
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (!query.trim()) {
+      load(fetchLimit.current);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    try {
+      const results = await api.searchMessages({ q: query, limit: 100 });
+      setMessages(results);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Search failed');
+    } finally {
+      setSearching(false);
+    }
+  };
+
   const handleLoadMore = () => {
     fetchLimit.current += PAGE_SIZE;
     load(fetchLimit.current);
@@ -90,17 +118,36 @@ export default function Messages() {
             </span>
           )}
         </div>
-        <div className="flex gap-1">
-          {(['all', 'app', 'topic'] as const).map(f => (
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1">
+            {(['all', 'app', 'topic'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1 text-sm rounded-md ${filter === f ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+              >
+                {f === 'all' ? 'All' : f === 'app' ? 'App' : 'Topic'}
+              </button>
+            ))}
+          </div>
+          {messages.length > 0 && (
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1 text-sm rounded-md ${filter === f ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+              onClick={() => setShowDeleteAll(true)}
+              className="px-3 py-1 text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
             >
-              {f === 'all' ? 'All' : f === 'app' ? 'App' : 'Topic'}
+              Delete All
             </button>
-          ))}
+          )}
         </div>
+      </div>
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search messages..."
+          value={searchQuery}
+          onChange={e => handleSearch(e.target.value)}
+          className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white"
+        />
       </div>
       {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
       {filtered.length === 0 && !loading ? (
@@ -150,6 +197,17 @@ export default function Messages() {
                       ))}
                     </div>
                   )}
+                  <MessageAttachments message={m} onUploaded={(att) => {
+                    setMessages(prev => prev.map(msg => msg.id === m.id
+                      ? { ...msg, attachments: [...(msg.attachments || []), att] }
+                      : msg
+                    ));
+                  }} onDeleted={(attId) => {
+                    setMessages(prev => prev.map(msg => msg.id === m.id
+                      ? { ...msg, attachments: (msg.attachments || []).filter(a => a.id !== attId) }
+                      : msg
+                    ));
+                  }} />
                   <MessageActions message={m} />
                   <p className="text-xs text-gray-400 mt-2">{m.date}</p>
                 </div>
@@ -177,6 +235,100 @@ export default function Messages() {
         title="Delete Message"
         message="Delete this message?"
       />
+      <ConfirmDialog
+        open={showDeleteAll}
+        onClose={() => setShowDeleteAll(false)}
+        onConfirm={handleDeleteAll}
+        title="Delete All Messages"
+        message="Are you sure you want to delete ALL messages? This cannot be undone."
+      />
+    </div>
+  );
+}
+
+function isImageType(type?: string): boolean {
+  return !!type && type.startsWith('image/');
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function MessageAttachments({ message, onUploaded, onDeleted }: { message: MessageResponse; onUploaded: (att: AttachmentInfo) => void; onDeleted: (attId: number) => void }) {
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleDeleteAttachment = async (attId: number) => {
+    try {
+      await api.deleteAttachment(attId);
+      onDeleted(attId);
+      toast('Attachment deleted', 'success');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Delete failed', 'error');
+    }
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const att = await api.uploadAttachment(message.id, file);
+      onUploaded(att);
+      toast('Attachment uploaded', 'success');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Upload failed', 'error');
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  };
+
+  const attachments = message.attachments || [];
+
+  return (
+    <div className="mt-2">
+      {attachments.length > 0 && (
+        <div className="space-y-2">
+          {attachments.map(att => (
+            <div key={att.id} className="flex items-start gap-2">
+              {isImageType(att.type) ? (
+                <a href={att.url} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={att.url}
+                    alt={att.name}
+                    className="max-w-xs max-h-48 rounded border dark:border-gray-600 cursor-pointer hover:opacity-90"
+                  />
+                </a>
+              ) : (
+                <a
+                  href={att.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                  {att.name} <span className="text-gray-400 text-xs">({formatFileSize(att.size)})</span>
+                </a>
+              )}
+              <button onClick={() => handleDeleteAttachment(att.id)} className="text-red-400 hover:text-red-600 text-xs mt-1">✕</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <input ref={fileRef} type="file" className="hidden" onChange={handleUpload} />
+      <button
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        className="mt-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
+      >
+        {uploading ? 'Uploading...' : '+ Attach file'}
+      </button>
     </div>
   );
 }

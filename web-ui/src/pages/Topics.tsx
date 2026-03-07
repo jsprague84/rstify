@@ -1,16 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { Topic, CreateTopic } from '../api/types';
+import type { Topic, CreateTopic, MessageResponse } from '../api/types';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
+import MessageContent from '../components/MessageContent';
+import { useToast } from '../components/Toast';
 
 export default function Topics() {
+  const { toast } = useToast();
   const [topics, setTopics] = useState<Topic[]>([]);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editTopic, setEditTopic] = useState<Topic | null>(null);
   const [deleteTopic, setDeleteTopic] = useState<Topic | null>(null);
+  const [messagesTopic, setMessagesTopic] = useState<Topic | null>(null);
+  const [topicMessages, setTopicMessages] = useState<MessageResponse[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [publishTopic, setPublishTopic] = useState<Topic | null>(null);
+
+  const loadTopicMessages = (topic: Topic) => {
+    setMessagesTopic(topic);
+    setMessagesLoading(true);
+    api.listTopicMessages(topic.name)
+      .then(res => setTopicMessages(res.messages))
+      .catch(e => setError(e.message))
+      .finally(() => setMessagesLoading(false));
+  };
 
   const load = useCallback(() => {
     api.listTopics().then(setTopics).catch(e => setError(e.message));
@@ -59,6 +75,8 @@ export default function Topics() {
         ]}
         actions={t => (
           <div className="flex gap-2">
+            <button onClick={() => loadTopicMessages(t)} className="text-blue-600 hover:text-blue-800 text-sm">Messages</button>
+            <button onClick={() => setPublishTopic(t)} className="text-green-600 hover:text-green-800 text-sm">Send</button>
             <button onClick={() => setEditTopic(t)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
             <button onClick={() => setDeleteTopic(t)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
           </div>
@@ -81,6 +99,39 @@ export default function Topics() {
         title="Delete Topic"
         message={`Delete topic "${deleteTopic?.name}"? All associated messages will be deleted.`}
       />
+      {messagesTopic && (
+        <Modal open onClose={() => { setMessagesTopic(null); setTopicMessages([]); }} title={`Messages — ${messagesTopic.name}`}>
+          <div className="max-h-96 overflow-y-auto space-y-3">
+            {messagesLoading ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">Loading...</p>
+            ) : topicMessages.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">No messages</p>
+            ) : (
+              topicMessages.map(m => (
+                <div key={m.id} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    {m.title && <span className="font-semibold text-gray-900 dark:text-white text-sm">{m.title}</span>}
+                    <span className="text-xs text-gray-400">#{m.id}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${m.priority >= 8 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : m.priority >= 5 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300'}`}>P{m.priority}</span>
+                  </div>
+                  <MessageContent message={m.message} extras={m.extras} />
+                  {m.tags && m.tags.length > 0 && (
+                    <div className="flex gap-1 mt-1">
+                      {m.tags.map(t => <span key={t} className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">{t}</span>)}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">{m.date}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </Modal>
+      )}
+      {publishTopic && (
+        <Modal open onClose={() => setPublishTopic(null)} title={`Send to ${publishTopic.name}`}>
+          <PublishForm topicName={publishTopic.name} onSuccess={() => { setPublishTopic(null); toast('Message sent', 'success'); }} onClose={() => setPublishTopic(null)} />
+        </Modal>
+      )}
     </div>
   );
 }
@@ -179,6 +230,59 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
         <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Save</button>
+      </div>
+    </form>
+  );
+}
+
+function PublishForm({ topicName, onSuccess, onClose }: { topicName: string; onSuccess: () => void; onClose: () => void }) {
+  const [form, setForm] = useState({ title: '', message: '', priority: 5, tags: '', scheduled_for: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const tags = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined;
+      await api.publishToTopic(topicName, {
+        title: form.title || undefined,
+        message: form.message,
+        priority: form.priority,
+        tags: tags && tags.length > 0 ? tags : undefined,
+        scheduled_for: form.scheduled_for || undefined,
+      });
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
+      <input placeholder="Title (optional)" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
+      <textarea placeholder="Message" required rows={4} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Priority</label>
+          <input type="number" min={1} max={10} value={form.priority} onChange={e => setForm(f => ({ ...f, priority: parseInt(e.target.value) || 5 }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Tags (comma-separated)</label>
+          <input placeholder="tag1, tag2" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Schedule for (optional)</label>
+        <input type="datetime-local" value={form.scheduled_for} onChange={e => setForm(f => ({ ...f, scheduled_for: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
+        <p className="text-xs text-gray-400 mt-1">Leave empty to send immediately</p>
+      </div>
+      <div className="flex justify-end gap-3 pt-2">
+        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
+        <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">{form.scheduled_for ? 'Schedule' : 'Send'}</button>
       </div>
     </form>
   );

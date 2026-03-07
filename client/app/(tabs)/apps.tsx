@@ -50,6 +50,10 @@ export default function AppsScreen() {
   const [showCreate, setShowCreate] = useState(false);
   const [newAppName, setNewAppName] = useState("");
   const [newAppDesc, setNewAppDesc] = useState("");
+  const [editApp, setEditApp] = useState<Application | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editDesc, setEditDesc] = useState("");
+  const [editPriority, setEditPriority] = useState("5");
 
   const fetchApps = useCallback(async () => {
     setIsLoading(true);
@@ -98,6 +102,29 @@ export default function AppsScreen() {
     (item: Application) => item.id.toString(),
     [],
   );
+
+  const openEditApp = (app: Application) => {
+    setEditApp(app);
+    setEditName(app.name);
+    setEditDesc(app.description || "");
+    setEditPriority(String(app.default_priority));
+  };
+
+  const handleEditApp = async () => {
+    if (!editApp || !editName.trim()) return;
+    try {
+      const api = getApiClient();
+      await api.updateApplication(editApp.id, {
+        name: editName.trim(),
+        description: editDesc.trim() || undefined,
+        default_priority: parseInt(editPriority) || 5,
+      });
+      setEditApp(null);
+      fetchApps();
+    } catch (e) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Update failed");
+    }
+  };
 
   const handleDeleteApp = (app: Application) => {
     Alert.alert("Delete Application", `Delete "${app.name}"?`, [
@@ -150,9 +177,14 @@ export default function AppsScreen() {
                 <Ionicons name="copy-outline" size={14} color={colors.textTertiary} />
               </Pressable>
             </View>
-            <Pressable onPress={() => handleDeleteApp(item)} hitSlop={8}>
-              <Ionicons name="trash-outline" size={18} color={colors.error} />
-            </Pressable>
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <Pressable onPress={() => openEditApp(item)} hitSlop={8}>
+                <Ionicons name="create-outline" size={18} color={colors.primary} />
+              </Pressable>
+              <Pressable onPress={() => handleDeleteApp(item)} hitSlop={8}>
+                <Ionicons name="trash-outline" size={18} color={colors.error} />
+              </Pressable>
+            </View>
           </View>
         )}
         refreshControl={
@@ -212,6 +244,48 @@ export default function AppsScreen() {
                     onPress={handleCreateApp}
                   >
                     <Text style={styles.submitText}>Create</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </KeyboardAwareScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={!!editApp} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setEditApp(null)}>
+          <Pressable style={styles.modalOuter} onPress={() => {}}>
+            <KeyboardAwareScrollView bottomOffset={20} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScrollContent}>
+              <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Application</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Name"
+                  placeholderTextColor={colors.textTertiary}
+                  value={editName}
+                  onChangeText={setEditName}
+                />
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Description (optional)"
+                  placeholderTextColor={colors.textTertiary}
+                  value={editDesc}
+                  onChangeText={setEditDesc}
+                />
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Default Priority (1-10)"
+                  placeholderTextColor={colors.textTertiary}
+                  value={editPriority}
+                  onChangeText={setEditPriority}
+                  keyboardType="numeric"
+                />
+                <View style={styles.modalButtons}>
+                  <Pressable style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary }]} onPress={() => setEditApp(null)}>
+                    <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                  </Pressable>
+                  <Pressable style={[styles.submitButton, { backgroundColor: colors.primary }]} onPress={handleEditApp}>
+                    <Text style={styles.submitText}>Save</Text>
                   </Pressable>
                 </View>
               </View>

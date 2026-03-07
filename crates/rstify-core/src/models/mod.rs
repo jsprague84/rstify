@@ -4,7 +4,6 @@ pub mod attachment;
 pub mod client;
 pub mod message;
 pub mod topic;
-pub mod unified_push;
 pub mod user;
 pub mod webhook_delivery;
 
@@ -14,6 +13,5 @@ pub use attachment::*;
 pub use client::*;
 pub use message::*;
 pub use topic::*;
-pub use unified_push::*;
 pub use user::*;
 pub use webhook_delivery::*;

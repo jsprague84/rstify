@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use super::action::MessageAction;
+use super::attachment::Attachment;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
 pub struct Message {
@@ -54,6 +55,29 @@ pub struct UpdateMessage {
     pub extras: Option<serde_json::Value>,
 }
 
+/// Lightweight attachment info included in message responses
+#[derive(Debug, Clone, Serialize, ToSchema)]
+pub struct AttachmentInfo {
+    pub id: i64,
+    pub name: String,
+    #[serde(rename = "type")]
+    pub content_type: Option<String>,
+    pub size: i64,
+    pub url: String,
+}
+
+impl AttachmentInfo {
+    pub fn from_attachment(a: &Attachment) -> Self {
+        Self {
+            id: a.id,
+            name: a.filename.clone(),
+            content_type: a.content_type.clone(),
+            size: a.size_bytes,
+            url: format!("/api/attachments/{}", a.id),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, ToSchema)]
 pub struct MessageResponse {
     pub id: i64,
@@ -68,6 +92,8 @@ pub struct MessageResponse {
     pub actions: Option<Vec<MessageAction>>,
     pub extras: Option<serde_json::Value>,
     pub content_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub attachments: Option<Vec<AttachmentInfo>>,
     pub date: String,
 }
 
@@ -95,8 +121,26 @@ impl Message {
                 .as_ref()
                 .and_then(|e| serde_json::from_str(e).ok()),
             content_type: self.content_type.clone(),
+            attachments: None,
             date: self.created_at.clone(),
         }
+    }
+
+    pub fn to_response_with_attachments(
+        &self,
+        topic_name: Option<String>,
+        attachments: Vec<Attachment>,
+    ) -> MessageResponse {
+        let mut resp = self.to_response(topic_name);
+        if !attachments.is_empty() {
+            resp.attachments = Some(
+                attachments
+                    .iter()
+                    .map(AttachmentInfo::from_attachment)
+                    .collect(),
+            );
+        }
+        resp
     }
 }
 

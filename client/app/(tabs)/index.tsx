@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState, useMemo } from "react";
+import React, { useEffect, useCallback, useState, useMemo, useRef } from "react";
 import {
   View,
   FlatList,
@@ -7,6 +7,7 @@ import {
   Alert,
   Pressable,
   Text,
+  TextInput,
   ActivityIndicator,
 } from "react-native";
 import type { ListRenderItemInfo } from "react-native";
@@ -40,6 +41,27 @@ export default function MessagesScreen() {
 
   const [clientToken, setClientToken] = useState<string | null>(null);
   const [apps, setApps] = useState<Application[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<MessageResponse[] | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (!query.trim()) {
+      setSearchResults(null);
+      return;
+    }
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const api = getApiClient();
+        const results = await api.searchMessages({ q: query, limit: 100 });
+        setSearchResults(results);
+      } catch {
+        // silently fail search
+      }
+    }, 300);
+  };
 
   // Load apps for icon URLs
   useEffect(() => {
@@ -180,9 +202,25 @@ export default function MessagesScreen() {
           </Pressable>
         ) : null}
       </View>
+      <View style={{ paddingHorizontal: 16, paddingVertical: 8, backgroundColor: colors.surface }}>
+        <TextInput
+          placeholder="Search messages..."
+          placeholderTextColor={colors.textSecondary}
+          value={searchQuery}
+          onChangeText={handleSearch}
+          style={{
+            backgroundColor: colors.backgroundSecondary,
+            color: colors.text,
+            borderRadius: 8,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            fontSize: 14,
+          }}
+        />
+      </View>
 
       <FlatList
-        data={messages}
+        data={searchResults ?? messages}
         keyExtractor={keyExtractor}
         renderItem={renderItem}
         removeClippedSubviews

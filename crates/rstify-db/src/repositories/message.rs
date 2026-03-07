@@ -348,6 +348,33 @@ impl MessageRepository for SqliteMessageRepo {
         .map_err(|e| CoreError::Database(e.to_string()))
     }
 
+    async fn list_attachments_by_message(&self, message_id: i64) -> Result<Vec<Attachment>, CoreError> {
+        sqlx::query_as::<_, Attachment>("SELECT * FROM attachments WHERE message_id = ?")
+            .bind(message_id)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))
+    }
+
+    async fn list_attachments_by_messages(&self, message_ids: &[i64]) -> Result<Vec<Attachment>, CoreError> {
+        if message_ids.is_empty() {
+            return Ok(vec![]);
+        }
+        let placeholders: Vec<String> = message_ids.iter().map(|_| "?".to_string()).collect();
+        let sql = format!(
+            "SELECT * FROM attachments WHERE message_id IN ({})",
+            placeholders.join(",")
+        );
+        let mut query = sqlx::query_as::<_, Attachment>(&sql);
+        for id in message_ids {
+            query = query.bind(id);
+        }
+        query
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))
+    }
+
     async fn find_attachment(&self, id: i64) -> Result<Option<Attachment>, CoreError> {
         sqlx::query_as::<_, Attachment>("SELECT * FROM attachments WHERE id = ?")
             .bind(id)

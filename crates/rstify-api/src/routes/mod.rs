@@ -7,7 +7,6 @@ pub mod messages;
 pub mod ntfy_publish;
 pub mod stats;
 pub mod topics;
-pub mod unified_push;
 pub mod users;
 pub mod webhooks;
 
@@ -91,11 +90,11 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
         // Attachments
         .route(
             "/api/messages/{id}/attachments",
-            post(attachments::upload_attachment),
+            post(attachments::upload_attachment).get(attachments::list_message_attachments),
         )
         .route(
             "/api/attachments/{id}",
-            get(attachments::download_attachment),
+            get(attachments::download_attachment).delete(attachments::delete_attachment),
         )
         // Webhooks
         .route("/api/webhooks", post(webhooks::create_webhook))
@@ -111,17 +110,6 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
         .route("/api/permissions", post(topics::create_permission))
         .route("/api/permissions", get(topics::list_permissions))
         .route("/api/permissions/{id}", delete(topics::delete_permission))
-        // UnifiedPush
-        .route("/UP", post(unified_push::receive_up_message))
-        .route("/api/up/register", post(unified_push::register_up_device))
-        .route(
-            "/api/up/registrations",
-            get(unified_push::list_up_registrations),
-        )
-        .route(
-            "/api/up/registrations/{id}",
-            delete(unified_push::delete_up_registration),
-        )
 }
 
 /// ntfy-style catch-all publish routes.

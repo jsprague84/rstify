@@ -95,6 +95,14 @@ export interface MessageAction {
   clear?: boolean;
 }
 
+export interface AttachmentInfo {
+  id: number;
+  name: string;
+  type?: string;
+  size: number;
+  url: string;
+}
+
 export interface MessageResponse {
   id: number;
   appid: number | null;
@@ -108,6 +116,7 @@ export interface MessageResponse {
   actions: MessageAction[] | null;
   extras: Record<string, unknown> | null;
   content_type: string | null;
+  attachments?: AttachmentInfo[];
   date: string;
 }
 
@@ -193,6 +202,19 @@ export interface UpdateWebhookConfig {
   http_method?: string;
   headers?: Record<string, string>;
   body_template?: string;
+  max_retries?: number;
+  retry_delay_secs?: number;
+}
+
+export interface WebhookDeliveryLog {
+  id: number;
+  webhook_config_id: number;
+  message_id: number | null;
+  status_code: number | null;
+  response_body_preview: string | null;
+  duration_ms: number;
+  attempted_at: string;
+  success: boolean;
 }
 
 export interface StatsResponse {
@@ -200,18 +222,6 @@ export interface StatsResponse {
   topics: number;
   messages: number;
   messages_last_24h: number;
-}
-
-export interface UpRegistration {
-  id: number;
-  token: string;
-  user_id: number | null;
-  endpoint: string;
-  created_at: string;
-}
-
-export interface CreateUpRegistration {
-  endpoint: string;
 }
 
 export interface UpdateUser {

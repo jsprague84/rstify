@@ -1,15 +1,50 @@
 use axum::extract::{Path, Query, State, WebSocketUpgrade};
 use axum::response::IntoResponse;
 use axum::Json;
+use rstify_auth::tokens::{classify_token, validate_jwt, TokenType};
 use rstify_core::models::{
-    CreateAppMessage, MessageResponse, PagedMessages, Paging, UpdateMessage,
+    AttachmentInfo, CreateAppMessage, Message, MessageResponse, PagedMessages, Paging, UpdateMessage,
 };
-use rstify_core::repositories::{ApplicationRepository, ClientRepository, MessageRepository};
+use rstify_core::repositories::{ApplicationRepository, ClientRepository, MessageRepository, UserRepository};
 use serde::Deserialize;
+use std::collections::HashMap;
 
 use crate::error::ApiError;
 use crate::extractors::auth::{AuthApp, AuthUser};
 use crate::state::AppState;
+
+/// Enrich message responses with attachment info via a single batch query
+async fn enrich_with_attachments(
+    state: &AppState,
+    messages: &[Message],
+    topic_name: Option<String>,
+) -> Result<Vec<MessageResponse>, ApiError> {
+    let ids: Vec<i64> = messages.iter().map(|m| m.id).collect();
+    let attachments = state
+        .message_repo
+        .list_attachments_by_messages(&ids)
+        .await
+        .map_err(ApiError::from)?;
+
+    let mut att_map: HashMap<i64, Vec<AttachmentInfo>> = HashMap::new();
+    for a in &attachments {
+        att_map
+            .entry(a.message_id)
+            .or_default()
+            .push(AttachmentInfo::from_attachment(a));
+    }
+
+    Ok(messages
+        .iter()
+        .map(|m| {
+            let mut resp = m.to_response(topic_name.clone());
+            if let Some(atts) = att_map.remove(&m.id) {
+                resp.attachments = Some(atts);
+            }
+            resp
+        })
+        .collect())
+}
 
 #[derive(Deserialize)]
 pub struct ListParams {
@@ -99,7 +134,7 @@ pub async fn list_messages(
         .await
         .map_err(ApiError::from)?;
 
-    let responses: Vec<MessageResponse> = messages.iter().map(|m| m.to_response(None)).collect();
+    let responses = enrich_with_attachments(&state, &messages, None).await?;
     let size = responses.len() as i64;
 
     Ok(Json(PagedMessages {
@@ -149,7 +184,7 @@ pub async fn search_messages(
         .await
         .map_err(ApiError::from)?;
 
-    let responses: Vec<MessageResponse> = messages.iter().map(|m| m.to_response(None)).collect();
+    let responses = enrich_with_attachments(&state, &messages, None).await?;
     Ok(Json(responses))
 }
 
@@ -193,7 +228,7 @@ pub async fn list_application_messages(
         .await
         .map_err(ApiError::from)?;
 
-    let responses: Vec<MessageResponse> = messages.iter().map(|m| m.to_response(None)).collect();
+    let responses = enrich_with_attachments(&state, &messages, None).await?;
     let size = responses.len() as i64;
 
     Ok(Json(PagedMessages {
@@ -413,31 +448,57 @@ pub async fn websocket_stream(
     ws: WebSocketUpgrade,
     Query(params): Query<TokenQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
-    // Authenticate via query token
+    // Authenticate via query token (supports both JWT and client tokens)
     let token = params.token.ok_or_else(|| {
         ApiError::from(rstify_core::error::CoreError::Unauthorized(
             "Token required".to_string(),
         ))
     })?;
 
-    let client = state
-        .client_repo
-        .find_by_token(&token)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::Unauthorized(
-                "Invalid token".to_string(),
-            ))
-        })?;
-
-    if !client.has_scope("read") {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Token missing required scope: read".to_string(),
-        )));
-    }
-
-    let user_id = client.user_id;
+    let user_id = match classify_token(&token) {
+        TokenType::Jwt => {
+            let claims = validate_jwt(&token, &state.jwt_secret).map_err(|_| {
+                ApiError::from(rstify_core::error::CoreError::Unauthorized(
+                    "Invalid JWT token".to_string(),
+                ))
+            })?;
+            // Verify user exists
+            state
+                .user_repo
+                .find_by_id(claims.sub)
+                .await
+                .map_err(ApiError::from)?
+                .ok_or_else(|| {
+                    ApiError::from(rstify_core::error::CoreError::Unauthorized(
+                        "User not found".to_string(),
+                    ))
+                })?;
+            claims.sub
+        }
+        TokenType::ClientToken => {
+            let client = state
+                .client_repo
+                .find_by_token(&token)
+                .await
+                .map_err(ApiError::from)?
+                .ok_or_else(|| {
+                    ApiError::from(rstify_core::error::CoreError::Unauthorized(
+                        "Invalid client token".to_string(),
+                    ))
+                })?;
+            if !client.has_scope("read") {
+                return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+                    "Token missing required scope: read".to_string(),
+                )));
+            }
+            client.user_id
+        }
+        _ => {
+            return Err(ApiError::from(rstify_core::error::CoreError::Unauthorized(
+                "Invalid token type".to_string(),
+            )));
+        }
+    };
     let connections = state.connections.clone();
 
     Ok(ws.on_upgrade(move |mut socket| async move {

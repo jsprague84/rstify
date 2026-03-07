@@ -11,6 +11,7 @@ pub struct NtfyHeaders {
     pub icon_url: Option<String>,
     pub actions: Option<String>,
     pub filename: Option<String>,
+    pub attach_url: Option<String>,
     pub scheduled_for: Option<String>,
     pub content_type: Option<String>,
     pub email: Option<String>,
@@ -58,6 +59,12 @@ impl NtfyHeaders {
             get_header(headers, "x-filename").or_else(|| get_header(headers, "filename"))
         {
             parsed.filename = Some(v);
+        }
+
+        if let Some(v) =
+            get_header(headers, "x-attach").or_else(|| get_header(headers, "attach"))
+        {
+            parsed.attach_url = Some(v);
         }
 
         // Delay/At/In headers for scheduling

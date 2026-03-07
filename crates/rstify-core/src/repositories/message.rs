@@ -87,6 +87,8 @@ pub trait MessageRepository: Send + Sync {
         expires_at: Option<&str>,
     ) -> Result<Attachment, CoreError>;
     async fn find_attachment(&self, id: i64) -> Result<Option<Attachment>, CoreError>;
+    async fn list_attachments_by_message(&self, message_id: i64) -> Result<Vec<Attachment>, CoreError>;
+    async fn list_attachments_by_messages(&self, message_ids: &[i64]) -> Result<Vec<Attachment>, CoreError>;
     async fn list_expired_attachments(&self) -> Result<Vec<Attachment>, CoreError>;
     async fn delete_attachment(&self, id: i64) -> Result<(), CoreError>;
 

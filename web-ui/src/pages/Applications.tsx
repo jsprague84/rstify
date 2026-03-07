@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api/client';
-import type { Application, CreateApplication, UpdateApplication } from '../api/types';
+import type { Application, CreateApplication, UpdateApplication, MessageResponse } from '../api/types';
+import MessageContent from '../components/MessageContent';
 
 function AppIcon({ app, size = 32 }: { app: Application; size?: number }) {
   const [v] = useState(() => Date.now());
@@ -34,6 +35,18 @@ export default function Applications() {
   const [showCreate, setShowCreate] = useState(false);
   const [editApp, setEditApp] = useState<Application | null>(null);
   const [deleteApp, setDeleteApp] = useState<Application | null>(null);
+  const [messagesApp, setMessagesApp] = useState<Application | null>(null);
+  const [appMessages, setAppMessages] = useState<MessageResponse[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+
+  const loadAppMessages = (app: Application) => {
+    setMessagesApp(app);
+    setMessagesLoading(true);
+    api.listApplicationMessages(app.id)
+      .then(res => setAppMessages(res.messages))
+      .catch(e => setError(e.message))
+      .finally(() => setMessagesLoading(false));
+  };
 
   const load = useCallback(() => {
     api.listApplications().then(setApps).catch(e => setError(e.message));
@@ -79,9 +92,11 @@ export default function Applications() {
           { key: 'description', header: 'Description', render: a => a.description || '-' },
           { key: 'token', header: 'Token', render: a => <TokenDisplay token={a.token} /> },
           { key: 'default_priority', header: 'Priority' },
+          { key: 'retention_days', header: 'Retention', render: a => a.retention_days ? `${a.retention_days}d` : '\u221e' },
         ]}
         actions={a => (
           <div className="flex gap-2 justify-end">
+            <button onClick={() => loadAppMessages(a)} className="text-blue-600 hover:text-blue-800 text-sm">Messages</button>
             <button onClick={() => setEditApp(a)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
             <button onClick={() => setDeleteApp(a)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
           </div>
@@ -104,6 +119,34 @@ export default function Applications() {
         title="Delete Application"
         message={`Delete application "${deleteApp?.name}"? All associated messages will be deleted.`}
       />
+      {messagesApp && (
+        <Modal open onClose={() => { setMessagesApp(null); setAppMessages([]); }} title={`Messages — ${messagesApp.name}`}>
+          <div className="max-h-96 overflow-y-auto space-y-3">
+            {messagesLoading ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">Loading...</p>
+            ) : appMessages.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">No messages</p>
+            ) : (
+              appMessages.map(m => (
+                <div key={m.id} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    {m.title && <span className="font-semibold text-gray-900 dark:text-white text-sm">{m.title}</span>}
+                    <span className="text-xs text-gray-400">#{m.id}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded ${m.priority >= 8 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : m.priority >= 5 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300'}`}>P{m.priority}</span>
+                  </div>
+                  <MessageContent message={m.message} extras={m.extras} />
+                  {m.tags && m.tags.length > 0 && (
+                    <div className="flex gap-1 mt-1">
+                      {m.tags.map(t => <span key={t} className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">{t}</span>)}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">{m.date}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -113,6 +156,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
     name: app?.name || '',
     description: app?.description || '',
     default_priority: app?.default_priority ?? 5,
+    retention_days: app?.retention_days ?? '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -129,6 +173,7 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
         name: form.name,
         description: form.description || undefined,
         default_priority: form.default_priority,
+        ...(app && form.retention_days !== '' ? { retention_days: Number(form.retention_days) } : {}),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -224,6 +269,13 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
         <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Default Priority</label>
         <input type="number" min={0} max={10} value={form.default_priority} onChange={e => setForm(f => ({ ...f, default_priority: parseInt(e.target.value) || 0 }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
       </div>
+      {app && (
+        <div>
+          <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Message Retention (days)</label>
+          <input type="number" min={1} max={365} placeholder="No limit" value={form.retention_days} onChange={e => setForm(f => ({ ...f, retention_days: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
+          <p className="text-xs text-gray-400 mt-1">Leave empty for no limit. Messages older than this will be auto-deleted.</p>
+        </div>
+      )}
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
         <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">{app ? 'Save' : 'Create'}</button>

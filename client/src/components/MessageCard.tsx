@@ -5,6 +5,7 @@ import * as Haptics from "expo-haptics";
 import type { MessageResponse } from "../api";
 import { MessageContent } from "./MessageContent";
 import { MessageActions } from "./MessageActions";
+import { MessageAttachments } from "./MessageAttachments";
 import { MessageIcon } from "./MessageIcon";
 import { useTheme } from "../store/theme";
 import { Colors } from "../theme/colors";
@@ -118,6 +119,9 @@ export const MessageCard = React.memo(function MessageCard({ message, onDelete }
       </View>
 
       <MessageContent message={message} />
+
+      {/* Attachments */}
+      <MessageAttachments attachments={message.attachments} />
 
       {/* Action buttons */}
       <MessageActions message={message} />

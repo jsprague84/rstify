@@ -2,13 +2,16 @@ use axum::body::Bytes;
 use axum::extract::{Path, State};
 use axum::http::HeaderMap;
 use axum::Json;
-use rstify_core::models::MessageResponse;
+use rstify_core::models::{AttachmentInfo, MessageResponse};
 use rstify_core::repositories::{MessageRepository, TopicRepository};
+use tokio::fs;
+use uuid::Uuid;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::ntfy_headers::NtfyHeaders;
 use crate::state::AppState;
+use crate::utils::sanitize_filename;
 
 /// POST /{topic} or PUT /{topic} - ntfy-style publish where body is the message
 /// and HTTP headers carry metadata.
@@ -54,14 +57,28 @@ pub async fn ntfy_publish(
         }
     }
 
-    let message_text = String::from_utf8_lossy(&body).to_string();
-    if message_text.is_empty() || message_text.len() > 65536 {
+    let h = NtfyHeaders::from_headers(&headers);
+
+    // Determine if this is a file-upload request (body is the file)
+    // ntfy: PUT with Filename header means body is the attachment
+    let is_file_upload = h.filename.is_some() && h.attach_url.is_none();
+
+    let (message_text, file_data): (String, Option<Vec<u8>>) = if is_file_upload {
+        // Body is the file; message comes from X-Message header if present
+        let msg_text = get_header_str(&headers, "x-message")
+            .or_else(|| get_header_str(&headers, "message"))
+            .unwrap_or_default();
+        (msg_text, Some(body.to_vec()))
+    } else {
+        let text = String::from_utf8_lossy(&body).to_string();
+        (text, None)
+    };
+
+    if !is_file_upload && (message_text.is_empty() || message_text.len() > 65536) {
         return Err(ApiError::from(rstify_core::error::CoreError::Validation(
             "Message must be between 1 and 65536 characters".to_string(),
         )));
     }
-
-    let h = NtfyHeaders::from_headers(&headers);
 
     let tags_json = h
         .tags
@@ -75,7 +92,7 @@ pub async fn ntfy_publish(
             Some(topic.id),
             Some(auth.user.id),
             h.title.as_deref(),
-            &message_text,
+            if message_text.is_empty() { "Attachment" } else { &message_text },
             h.priority.unwrap_or(3),
             tags_json.as_deref(),
             h.click_url.as_deref(),
@@ -87,6 +104,24 @@ pub async fn ntfy_publish(
         )
         .await
         .map_err(ApiError::from)?;
+
+    // Handle file attachment: either inline body or download from X-Attach URL
+    let mut attachment_infos: Vec<AttachmentInfo> = Vec::new();
+
+    if let Some(data) = file_data {
+        // PUT with body as file
+        if let Some(att) = save_attachment(&state, msg.id, &h.filename.clone().unwrap_or_else(|| "attachment".to_string()), &data).await? {
+            attachment_infos.push(att);
+        }
+    } else if let Some(ref url) = h.attach_url {
+        // X-Attach: download from URL and attach
+        match download_and_attach(&state, msg.id, url, h.filename.as_deref()).await {
+            Ok(att) => attachment_infos.push(att),
+            Err(_) => {
+                tracing::warn!("Failed to download attachment from {}", url);
+            }
+        }
+    }
 
     // Set message expiry if Cache header provided
     if let Some(ref cache_dur) = h.cache_duration {
@@ -102,7 +137,10 @@ pub async fn ntfy_publish(
         }
     }
 
-    let response = msg.to_response(Some(topic_name.clone()));
+    let mut response = msg.to_response(Some(topic_name.clone()));
+    if !attachment_infos.is_empty() {
+        response.attachments = Some(attachment_infos);
+    }
 
     // Broadcast to topic subscribers (only if not scheduled)
     if h.scheduled_for.is_none() {
@@ -152,4 +190,114 @@ pub async fn ntfy_publish(
     }
 
     Ok(Json(response))
+}
+
+fn get_header_str(headers: &HeaderMap, name: &str) -> Option<String> {
+    headers
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+/// Save raw bytes as an attachment to a message.
+async fn save_attachment(
+    state: &AppState,
+    message_id: i64,
+    raw_filename: &str,
+    data: &[u8],
+) -> Result<Option<AttachmentInfo>, ApiError> {
+    if data.is_empty() {
+        return Ok(None);
+    }
+    if data.len() > state.max_upload_size {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            format!(
+                "Attachment too large: {} bytes (max {} bytes)",
+                data.len(),
+                state.max_upload_size
+            ),
+        )));
+    }
+
+    let upload_dir = &state.upload_dir;
+    fs::create_dir_all(upload_dir).await.map_err(|e| {
+        ApiError::from(rstify_core::error::CoreError::Internal(format!(
+            "Failed to create upload dir: {e}"
+        )))
+    })?;
+
+    let filename = sanitize_filename(raw_filename);
+    let content_type = mime_guess::from_path(&filename)
+        .first()
+        .map(|m| m.to_string());
+    let storage_filename = format!("{}_{}", Uuid::new_v4(), filename);
+    let storage_path = format!("{}/{}", upload_dir, storage_filename);
+
+    fs::write(&storage_path, data).await.map_err(|e| {
+        ApiError::from(rstify_core::error::CoreError::Internal(format!(
+            "Failed to write file: {e}"
+        )))
+    })?;
+
+    let attachment = state
+        .message_repo
+        .create_attachment(
+            message_id,
+            &filename,
+            content_type.as_deref(),
+            data.len() as i64,
+            "local",
+            &storage_path,
+            None,
+        )
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(Some(AttachmentInfo::from_attachment(&attachment)))
+}
+
+/// Download a file from a URL and save it as an attachment.
+async fn download_and_attach(
+    state: &AppState,
+    message_id: i64,
+    url: &str,
+    filename_override: Option<&str>,
+) -> Result<AttachmentInfo, ApiError> {
+    let response = reqwest::get(url).await.map_err(|e| {
+        ApiError::from(rstify_core::error::CoreError::Internal(format!(
+            "Failed to download attachment: {e}"
+        )))
+    })?;
+
+    if !response.status().is_success() {
+        return Err(ApiError::from(rstify_core::error::CoreError::Internal(
+            format!("Attachment download failed with status {}", response.status()),
+        )));
+    }
+
+    // Derive filename from override, Content-Disposition, or URL path
+    let filename = filename_override
+        .map(|s| s.to_string())
+        .or_else(|| {
+            url.rsplit('/')
+                .next()
+                .filter(|s| !s.is_empty() && s.contains('.'))
+                .map(|s| s.to_string())
+        })
+        .unwrap_or_else(|| "attachment".to_string());
+
+    let data = response.bytes().await.map_err(|e| {
+        ApiError::from(rstify_core::error::CoreError::Internal(format!(
+            "Failed to read attachment body: {e}"
+        )))
+    })?;
+
+    save_attachment(state, message_id, &filename, &data)
+        .await?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::Internal(
+                "Downloaded file was empty".to_string(),
+            ))
+        })
 }

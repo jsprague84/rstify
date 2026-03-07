@@ -2,7 +2,7 @@ use axum::extract::{Multipart, Path, State};
 use axum::http::header;
 use axum::response::IntoResponse;
 use axum::Json;
-use rstify_core::models::Attachment;
+use rstify_core::models::{Attachment, AttachmentInfo};
 use rstify_core::repositories::MessageRepository;
 use tokio::fs;
 use uuid::Uuid;
@@ -11,9 +11,6 @@ use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
 use crate::utils::sanitize_filename;
-
-/// Maximum attachment size: 10 MiB
-const MAX_UPLOAD_SIZE: usize = 10 * 1024 * 1024;
 
 #[utoipa::path(
     post,
@@ -71,12 +68,12 @@ pub async fn upload_attachment(
         )))
     })?;
 
-    if data.len() > MAX_UPLOAD_SIZE {
+    if data.len() > state.max_upload_size {
         return Err(ApiError::from(rstify_core::error::CoreError::Validation(
             format!(
                 "File too large: {} bytes (max {} bytes)",
                 data.len(),
-                MAX_UPLOAD_SIZE
+                state.max_upload_size
             ),
         )));
     }
@@ -149,4 +146,59 @@ pub async fn download_attachment(
         ],
         data,
     ))
+}
+
+/// DELETE /api/attachments/{id} - Delete an attachment
+#[utoipa::path(delete, path = "/api/attachments/{id}", responses((status = 204)))]
+pub async fn delete_attachment(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    Path(id): Path<i64>,
+) -> Result<impl IntoResponse, ApiError> {
+    let attachment = state
+        .message_repo
+        .find_attachment(id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Attachment not found".to_string(),
+            ))
+        })?;
+
+    // Delete file from disk (ignore errors if file already gone)
+    let _ = fs::remove_file(&attachment.storage_path).await;
+
+    state
+        .message_repo
+        .delete_attachment(id)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+/// GET /api/messages/{id}/attachments - List attachments for a message
+#[utoipa::path(
+    get,
+    path = "/api/messages/{id}/attachments",
+    responses((status = 200, body = Vec<AttachmentInfo>))
+)]
+pub async fn list_message_attachments(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    Path(message_id): Path<i64>,
+) -> Result<Json<Vec<AttachmentInfo>>, ApiError> {
+    let attachments = state
+        .message_repo
+        .list_attachments_by_message(message_id)
+        .await
+        .map_err(ApiError::from)?;
+
+    let infos: Vec<AttachmentInfo> = attachments
+        .iter()
+        .map(AttachmentInfo::from_attachment)
+        .collect();
+
+    Ok(Json(infos))
 }

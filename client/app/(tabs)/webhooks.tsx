@@ -16,7 +16,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState } from "../../src/components/EmptyState";
 import { getApiClient } from "../../src/api";
-import type { WebhookConfig, Topic } from "../../src/api";
+import type { WebhookConfig, Topic, UpdateWebhookConfig, WebhookDeliveryLog } from "../../src/api";
 import * as Clipboard from "expo-clipboard";
 import { useTheme } from "../../src/store/theme";
 import { Colors } from "../../src/theme/colors";
@@ -30,6 +30,15 @@ export default function WebhooksScreen() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+
+  const [editWebhook, setEditWebhook] = useState<WebhookConfig | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editTargetUrl, setEditTargetUrl] = useState("");
+  const [editHttpMethod, setEditHttpMethod] = useState("POST");
+  const [editBodyTemplate, setEditBodyTemplate] = useState("");
+  const [deliveriesWebhook, setDeliveriesWebhook] = useState<WebhookConfig | null>(null);
+  const [deliveries, setDeliveries] = useState<WebhookDeliveryLog[]>([]);
+  const [deliveriesLoading, setDeliveriesLoading] = useState(false);
 
   // Create form state
   const [direction, setDirection] = useState<Direction>("incoming");
@@ -145,6 +154,45 @@ export default function WebhooksScreen() {
     ]);
   };
 
+  const openEdit = (wh: WebhookConfig) => {
+    setEditWebhook(wh);
+    setEditName(wh.name);
+    setEditTargetUrl(wh.target_url || "");
+    setEditHttpMethod(wh.http_method || "POST");
+    setEditBodyTemplate(wh.body_template || "");
+  };
+
+  const handleEdit = async () => {
+    if (!editWebhook) return;
+    try {
+      const api = getApiClient();
+      await api.updateWebhook(editWebhook.id, {
+        name: editName.trim() || undefined,
+        target_url: editTargetUrl.trim() || undefined,
+        http_method: editHttpMethod,
+        body_template: editBodyTemplate.trim() || undefined,
+      });
+      setEditWebhook(null);
+      fetchData();
+    } catch (e) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Update failed");
+    }
+  };
+
+  const openDeliveries = async (wh: WebhookConfig) => {
+    setDeliveriesWebhook(wh);
+    setDeliveriesLoading(true);
+    try {
+      const api = getApiClient();
+      const logs = await api.listWebhookDeliveries(wh.id);
+      setDeliveries(logs);
+    } catch (e) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Failed to load deliveries");
+    } finally {
+      setDeliveriesLoading(false);
+    }
+  };
+
   const handleCopyToken = async (token: string) => {
     try {
       await Clipboard.setStringAsync(token);
@@ -239,9 +287,17 @@ export default function WebhooksScreen() {
                   trackColor={{ false: colors.textTertiary, true: isDark ? "#3b82f6" : "#93c5fd" }}
                   thumbColor={item.enabled ? colors.primary : colors.textTertiary}
                 />
-                <Pressable onPress={() => handleDelete(item)} hitSlop={8}>
-                  <Ionicons name="trash-outline" size={18} color={colors.error} />
-                </Pressable>
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <Pressable onPress={() => openDeliveries(item)} hitSlop={8}>
+                    <Ionicons name="list-outline" size={18} color={colors.textSecondary} />
+                  </Pressable>
+                  <Pressable onPress={() => openEdit(item)} hitSlop={8}>
+                    <Ionicons name="create-outline" size={18} color={colors.primary} />
+                  </Pressable>
+                  <Pressable onPress={() => handleDelete(item)} hitSlop={8}>
+                    <Ionicons name="trash-outline" size={18} color={colors.error} />
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
@@ -428,6 +484,106 @@ export default function WebhooksScreen() {
                 </View>
               </View>
             </KeyboardAwareScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal visible={!!editWebhook} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setEditWebhook(null)}>
+          <Pressable style={styles.modalOuter} onPress={() => {}}>
+            <KeyboardAwareScrollView bottomOffset={20} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScrollContent}>
+              <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Webhook</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Name"
+                  placeholderTextColor={colors.textTertiary}
+                  value={editName}
+                  onChangeText={setEditName}
+                />
+                {editWebhook?.direction === "outgoing" && (
+                  <>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                      placeholder="Target URL"
+                      placeholderTextColor={colors.textTertiary}
+                      value={editTargetUrl}
+                      onChangeText={setEditTargetUrl}
+                      autoCapitalize="none"
+                      keyboardType="url"
+                    />
+                    <View style={styles.methodRow}>
+                      {["GET", "POST", "PUT"].map((m) => (
+                        <Pressable
+                          key={m}
+                          style={[styles.methodBtn, { backgroundColor: colors.backgroundTertiary }, editHttpMethod === m && [styles.methodBtnActive, { backgroundColor: colors.primary }]]}
+                          onPress={() => setEditHttpMethod(m)}
+                        >
+                          <Text style={[styles.methodBtnText, { color: colors.textSecondary }, editHttpMethod === m && styles.methodBtnTextActive]}>{m}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    <TextInput
+                      style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                      placeholder="Body template"
+                      placeholderTextColor={colors.textTertiary}
+                      value={editBodyTemplate}
+                      onChangeText={setEditBodyTemplate}
+                      multiline
+                      numberOfLines={3}
+                    />
+                  </>
+                )}
+                <View style={styles.modalButtons}>
+                  <Pressable style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary }]} onPress={() => setEditWebhook(null)}>
+                    <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                  </Pressable>
+                  <Pressable style={[styles.submitButton, { backgroundColor: colors.primary }]} onPress={handleEdit}>
+                    <Text style={styles.submitText}>Save</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </KeyboardAwareScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Deliveries Modal */}
+      <Modal visible={!!deliveriesWebhook} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setDeliveriesWebhook(null)}>
+          <Pressable style={styles.modalOuter} onPress={() => {}}>
+            <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Delivery Logs — {deliveriesWebhook?.name}</Text>
+              {deliveriesLoading ? (
+                <Text style={{ color: colors.textSecondary, textAlign: "center", padding: 16 }}>Loading...</Text>
+              ) : deliveries.length === 0 ? (
+                <Text style={{ color: colors.textSecondary, textAlign: "center", padding: 16 }}>No deliveries yet</Text>
+              ) : (
+                <FlatList
+                  data={deliveries}
+                  keyExtractor={(d) => d.id.toString()}
+                  style={{ maxHeight: 300 }}
+                  renderItem={({ item: d }) => (
+                    <View style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                        <Text style={{ color: d.success ? colors.success : colors.error, fontSize: 13, fontWeight: "600" }}>
+                          {d.success ? "OK" : "FAIL"} {d.status_code ? `(${d.status_code})` : ""}
+                        </Text>
+                        <Text style={{ color: colors.textTertiary, fontSize: 11 }}>{d.duration_ms}ms</Text>
+                      </View>
+                      <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 2 }}>{new Date(d.attempted_at).toLocaleString()}</Text>
+                      {d.response_body_preview ? (
+                        <Text style={{ color: colors.textTertiary, fontSize: 11, marginTop: 2 }} numberOfLines={2}>{d.response_body_preview}</Text>
+                      ) : null}
+                    </View>
+                  )}
+                />
+              )}
+              <Pressable style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary, marginTop: 8 }]} onPress={() => setDeliveriesWebhook(null)}>
+                <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Close</Text>
+              </Pressable>
+            </View>
           </Pressable>
         </Pressable>
       </Modal>

@@ -8,7 +8,6 @@ import type {
   CreateTopic,
   CreateTopicMessage,
   CreateAppMessage,
-  CreateUpRegistration,
   CreateWebhookConfig,
   HealthResponse,
   LoginRequest,
@@ -21,10 +20,10 @@ import type {
   UpdateApplication,
   UpdateUser,
   UpdateWebhookConfig,
-  UpRegistration,
   UserResponse,
   VersionResponse,
   WebhookConfig,
+  WebhookDeliveryLog,
 } from "./types";
 
 export class RstifyApiError extends Error {
@@ -51,6 +50,10 @@ export class RstifyClient {
 
   getToken(): string | null {
     return this.token;
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 
   private async request<T>(
@@ -292,6 +295,24 @@ export class RstifyClient {
     await this.request("DELETE", "/message");
   }
 
+  async searchMessages(params: {
+    q?: string;
+    tag?: string;
+    priority_min?: number;
+    priority_max?: number;
+    appid?: number;
+    limit?: number;
+  }): Promise<MessageResponse[]> {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set("q", params.q);
+    if (params.tag) qs.set("tag", params.tag);
+    if (params.priority_min != null) qs.set("priority_min", String(params.priority_min));
+    if (params.priority_max != null) qs.set("priority_max", String(params.priority_max));
+    if (params.appid != null) qs.set("appid", String(params.appid));
+    if (params.limit != null) qs.set("limit", String(params.limit));
+    return this.request("GET", `/message/search?${qs.toString()}`);
+  }
+
   // Topics
   async listTopics(): Promise<Topic[]> {
     return this.request("GET", "/api/topics");
@@ -344,6 +365,10 @@ export class RstifyClient {
     return `${this.baseUrl}/api/attachments/${id}`;
   }
 
+  async deleteAttachment(id: number): Promise<void> {
+    await this.request("DELETE", `/api/attachments/${id}`);
+  }
+
   // Webhooks
   async listWebhooks(): Promise<WebhookConfig[]> {
     return this.request("GET", "/api/webhooks");
@@ -364,22 +389,13 @@ export class RstifyClient {
     await this.request("DELETE", `/api/webhooks/${id}`);
   }
 
+  async listWebhookDeliveries(id: number, limit = 20): Promise<WebhookDeliveryLog[]> {
+    return this.request("GET", `/api/webhooks/${id}/deliveries?limit=${limit}`);
+  }
+
   // Stats (admin)
   async getStats(): Promise<StatsResponse> {
     return this.request("GET", "/api/stats");
-  }
-
-  // UnifiedPush
-  async registerUpDevice(req: CreateUpRegistration): Promise<UpRegistration> {
-    return this.request("POST", "/api/up/register", req);
-  }
-
-  async listUpRegistrations(): Promise<UpRegistration[]> {
-    return this.request("GET", "/api/up/registrations");
-  }
-
-  async deleteUpRegistration(id: number): Promise<void> {
-    await this.request("DELETE", `/api/up/registrations/${id}`);
   }
 
   // WebSocket connection for user stream (Gotify compat)

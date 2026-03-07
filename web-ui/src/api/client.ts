@@ -4,10 +4,11 @@ import type {
   Client, CreateClient, UpdateClient,
   Topic, CreateTopic,
   TopicPermission, CreateTopicPermission,
-  PagedMessages, MessageResponse,
+  PagedMessages, MessageResponse, AttachmentInfo,
   WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig,
   WebhookDeliveryLog,
   StatsResponse, LoginResponse,
+  HealthResponse, VersionResponse,
 } from './types';
 
 const BASE = '';
@@ -131,6 +132,9 @@ export const api = {
   listTopicMessages(name: string, limit = 100, since = 0): Promise<PagedMessages> {
     return request(`/api/topics/${encodeURIComponent(name)}/messages?limit=${limit}&since=${since}`);
   },
+  publishToTopic(name: string, data: { title?: string; message: string; priority?: number; tags?: string[]; scheduled_for?: string }): Promise<MessageResponse> {
+    return request(`/api/topics/${encodeURIComponent(name)}/publish`, { method: 'POST', body: JSON.stringify(data) });
+  },
 
   // Messages
   listMessages(limit = 100, since = 0): Promise<PagedMessages> {
@@ -166,6 +170,54 @@ export const api = {
   },
   deletePermission(id: number): Promise<void> {
     return request(`/api/permissions/${id}`, { method: 'DELETE' });
+  },
+
+  // Attachments
+  async uploadAttachment(messageId: number, file: File): Promise<AttachmentInfo> {
+    const form = new FormData();
+    form.append('file', file);
+    const token = getToken();
+    const res = await fetch(`${BASE}/api/messages/${messageId}/attachments`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(body.error || `HTTP ${res.status}`);
+    }
+    return res.json();
+  },
+  listAttachments(messageId: number): Promise<AttachmentInfo[]> {
+    return request(`/api/messages/${messageId}/attachments`);
+  },
+  deleteAttachment(id: number): Promise<void> {
+    return request(`/api/attachments/${id}`, { method: 'DELETE' });
+  },
+
+  // Message search
+  searchMessages(params: { q?: string; tag?: string; priority_min?: number; priority_max?: number; appid?: number; limit?: number }): Promise<MessageResponse[]> {
+    const qs = new URLSearchParams();
+    if (params.q) qs.set('q', params.q);
+    if (params.tag) qs.set('tag', params.tag);
+    if (params.priority_min != null) qs.set('priority_min', String(params.priority_min));
+    if (params.priority_max != null) qs.set('priority_max', String(params.priority_max));
+    if (params.appid != null) qs.set('appid', String(params.appid));
+    if (params.limit != null) qs.set('limit', String(params.limit));
+    return request(`/message/search?${qs.toString()}`);
+  },
+
+  // Messages - bulk
+  deleteAllMessages(): Promise<void> {
+    return request('/message', { method: 'DELETE' });
+  },
+
+  // Health & version
+  getHealth(): Promise<HealthResponse> {
+    return request('/health');
+  },
+  getVersion(): Promise<VersionResponse> {
+    return request('/version');
   },
 
   // Stats

@@ -13,6 +13,8 @@ import Clients from './pages/Clients';
 import Topics from './pages/Topics';
 import Webhooks from './pages/Webhooks';
 import Messages from './pages/Messages';
+import Permissions from './pages/Permissions';
+import Settings from './pages/Settings';
 import { Link } from 'react-router-dom';
 
 function NotFound() {
@@ -52,7 +54,9 @@ export default function App() {
               <Route path="/clients" element={<Clients />} />
               <Route path="/topics" element={<Topics />} />
               <Route path="/webhooks" element={<Webhooks />} />
+              <Route path="/permissions" element={<Permissions />} />
               <Route path="/messages" element={<Messages />} />
+              <Route path="/settings" element={<Settings />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

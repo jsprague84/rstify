@@ -8,7 +8,9 @@ const navItems = [
   { to: '/clients', label: 'Clients' },
   { to: '/topics', label: 'Topics' },
   { to: '/webhooks', label: 'Webhooks' },
+  { to: '/permissions', label: 'Permissions', admin: true },
   { to: '/messages', label: 'Messages' },
+  { to: '/settings', label: 'Settings' },
 ];
 
 export default function Sidebar() {

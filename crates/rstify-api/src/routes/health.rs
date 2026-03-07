@@ -21,7 +21,8 @@ pub async fn health(State(state): State<AppState>) -> Json<Value> {
     Json(json!({
         "health": health,
         "database": db_status,
-        "version": env!("CARGO_PKG_VERSION")
+        "version": env!("CARGO_PKG_VERSION"),
+        "max_attachment_size": state.max_upload_size
     }))
 }
 
