@@ -104,6 +104,10 @@ impl Database {
                 "014_fcm_tokens",
                 include_str!("../../../migrations/014_fcm_tokens.sql"),
             ),
+            (
+                "015_fts5_messages",
+                include_str!("../../../migrations/015_fts5_messages.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {

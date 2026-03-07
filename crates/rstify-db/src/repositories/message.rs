@@ -150,6 +150,63 @@ impl MessageRepository for SqliteMessageRepo {
         .map_err(|e| CoreError::Database(e.to_string()))
     }
 
+    async fn search(
+        &self,
+        user_id: i64,
+        query: Option<&str>,
+        tag: Option<&str>,
+        priority_min: Option<i32>,
+        priority_max: Option<i32>,
+        since: Option<&str>,
+        until: Option<&str>,
+        app_id: Option<i64>,
+        limit: i64,
+    ) -> Result<Vec<Message>, CoreError> {
+        let mut sql = String::from(
+            "SELECT m.* FROM messages m WHERE (m.application_id IN (SELECT id FROM applications WHERE user_id = ?) OR m.user_id = ?)",
+        );
+        let mut binds: Vec<String> = vec![user_id.to_string(), user_id.to_string()];
+
+        if let Some(q) = query {
+            sql.push_str(" AND m.id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?)");
+            binds.push(q.to_string());
+        }
+        if let Some(t) = tag {
+            sql.push_str(" AND m.tags LIKE ?");
+            binds.push(format!("%{}%", t));
+        }
+        if let Some(pmin) = priority_min {
+            sql.push_str(" AND m.priority >= ?");
+            binds.push(pmin.to_string());
+        }
+        if let Some(pmax) = priority_max {
+            sql.push_str(" AND m.priority <= ?");
+            binds.push(pmax.to_string());
+        }
+        if let Some(s) = since {
+            sql.push_str(" AND m.created_at >= ?");
+            binds.push(s.to_string());
+        }
+        if let Some(u) = until {
+            sql.push_str(" AND m.created_at <= ?");
+            binds.push(u.to_string());
+        }
+        if let Some(aid) = app_id {
+            sql.push_str(" AND m.application_id = ?");
+            binds.push(aid.to_string());
+        }
+        sql.push_str(" ORDER BY m.created_at DESC LIMIT ?");
+        binds.push(limit.to_string());
+
+        let mut q = sqlx::query_as::<_, Message>(&sql);
+        for b in &binds {
+            q = q.bind(b);
+        }
+        q.fetch_all(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))
+    }
+
     async fn delete_by_id(&self, id: i64) -> Result<(), CoreError> {
         let result = sqlx::query("DELETE FROM messages WHERE id = ?")
             .bind(id)

@@ -49,6 +49,18 @@ pub trait MessageRepository: Send + Sync {
         priority: Option<i32>,
         extras: Option<&str>,
     ) -> Result<Message, CoreError>;
+    async fn search(
+        &self,
+        user_id: i64,
+        query: Option<&str>,
+        tag: Option<&str>,
+        priority_min: Option<i32>,
+        priority_max: Option<i32>,
+        since: Option<&str>,
+        until: Option<&str>,
+        app_id: Option<i64>,
+        limit: i64,
+    ) -> Result<Vec<Message>, CoreError>;
     async fn delete_by_id(&self, id: i64) -> Result<(), CoreError>;
     async fn delete_all_for_user(&self, user_id: i64) -> Result<(), CoreError>;
     async fn delete_all_for_application(&self, app_id: i64) -> Result<(), CoreError>;
