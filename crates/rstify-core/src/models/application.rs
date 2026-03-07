@@ -12,6 +12,7 @@ pub struct Application {
     pub image: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    pub retention_days: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -26,4 +27,5 @@ pub struct UpdateApplication {
     pub name: Option<String>,
     pub description: Option<String>,
     pub default_priority: Option<i32>,
+    pub retention_days: Option<i32>,
 }

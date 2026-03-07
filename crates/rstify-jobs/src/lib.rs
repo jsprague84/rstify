@@ -49,6 +49,12 @@ impl JobRunner {
         tokio::spawn(async move {
             cleanup::run_message_cleanup(pool, cancel).await;
         });
+
+        let pool = self.pool.clone();
+        let cancel = self.cancel.clone();
+        tokio::spawn(async move {
+            cleanup::run_retention_cleanup(pool, cancel).await;
+        });
     }
 
     pub fn shutdown(&self) {

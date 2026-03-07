@@ -51,6 +51,40 @@ async fn cleanup_expired_messages(pool: &SqlitePool) -> Result<u64, sqlx::Error>
     Ok(result.rows_affected())
 }
 
+/// Background task that enforces per-app message retention policies
+pub async fn run_retention_cleanup(pool: SqlitePool, cancel: CancellationToken) {
+    info!("Retention cleanup worker started");
+
+    loop {
+        tokio::select! {
+            _ = cancel.cancelled() => {
+                info!("Retention cleanup worker shutting down");
+                break;
+            }
+            _ = tokio::time::sleep(std::time::Duration::from_secs(3600)) => {
+                match cleanup_retention(&pool).await {
+                    Ok(count) if count > 0 => info!("Retention cleanup removed {} old messages", count),
+                    Err(e) => error!("Retention cleanup error: {}", e),
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+async fn cleanup_retention(pool: &SqlitePool) -> Result<u64, sqlx::Error> {
+    let result = sqlx::query(
+        r#"DELETE FROM messages WHERE application_id IN (
+            SELECT id FROM applications WHERE retention_days IS NOT NULL
+        ) AND created_at < datetime('now', '-' || (
+            SELECT retention_days FROM applications WHERE applications.id = messages.application_id
+        ) || ' days')"#,
+    )
+    .execute(pool)
+    .await?;
+    Ok(result.rows_affected())
+}
+
 async fn cleanup_expired(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     let expired = sqlx::query_as::<_, rstify_core::models::Attachment>(
         "SELECT * FROM attachments WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')",

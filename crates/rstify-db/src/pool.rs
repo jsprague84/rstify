@@ -108,6 +108,10 @@ impl Database {
                 "015_fts5_messages",
                 include_str!("../../../migrations/015_fts5_messages.sql"),
             ),
+            (
+                "016_retention_days",
+                include_str!("../../../migrations/016_retention_days.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {

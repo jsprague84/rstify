@@ -68,6 +68,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
         name: Option<&str>,
         description: Option<&str>,
         default_priority: Option<i32>,
+        retention_days: Option<Option<i32>>,
     ) -> Result<Application, CoreError> {
         let current = self
             .find_by_id(id)
@@ -77,15 +78,26 @@ impl ApplicationRepository for SqliteApplicationRepo {
         let new_name = name.unwrap_or(&current.name);
         let new_desc = description.or(current.description.as_deref());
         let new_priority = default_priority.unwrap_or(current.default_priority);
+        let new_retention = retention_days.unwrap_or(current.retention_days);
 
         sqlx::query_as::<_, Application>(
-            "UPDATE applications SET name = ?, description = ?, default_priority = ?, updated_at = datetime('now') WHERE id = ? RETURNING *",
+            "UPDATE applications SET name = ?, description = ?, default_priority = ?, retention_days = ?, updated_at = datetime('now') WHERE id = ? RETURNING *",
         )
         .bind(new_name)
         .bind(new_desc)
         .bind(new_priority)
+        .bind(new_retention)
         .bind(id)
         .fetch_one(&self.pool)
+        .await
+        .map_err(|e| CoreError::Database(e.to_string()))
+    }
+
+    async fn list_with_retention(&self) -> Result<Vec<Application>, CoreError> {
+        sqlx::query_as::<_, Application>(
+            "SELECT * FROM applications WHERE retention_days IS NOT NULL",
+        )
+        .fetch_all(&self.pool)
         .await
         .map_err(|e| CoreError::Database(e.to_string()))
     }

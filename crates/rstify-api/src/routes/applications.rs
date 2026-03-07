@@ -108,6 +108,7 @@ pub async fn update_application(
             req.name.as_deref(),
             req.description.as_deref(),
             req.default_priority,
+            req.retention_days.map(Some),
         )
         .await
         .map_err(ApiError::from)?;
