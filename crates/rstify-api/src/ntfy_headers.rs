@@ -50,7 +50,8 @@ impl NtfyHeaders {
 
         if let Some(v) = get_header(headers, "x-actions").or_else(|| get_header(headers, "actions"))
         {
-            parsed.actions = Some(v);
+            // Parse ntfy action format and convert to rstify JSON actions
+            parsed.actions = Some(parse_ntfy_actions(&v));
         }
 
         if let Some(v) =
@@ -98,15 +99,60 @@ fn get_header(headers: &HeaderMap, name: &str) -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
+/// Map ntfy priority levels (1-5) to rstify priority levels (0-10).
+/// ntfy: 1=min, 2=low, 3=default, 4=high, 5=max/urgent
+/// rstify: 0-10 scale
 fn parse_priority(s: &str) -> i32 {
     match s.to_lowercase().as_str() {
         "min" | "1" => 1,
-        "low" | "2" => 2,
-        "default" | "3" => 3,
-        "high" | "4" => 4,
-        "max" | "urgent" | "5" => 5,
-        _ => s.parse().unwrap_or(3),
+        "low" | "2" => 3,
+        "default" | "3" => 5,
+        "high" | "4" => 7,
+        "max" | "urgent" | "5" => 10,
+        _ => s.parse().unwrap_or(5),
     }
+}
+
+/// Parse ntfy action strings into a JSON array of action objects.
+/// ntfy format: "action_type, label, url[, param=value]*"
+/// Multiple actions separated by ";"
+/// Example: "view, Open portal, https://example.com; http, Turn off, https://api.example.com/off"
+fn parse_ntfy_actions(s: &str) -> String {
+    let actions: Vec<serde_json::Value> = s
+        .split(';')
+        .filter_map(|action_str| {
+            let parts: Vec<&str> = action_str.splitn(3, ',').map(|p| p.trim()).collect();
+            if parts.len() < 3 {
+                return None;
+            }
+            let action_type = parts[0].to_lowercase();
+            let label = parts[1];
+            // Third part may have additional params after the URL
+            let rest = parts[2];
+            let url_and_params: Vec<&str> = rest.splitn(2, ',').collect();
+            let url = url_and_params[0].trim();
+
+            let mut obj = serde_json::json!({
+                "action": action_type,
+                "label": label,
+                "url": url,
+            });
+
+            // Parse additional key=value params (e.g., body=..., method=..., headers=...)
+            if url_and_params.len() > 1 {
+                for param in url_and_params[1].split(',') {
+                    let param = param.trim();
+                    if let Some((key, value)) = param.split_once('=') {
+                        obj[key.trim()] = serde_json::Value::String(value.trim().to_string());
+                    }
+                }
+            }
+
+            Some(obj)
+        })
+        .collect();
+
+    serde_json::to_string(&actions).unwrap_or_else(|_| "[]".to_string())
 }
 
 fn parse_schedule(s: &str) -> Option<String> {
@@ -131,4 +177,62 @@ fn parse_schedule(s: &str) -> Option<String> {
     }
 
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_priority_mapping() {
+        assert_eq!(parse_priority("1"), 1);
+        assert_eq!(parse_priority("min"), 1);
+        assert_eq!(parse_priority("2"), 3);
+        assert_eq!(parse_priority("low"), 3);
+        assert_eq!(parse_priority("3"), 5);
+        assert_eq!(parse_priority("default"), 5);
+        assert_eq!(parse_priority("4"), 7);
+        assert_eq!(parse_priority("high"), 7);
+        assert_eq!(parse_priority("5"), 10);
+        assert_eq!(parse_priority("urgent"), 10);
+        assert_eq!(parse_priority("max"), 10);
+    }
+
+    #[test]
+    fn test_parse_ntfy_actions() {
+        let result = parse_ntfy_actions("view, Open portal, https://example.com");
+        let actions: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0]["action"], "view");
+        assert_eq!(actions[0]["label"], "Open portal");
+        assert_eq!(actions[0]["url"], "https://example.com");
+    }
+
+    #[test]
+    fn test_parse_multiple_ntfy_actions() {
+        let result =
+            parse_ntfy_actions("view, Open, https://a.com; http, Turn off, https://b.com/off");
+        let actions: Vec<serde_json::Value> = serde_json::from_str(&result).unwrap();
+        assert_eq!(actions.len(), 2);
+        assert_eq!(actions[0]["action"], "view");
+        assert_eq!(actions[1]["action"], "http");
+    }
+
+    #[test]
+    fn test_ntfy_headers_from_headermap() {
+        let mut headers = HeaderMap::new();
+        headers.insert("x-title", "Test Alert".parse().unwrap());
+        headers.insert("x-priority", "high".parse().unwrap());
+        headers.insert("x-tags", "warning,server".parse().unwrap());
+        headers.insert("x-click", "https://example.com".parse().unwrap());
+
+        let h = NtfyHeaders::from_headers(&headers);
+        assert_eq!(h.title.as_deref(), Some("Test Alert"));
+        assert_eq!(h.priority, Some(7));
+        assert_eq!(
+            h.tags,
+            Some(vec!["warning".to_string(), "server".to_string()])
+        );
+        assert_eq!(h.click_url.as_deref(), Some("https://example.com"));
+    }
 }

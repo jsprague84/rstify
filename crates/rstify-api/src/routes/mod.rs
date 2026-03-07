@@ -128,6 +128,10 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
 /// These must be merged LAST so specific routes (e.g., /message, /application, etc.) take priority.
 pub fn ntfy_routes(_state: AppState) -> Router<AppState> {
     Router::new()
+        // Explicit /ntfy/ prefix for drop-in ntfy client compatibility
+        .route("/ntfy/{topic}", post(ntfy_publish::ntfy_publish))
+        .route("/ntfy/{topic}", put(ntfy_publish::ntfy_publish))
+        // Original catch-all routes (/{topic})
         .route("/{topic}", post(ntfy_publish::ntfy_publish))
         .route("/{topic}", put(ntfy_publish::ntfy_publish))
 }
