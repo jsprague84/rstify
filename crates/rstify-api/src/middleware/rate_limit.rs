@@ -54,16 +54,12 @@ impl RateLimiter {
         }
     }
 
-    /// Remove fully-refilled entries to prevent unbounded memory growth.
+    /// Remove stale entries (inactive for >10 minutes) to prevent unbounded memory growth.
     pub async fn cleanup(&self) {
         let mut state = self.state.lock().await;
         let now = Instant::now();
-        let max = self.max_tokens as f64;
-        let rate = self.refill_rate;
-        state.retain(|_, bucket| {
-            let elapsed = now.duration_since(bucket.last_refill).as_secs_f64();
-            (bucket.tokens + elapsed * rate) < max
-        });
+        let stale_threshold = std::time::Duration::from_secs(600);
+        state.retain(|_, bucket| now.duration_since(bucket.last_refill) < stale_threshold);
     }
 }
 
