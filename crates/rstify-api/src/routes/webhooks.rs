@@ -29,6 +29,21 @@ pub async fn create_webhook(
     let token = generate_webhook_token();
     let template_json = serde_json::to_string(&req.template).unwrap_or_default();
 
+    // Field size limits
+    if template_json.len() > 65_536 {
+        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+            "template exceeds 64KB limit".to_string(),
+        )));
+    }
+    if let Some(ref headers) = req.headers {
+        let headers_json = serde_json::to_string(headers).unwrap_or_default();
+        if headers_json.len() > 8_192 {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                "headers exceeds 8KB limit".to_string(),
+            )));
+        }
+    }
+
     let config = state
         .message_repo
         .create_webhook_config(
@@ -98,6 +113,23 @@ pub async fn update_webhook(
         .template
         .as_ref()
         .map(|t| serde_json::to_string(t).unwrap_or_default());
+
+    // Field size limits
+    if let Some(ref tj) = template_json {
+        if tj.len() > 65_536 {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                "template exceeds 64KB limit".to_string(),
+            )));
+        }
+    }
+    if let Some(ref headers) = req.headers {
+        let headers_json = serde_json::to_string(headers).unwrap_or_default();
+        if headers_json.len() > 8_192 {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                "headers exceeds 8KB limit".to_string(),
+            )));
+        }
+    }
 
     let config = state
         .message_repo
