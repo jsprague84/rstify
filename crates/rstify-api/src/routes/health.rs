@@ -18,7 +18,8 @@ pub async fn health(State(state): State<AppState>) -> Json<Value> {
 
     Json(json!({
         "health": health,
-        "database": db_status
+        "database": db_status,
+        "version": env!("CARGO_PKG_VERSION")
     }))
 }
 

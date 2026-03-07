@@ -17,7 +17,7 @@ RUN cargo build --release --bin rstify-server
 
 FROM debian:bookworm-slim
 
-RUN apt-get update && apt-get install -y ca-certificates gosu && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates gosu curl && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r rstify && useradd -r -g rstify -s /sbin/nologin rstify
 
@@ -31,6 +31,9 @@ ENV UPLOAD_DIR=/uploads
 ENV LISTEN_ADDR=0.0.0.0:8080
 
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
 
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["rstify-server"]
