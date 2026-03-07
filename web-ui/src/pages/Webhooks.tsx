@@ -85,6 +85,27 @@ export default function Webhooks() {
   );
 }
 
+function TemplateHelp() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="text-xs">
+      <button type="button" onClick={() => setOpen(!open)} className="text-indigo-600 dark:text-indigo-400 hover:underline">
+        {open ? 'Hide' : 'Show'} template variables
+      </button>
+      {open && (
+        <div className="mt-1 bg-gray-50 dark:bg-gray-700 rounded p-2 space-y-0.5 text-gray-600 dark:text-gray-300">
+          <div><code>{'{{title}}'}</code> — Message title</div>
+          <div><code>{'{{message}}'}</code> — Message body</div>
+          <div><code>{'{{priority}}'}</code> — Priority level (1-10)</div>
+          <div><code>{'{{appname}}'}</code> — Application name</div>
+          <div><code>{'{{date}}'}</code> — ISO 8601 timestamp</div>
+          <div><code>{'{{json}}'}</code> — Full message as JSON</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WebhookForm({ onSubmit, onClose }: { onSubmit: (d: CreateWebhookConfig) => Promise<void>; onClose: () => void }) {
   const [form, setForm] = useState({ name: '', webhook_type: 'custom', template: '' });
   const [error, setError] = useState('');
@@ -116,6 +137,7 @@ function WebhookForm({ onSubmit, onClose }: { onSubmit: (d: CreateWebhookConfig)
         <option value="grafana">Grafana</option>
       </select>
       <textarea placeholder="Template (optional)" value={form.template} onChange={e => setForm(f => ({ ...f, template: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" rows={3} />
+      <TemplateHelp />
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
         <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Create</button>
@@ -146,6 +168,7 @@ function EditWebhookForm({ webhook, onSubmit, onClose }: { webhook: WebhookConfi
       {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
       <input placeholder="Name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
       <textarea placeholder="Template" value={form.template} onChange={e => setForm(f => ({ ...f, template: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" rows={3} />
+      <TemplateHelp />
       <label className="flex items-center gap-2 text-sm dark:text-gray-300">
         <input type="checkbox" checked={form.enabled} onChange={e => setForm(f => ({ ...f, enabled: e.target.checked }))} />
         Enabled
