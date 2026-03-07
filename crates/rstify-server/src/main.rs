@@ -117,8 +117,8 @@ async fn main() -> anyhow::Result<()> {
 
     // CORS configuration
     let cors = if config.cors_origins.is_empty() {
-        // Default: allow same-origin + common dev origins
-        CorsLayer::permissive()
+        warn!("CORS_ORIGINS not set — defaulting to same-origin only. Set CORS_ORIGINS env var for cross-origin access.");
+        CorsLayer::new()
     } else {
         let origins: Vec<HeaderValue> = config
             .cors_origins
