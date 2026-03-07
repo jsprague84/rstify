@@ -1,15 +1,15 @@
 import React from "react";
-import { Text, StyleSheet, useColorScheme } from "react-native";
+import { Text, StyleSheet } from "react-native";
 import Markdown from "react-native-markdown-display";
 import type { MessageResponse } from "../api";
+import { useTheme } from "../store/theme";
 
 interface MessageContentProps {
   message: MessageResponse;
 }
 
 export const MessageContent = React.memo(function MessageContent({ message }: MessageContentProps) {
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === "dark";
+  const { isDark } = useTheme();
 
   // Check if message should be rendered as markdown
   const isMarkdown = message.extras?.["client::display"]?.contentType === "text/markdown";

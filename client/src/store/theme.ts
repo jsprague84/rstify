@@ -1,3 +1,4 @@
+import React from "react";
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColorScheme } from "react-native";
@@ -73,5 +74,3 @@ export function useTheme() {
   };
 }
 
-// React import for useEffect
-import React from "react";

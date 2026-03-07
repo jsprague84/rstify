@@ -7,6 +7,7 @@ import {
   Alert,
   Pressable,
   Text,
+  ActivityIndicator,
 } from "react-native";
 import type { ListRenderItemInfo } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -30,7 +31,9 @@ export default function MessagesScreen() {
 
   const messages = useMessagesStore((s) => s.messages);
   const isLoading = useMessagesStore((s) => s.isLoading);
+  const isLoadingMore = useMessagesStore((s) => s.isLoadingMore);
   const fetchMessages = useMessagesStore((s) => s.fetchMessages);
+  const fetchOlderMessages = useMessagesStore((s) => s.fetchOlderMessages);
   const addMessage = useMessagesStore((s) => s.addMessage);
   const deleteMessage = useMessagesStore((s) => s.deleteMessage);
   const deleteAllMessages = useMessagesStore((s) => s.deleteAllMessages);
@@ -102,7 +105,7 @@ export default function MessagesScreen() {
     [addMessage],
   );
 
-  useUserWebSocket({
+  const { connectionStatus } = useUserWebSocket({
     clientToken,
     onMessage,
     enabled: !!clientToken,
@@ -164,7 +167,13 @@ export default function MessagesScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={["top"]}>
       <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Messages</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Messages</Text>
+          <View style={{
+            width: 8, height: 8, borderRadius: 4,
+            backgroundColor: connectionStatus === "connected" ? "#22c55e" : connectionStatus === "reconnecting" ? "#eab308" : "#ef4444",
+          }} />
+        </View>
         {messages.length > 0 ? (
           <Pressable onPress={handleDeleteAll} hitSlop={8}>
             <Ionicons name="trash-outline" size={20} color={colors.error} />
@@ -193,6 +202,13 @@ export default function MessagesScreen() {
               subtitle="Messages from your apps will appear here"
             />
           )
+        }
+        onEndReached={fetchOlderMessages}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={
+          isLoadingMore ? (
+            <ActivityIndicator style={{ padding: 16 }} color={colors.primary} />
+          ) : null
         }
         contentContainerStyle={
           messages.length === 0 ? styles.emptyList : styles.list

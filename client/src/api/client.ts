@@ -68,11 +68,25 @@ export class RstifyClient {
       headers["Authorization"] = `Bearer ${this.token}`;
     }
 
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") {
+        throw new Error("Request timed out");
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
       let errorBody: ApiError;

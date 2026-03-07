@@ -1,24 +1,30 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { getApiClient } from "../api";
 import type { MessageResponse } from "../api";
+
+export type ConnectionStatus = "connected" | "reconnecting" | "disconnected";
 
 interface UseWebSocketOptions {
   clientToken: string | null;
   onMessage: (msg: MessageResponse) => void;
   enabled?: boolean;
-  reconnectIntervalMs?: number;
 }
+
+const MAX_RETRIES = 50;
+const MAX_BACKOFF_MS = 30000;
 
 export function useUserWebSocket({
   clientToken,
   onMessage,
   enabled = true,
-  reconnectIntervalMs = 5000,
 }: UseWebSocketOptions) {
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("disconnected");
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onMessageRef = useRef(onMessage);
   const enabledRef = useRef(enabled);
+  const backoffRef = useRef(1000);
+  const retriesRef = useRef(0);
 
   // Keep refs in sync without triggering reconnects
   onMessageRef.current = onMessage;
@@ -35,6 +41,7 @@ export function useUserWebSocket({
       wsRef.current.close();
       wsRef.current = null;
     }
+    setConnectionStatus("disconnected");
   }, []);
 
   useEffect(() => {
@@ -45,14 +52,22 @@ export function useUserWebSocket({
 
     const scheduleReconnect = () => {
       if (reconnectTimerRef.current) return;
+      if (retriesRef.current >= MAX_RETRIES) {
+        setConnectionStatus("disconnected");
+        return;
+      }
+      setConnectionStatus("reconnecting");
+      retriesRef.current++;
       reconnectTimerRef.current = setTimeout(() => {
         reconnectTimerRef.current = null;
+        backoffRef.current = Math.min(backoffRef.current * 2, MAX_BACKOFF_MS);
         connect();
-      }, reconnectIntervalMs);
+      }, backoffRef.current);
     };
 
     const connect = () => {
       if (!enabledRef.current) return;
+      setConnectionStatus("reconnecting");
 
       const api = getApiClient();
       const ws = api.connectUserStream(
@@ -62,13 +77,21 @@ export function useUserWebSocket({
         () => scheduleReconnect(),
       );
 
+      const originalOnOpen = ws.onopen;
+      ws.onopen = (ev) => {
+        backoffRef.current = 1000;
+        retriesRef.current = 0;
+        setConnectionStatus("connected");
+        if (originalOnOpen) (originalOnOpen as (ev: Event) => void)(ev);
+      };
+
       wsRef.current = ws;
     };
 
     connect();
 
     return disconnect;
-  }, [clientToken, enabled, reconnectIntervalMs, disconnect]);
+  }, [clientToken, enabled, disconnect]);
 
-  return { disconnect };
+  return { disconnect, connectionStatus };
 }
