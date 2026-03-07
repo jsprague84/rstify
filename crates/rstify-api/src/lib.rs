@@ -11,6 +11,7 @@ pub mod utils;
 pub mod web_ui;
 pub mod websocket;
 
+use axum::http::header::HeaderValue;
 use axum::Router;
 use middleware::rate_limit::RateLimiter;
 use state::AppState;
@@ -35,12 +36,33 @@ pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
         // instead of falling through to the web UI. This handler ensures those
         // requests are served by the web UI instead.
         .method_not_allowed_fallback(web_ui::web_ui_handler)
-        .layer(CompressionLayer::new().gzip(true).br(true)) // Enable gzip and brotli compression
-        .layer(RequestBodyLimitLayer::new(1024 * 1024)) // 1MB body limit
+        .layer(CompressionLayer::new().gzip(true).br(true))
+        .layer(RequestBodyLimitLayer::new(1024 * 1024))
+        .layer(axum::middleware::from_fn(security_headers_middleware))
         .layer(axum::Extension(limiter))
         .layer(axum::middleware::from_fn(
             middleware::rate_limit::rate_limit_middleware,
         ))
         .fallback(web_ui::web_ui_handler)
         .with_state(state)
+}
+
+async fn security_headers_middleware(
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> axum::response::Response {
+    let mut response = next.run(request).await;
+    let headers = response.headers_mut();
+    headers.insert("x-content-type-options", HeaderValue::from_static("nosniff"));
+    headers.insert("x-frame-options", HeaderValue::from_static("DENY"));
+    headers.insert("x-xss-protection", HeaderValue::from_static("1; mode=block"));
+    headers.insert(
+        "referrer-policy",
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(
+        "permissions-policy",
+        HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
+    );
+    response
 }
