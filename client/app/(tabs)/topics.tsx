@@ -16,6 +16,7 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState } from "../../src/components/EmptyState";
 import { MessageCard } from "../../src/components/MessageCard";
+import { LiveTopicView } from "../../src/components/LiveTopicView";
 import { getApiClient } from "../../src/api";
 import type { Topic, MessageResponse } from "../../src/api";
 import { useTheme } from "../../src/store/theme";
@@ -46,6 +47,7 @@ export default function TopicsScreen() {
   const [editNotifyDigestInterval, setEditNotifyDigestInterval] = useState("300");
   const [editStorePolicy, setEditStorePolicy] = useState("all");
   const [editStoreInterval, setEditStoreInterval] = useState("60");
+  const [viewMode, setViewMode] = useState<"history" | "live">("history");
 
   const fetchTopics = useCallback(async () => {
     setIsLoading(true);
@@ -177,7 +179,7 @@ export default function TopicsScreen() {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.backgroundSecondary }]} edges={["top"]}>
         <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <Pressable onPress={() => setSelectedTopic(null)} hitSlop={8}>
+          <Pressable onPress={() => { setSelectedTopic(null); setViewMode("history"); }} hitSlop={8}>
             <Ionicons name="arrow-back" size={24} color={colors.text} />
           </Pressable>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{selectedTopic.name}</Text>
@@ -186,24 +188,47 @@ export default function TopicsScreen() {
           </Pressable>
         </View>
 
-        <FlatList
-          data={topicMessages}
-          keyExtractor={messageKeyExtractor}
-          renderItem={renderTopicMessage}
-          removeClippedSubviews
-          maxToRenderPerBatch={15}
-          windowSize={11}
-          ListEmptyComponent={
-            <EmptyState
-              icon="chatbubble-outline"
-              title="No messages"
-              subtitle="Publish a message to this topic"
-            />
-          }
-          contentContainerStyle={
-            topicMessages.length === 0 ? styles.emptyList : styles.list
-          }
-        />
+        <View style={[styles.segmentRow, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Pressable
+            style={[styles.segmentButton, viewMode === "history" && { backgroundColor: colors.primary }]}
+            onPress={() => setViewMode("history")}
+          >
+            <Text style={[styles.segmentText, { color: colors.textSecondary }, viewMode === "history" && { color: "#fff" }]}>
+              History
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segmentButton, viewMode === "live" && { backgroundColor: colors.primary }]}
+            onPress={() => setViewMode("live")}
+          >
+            <Text style={[styles.segmentText, { color: colors.textSecondary }, viewMode === "live" && { color: "#fff" }]}>
+              Live
+            </Text>
+          </Pressable>
+        </View>
+
+        {viewMode === "history" ? (
+          <FlatList
+            data={topicMessages}
+            keyExtractor={messageKeyExtractor}
+            renderItem={renderTopicMessage}
+            removeClippedSubviews
+            maxToRenderPerBatch={15}
+            windowSize={11}
+            ListEmptyComponent={
+              <EmptyState
+                icon="chatbubble-outline"
+                title="No messages"
+                subtitle="Publish a message to this topic"
+              />
+            }
+            contentContainerStyle={
+              topicMessages.length === 0 ? styles.emptyList : styles.list
+            }
+          />
+        ) : (
+          <LiveTopicView topicName={selectedTopic.name} />
+        )}
 
         <Modal visible={showPublish} animationType="fade" transparent>
           <Pressable
@@ -641,5 +666,22 @@ const styles = StyleSheet.create({
   policyChipText: {
     fontSize: 12,
     fontWeight: "500",
+  },
+  segmentRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    borderBottomWidth: 1,
+  },
+  segmentButton: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  segmentText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
