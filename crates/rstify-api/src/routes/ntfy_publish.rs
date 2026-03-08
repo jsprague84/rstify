@@ -174,8 +174,8 @@ pub async fn ntfy_publish(
         });
     }
 
-    // Send FCM push notifications to topic owner
-    if h.scheduled_for.is_none() {
+    // Send FCM push notifications to topic owner (respecting notification policy)
+    if h.scheduled_for.is_none() && rstify_core::policy::should_notify(&topic, &response) {
         if let Some(ref fcm) = state.fcm {
             if let Some(owner_id) = topic.owner_id {
                 let fcm = fcm.clone();

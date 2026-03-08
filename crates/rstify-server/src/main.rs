@@ -87,14 +87,16 @@ async fn main() -> anyhow::Result<()> {
             if let Some(ref name) = topic_name {
                 connections.broadcast_to_topic(name, msg.clone()).await;
 
-                // FCM for scheduled topic messages
+                // FCM for scheduled topic messages (respecting notification policy)
                 if let Some(ref fcm) = fcm {
                     if let Ok(Some(topic)) =
                         rstify_core::repositories::TopicRepository::find_by_name(&topic_repo, name)
                             .await
                     {
-                        if let Some(owner_id) = topic.owner_id {
-                            fcm.notify_user(&client_repo, owner_id, &msg).await;
+                        if rstify_core::policy::should_notify(&topic, &msg) {
+                            if let Some(owner_id) = topic.owner_id {
+                                fcm.notify_user(&client_repo, owner_id, &msg).await;
+                            }
                         }
                     }
                 }
