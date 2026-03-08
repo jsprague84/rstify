@@ -93,6 +93,13 @@ pub struct WebhookConfigWithHealth {
     pub last_delivery_at: Option<String>,
     pub last_delivery_success: Option<bool>,
     pub recent_success_rate: Option<f64>,
+    pub recent_durations: Option<Vec<i64>>,
+}
+
+#[derive(sqlx::FromRow)]
+struct DurationRow {
+    webhook_config_id: i64,
+    duration_ms: i64,
 }
 
 #[derive(sqlx::FromRow)]
@@ -146,6 +153,33 @@ pub async fn list_webhooks(
             .unwrap_or_default()
     };
 
+    // Fetch recent durations (last 20 per webhook)
+    let duration_data: Vec<DurationRow> = if config_ids.is_empty() {
+        vec![]
+    } else {
+        let placeholders: Vec<String> = config_ids.iter().map(|_| "?".to_string()).collect();
+        let sql = format!(
+            r#"SELECT webhook_config_id, duration_ms FROM (
+                SELECT webhook_config_id, duration_ms,
+                    ROW_NUMBER() OVER (PARTITION BY webhook_config_id ORDER BY attempted_at DESC) as rn
+                FROM webhook_delivery_log
+                WHERE webhook_config_id IN ({})
+            ) WHERE rn <= 20
+            ORDER BY webhook_config_id, rn"#,
+            placeholders.join(",")
+        );
+        let mut query = sqlx::query_as::<_, DurationRow>(&sql);
+        for id in &config_ids {
+            query = query.bind(id);
+        }
+        query.fetch_all(&state.pool).await.unwrap_or_default()
+    };
+
+    let mut durations_map: std::collections::HashMap<i64, Vec<i64>> = std::collections::HashMap::new();
+    for row in &duration_data {
+        durations_map.entry(row.webhook_config_id).or_default().push(row.duration_ms);
+    }
+
     let health_map: std::collections::HashMap<i64, &WebhookHealthRow> =
         health_data.iter().map(|h| (h.webhook_config_id, h)).collect();
 
@@ -153,10 +187,12 @@ pub async fn list_webhooks(
         .into_iter()
         .map(|config| {
             let health = health_map.get(&config.id);
+            let durations = durations_map.remove(&config.id);
             WebhookConfigWithHealth {
                 last_delivery_at: health.and_then(|h| h.last_delivery_at.clone()),
                 last_delivery_success: health.and_then(|h| h.last_delivery_success),
                 recent_success_rate: health.map(|h| h.recent_success_rate.unwrap_or(0.0)),
+                recent_durations: durations,
                 config,
             }
         })

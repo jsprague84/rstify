@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig, WebhookDeliveryLog, WebhookTestResult, Topic, Application } from '../api/types';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import Sparkline from '../components/Sparkline';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
 
@@ -142,6 +143,11 @@ export default function Webhooks() {
               </span>
             );
           }},
+          { key: 'sparkline', header: '', render: w =>
+            w.direction === 'outgoing' && w.recent_durations && w.recent_durations.length >= 2
+              ? <Sparkline data={w.recent_durations} />
+              : null
+          },
         ]}
         actions={w => (
           <div className="flex gap-2 justify-end">

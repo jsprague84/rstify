@@ -157,6 +157,7 @@ export interface WebhookConfig {
   last_delivery_at?: string;
   last_delivery_success?: boolean;
   recent_success_rate?: number;
+  recent_durations?: number[];
 }
 
 export interface CreateWebhookConfig {
