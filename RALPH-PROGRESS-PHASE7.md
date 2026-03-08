@@ -34,7 +34,7 @@
 ## Track B: MQTT Monitoring & Bridge Management
 
 ### Phase B1: Backend Infrastructure
-- [ ] TASK 20: Wire BridgeManager into AppState
+- [x] TASK 20: Wire BridgeManager into AppState — added BridgeManager to AppState with builder method, created and started in main.rs after MQTT broker init, CRUD handlers in mqtt.rs now start/stop/restart bridges via BridgeManager
 - [ ] TASK 21: Fix MQTT connections count + enhanced status endpoint
 
 ### Phase B2: MQTT UI Improvements

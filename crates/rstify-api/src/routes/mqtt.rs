@@ -122,6 +122,14 @@ pub async fn create_bridge(
         )
         .await
         .map_err(ApiError::from)?;
+
+    // Start the bridge if enabled and BridgeManager is available
+    if bridge.enabled {
+        if let Some(ref bm) = state.bridge_manager {
+            bm.lock().await.start_bridge(bridge.clone());
+        }
+    }
+
     Ok(Json(bridge))
 }
 
@@ -169,6 +177,16 @@ pub async fn update_bridge(
         )
         .await
         .map_err(ApiError::from)?;
+
+    // Restart the bridge via BridgeManager if available
+    if let Some(ref bm) = state.bridge_manager {
+        let mut manager = bm.lock().await;
+        manager.stop_bridge(id);
+        if bridge.enabled {
+            manager.start_bridge(bridge.clone());
+        }
+    }
+
     Ok(Json(bridge))
 }
 
@@ -186,6 +204,11 @@ pub async fn delete_bridge(
         return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
             "Admin access required".to_string(),
         )));
+    }
+
+    // Stop the bridge via BridgeManager before deleting
+    if let Some(ref bm) = state.bridge_manager {
+        bm.lock().await.stop_bridge(id);
     }
 
     state

@@ -160,6 +160,20 @@ async fn main() -> anyhow::Result<()> {
                 tracing::error!("Failed to start MQTT service: {e}");
             }
         }
+
+        // Create and wire BridgeManager
+        let bridge_topic_broadcast = state.connections.global_topic_sender();
+        let bridge_manager = rstify_mqtt::bridge::BridgeManager::new(
+            state.topic_repo.clone(),
+            state.message_repo.clone(),
+            state.mqtt_bridge_repo.clone(),
+            bridge_topic_broadcast,
+            state.pool.clone(),
+        );
+        let bridge_manager = std::sync::Arc::new(tokio::sync::Mutex::new(bridge_manager));
+        // Start all enabled bridges
+        bridge_manager.lock().await.start_all_enabled().await;
+        state = state.with_bridge_manager(bridge_manager);
     } else {
         info!("MQTT broker disabled (set MQTT_ENABLED=true to enable)");
     }

@@ -2,9 +2,11 @@ use rstify_db::repositories::{
     SqliteApplicationRepo, SqliteClientRepo, SqliteMessageRepo, SqliteMqttBridgeRepo,
     SqliteTopicRepo, SqliteUserRepo, SqliteWebhookVariableRepo,
 };
+use rstify_mqtt::bridge::BridgeManager;
 use sqlx::SqlitePool;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 use crate::fcm::FcmClient;
 use crate::websocket::manager::ConnectionManager;
@@ -40,6 +42,7 @@ pub struct AppState {
     pub pool: SqlitePool,
     pub fcm: Option<Arc<FcmClient>>,
     pub metrics: Arc<Metrics>,
+    pub bridge_manager: Option<Arc<Mutex<BridgeManager>>>,
 }
 
 impl AppState {
@@ -67,11 +70,17 @@ impl AppState {
             pool,
             fcm: None,
             metrics: Arc::new(Metrics::default()),
+            bridge_manager: None,
         }
     }
 
     pub fn with_fcm(mut self, fcm: FcmClient) -> Self {
         self.fcm = Some(Arc::new(fcm));
+        self
+    }
+
+    pub fn with_bridge_manager(mut self, bm: Arc<Mutex<BridgeManager>>) -> Self {
+        self.bridge_manager = Some(bm);
         self
     }
 }
