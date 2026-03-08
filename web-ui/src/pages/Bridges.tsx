@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { MqttBridge, CreateMqttBridge, UpdateMqttBridge } from '../api/types';
+import type { MqttBridge, MqttStatus, CreateMqttBridge, UpdateMqttBridge } from '../api/types';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function Bridges() {
   const [bridges, setBridges] = useState<MqttBridge[]>([]);
+  const [mqttStatus, setMqttStatus] = useState<MqttStatus | null>(null);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editBridge, setEditBridge] = useState<MqttBridge | null>(null);
@@ -14,6 +15,7 @@ export default function Bridges() {
 
   const load = useCallback(() => {
     api.listBridges().then(setBridges).catch(e => setError(e.message));
+    api.getMqttStatus().then(setMqttStatus).catch(() => {});
   }, []);
 
   useEffect(load, [load]);
@@ -50,6 +52,22 @@ export default function Bridges() {
           New Bridge
         </button>
       </div>
+      {mqttStatus && (
+        mqttStatus.enabled ? (
+          <div className="flex items-center gap-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3 mb-4 text-sm">
+            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+            <span className="text-green-800 dark:text-green-300 font-medium">MQTT Broker Running</span>
+            {mqttStatus.listen_addr && <span className="text-green-600 dark:text-green-400">{mqttStatus.listen_addr}</span>}
+            {mqttStatus.ws_listen_addr && <span className="text-green-600 dark:text-green-400">WS: {mqttStatus.ws_listen_addr}</span>}
+            <span className="text-green-600 dark:text-green-400">{mqttStatus.bridges_active} bridge{mqttStatus.bridges_active !== 1 ? 's' : ''} active</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg px-4 py-3 mb-4 text-sm">
+            <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+            <span className="text-amber-800 dark:text-amber-300">MQTT Broker Disabled — set <code className="bg-amber-100 dark:bg-amber-800/40 px-1 rounded">MQTT_ENABLED=true</code> and restart the server to activate bridges</span>
+          </div>
+        )
+      )}
       {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
       <DataTable
         data={bridges}
