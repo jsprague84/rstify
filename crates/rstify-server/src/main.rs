@@ -1,7 +1,7 @@
 mod config;
 mod telemetry;
 
-use axum::http::{HeaderValue, Method, header};
+use axum::http::{header, HeaderValue, Method};
 use rstify_api::middleware::rate_limit::RateLimiter;
 use rstify_api::state::AppState;
 use rstify_auth::password::hash_password;
