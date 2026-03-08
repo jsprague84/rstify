@@ -132,6 +132,10 @@ impl Database {
                 "021_mqtt_bridges",
                 include_str!("../../../migrations/021_mqtt_bridges.sql"),
             ),
+            (
+                "022_webhook_timeout",
+                include_str!("../../../migrations/022_webhook_timeout.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {

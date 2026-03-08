@@ -13,7 +13,7 @@ pub async fn fire_outgoing_webhooks(
     // Find all enabled outgoing webhook configs targeting this topic
     let configs = match sqlx::query_as::<_, OutgoingWebhookRow>(
         r#"SELECT wc.id, wc.target_url, wc.http_method, wc.headers, wc.body_template,
-                  wc.max_retries, wc.retry_delay_secs
+                  wc.max_retries, wc.retry_delay_secs, wc.timeout_secs
            FROM webhook_configs wc
            JOIN topics t ON wc.target_topic_id = t.id
            WHERE wc.direction = 'outgoing'
@@ -31,13 +31,15 @@ pub async fn fire_outgoing_webhooks(
         }
     };
 
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
-        .build()
-        .unwrap_or_default();
     let message_json = serde_json::to_string(message).unwrap_or_default();
 
     for config in configs {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(
+                config.timeout_secs.max(1) as u64
+            ))
+            .build()
+            .unwrap_or_default();
         let Some(ref target_url) = config.target_url else {
             warn!("Outgoing webhook {} has no target_url", config.id);
             continue;
@@ -198,7 +200,9 @@ pub async fn fire_single_outgoing_webhook(
         .ok_or("No target_url configured")?;
 
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(15))
+        .timeout(std::time::Duration::from_secs(
+            config.timeout_secs.max(1) as u64
+        ))
         .build()
         .unwrap_or_default();
 
@@ -307,6 +311,7 @@ struct OutgoingWebhookRow {
     body_template: Option<String>,
     max_retries: i32,
     retry_delay_secs: i32,
+    timeout_secs: i32,
 }
 
 #[cfg(test)]

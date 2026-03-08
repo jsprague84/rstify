@@ -288,6 +288,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
     template: '',
     target_topic_id: undefined as number | undefined,
     target_application_id: undefined as number | undefined,
+    timeout_secs: 15,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -311,6 +312,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
         http_method: form.direction === 'outgoing' ? form.http_method : undefined,
         headers: form.direction === 'outgoing' && form.headers ? parseHeaders(form.headers) : undefined,
         body_template: form.direction === 'outgoing' && form.body_template ? form.body_template : undefined,
+        timeout_secs: form.direction === 'outgoing' ? form.timeout_secs : undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -394,6 +396,11 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
           <div>
             <textarea placeholder="Body template (optional)" value={form.body_template} onChange={e => setForm(f => ({ ...f, body_template: e.target.value }))} className={inputCls} rows={3} />
             <TemplateHelp />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Timeout (seconds)</label>
+            <input type="number" min={1} max={120} value={form.timeout_secs} onChange={e => setForm(f => ({ ...f, timeout_secs: parseInt(e.target.value) || 15 }))} className={inputCls} />
           </div>
         </>
       )}
@@ -481,6 +488,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
     body_template: webhook.body_template || '',
     max_retries: webhook.max_retries ?? 3,
     retry_delay_secs: webhook.retry_delay_secs ?? 60,
+    timeout_secs: webhook.timeout_secs ?? 15,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -501,6 +509,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
           body_template: form.body_template || undefined,
           max_retries: form.max_retries,
           retry_delay_secs: form.retry_delay_secs,
+          timeout_secs: form.timeout_secs,
         } : {}),
       });
     } catch (err) {
@@ -557,14 +566,18 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
             <textarea placeholder="Body template" value={form.body_template} onChange={e => setForm(f => ({ ...f, body_template: e.target.value }))} className={inputCls} rows={3} />
             <TemplateHelp />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Max Retries</label>
               <input type="number" min={0} max={10} value={form.max_retries} onChange={e => setForm(f => ({ ...f, max_retries: parseInt(e.target.value) || 0 }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Retry Delay (seconds)</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Retry Delay (s)</label>
               <input type="number" min={1} max={3600} value={form.retry_delay_secs} onChange={e => setForm(f => ({ ...f, retry_delay_secs: parseInt(e.target.value) || 60 }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Timeout (s)</label>
+              <input type="number" min={1} max={120} value={form.timeout_secs} onChange={e => setForm(f => ({ ...f, timeout_secs: parseInt(e.target.value) || 15 }))} className={inputCls} />
             </div>
           </div>
         </>

@@ -34,6 +34,7 @@ pub struct WebhookConfig {
     pub body_template: Option<String>,
     pub max_retries: i32,
     pub retry_delay_secs: i32,
+    pub timeout_secs: i32,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -57,6 +58,8 @@ pub struct CreateWebhookConfig {
     pub headers: Option<serde_json::Value>,
     #[serde(alias = "body_template")]
     pub body_template: Option<String>,
+    #[serde(alias = "timeout_secs")]
+    pub timeout_secs: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -77,4 +80,6 @@ pub struct UpdateWebhookConfig {
     pub max_retries: Option<i32>,
     #[serde(alias = "retry_delay_secs")]
     pub retry_delay_secs: Option<i32>,
+    #[serde(alias = "timeout_secs")]
+    pub timeout_secs: Option<i32>,
 }

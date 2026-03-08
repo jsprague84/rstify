@@ -1,0 +1,1 @@
+ALTER TABLE webhook_configs ADD COLUMN timeout_secs INTEGER NOT NULL DEFAULT 15;

@@ -41,6 +41,7 @@ export default function WebhooksScreen() {
   const [editBodyTemplate, setEditBodyTemplate] = useState("");
   const [editMaxRetries, setEditMaxRetries] = useState("3");
   const [editRetryDelay, setEditRetryDelay] = useState("60");
+  const [editTimeout, setEditTimeout] = useState("15");
   const [deliveriesWebhook, setDeliveriesWebhook] = useState<WebhookConfig | null>(null);
   const [deliveries, setDeliveries] = useState<WebhookDeliveryLog[]>([]);
   const [deliveriesLoading, setDeliveriesLoading] = useState(false);
@@ -55,6 +56,7 @@ export default function WebhooksScreen() {
   const [httpMethod, setHttpMethod] = useState("POST");
   const [createHeaders, setCreateHeaders] = useState("");
   const [bodyTemplate, setBodyTemplate] = useState("");
+  const [createTimeout, setCreateTimeout] = useState("15");
 
   // Server base URL for webhook URL display
   const [serverBase, setServerBase] = useState("");
@@ -121,6 +123,7 @@ export default function WebhooksScreen() {
     setHttpMethod("POST");
     setCreateHeaders("");
     setBodyTemplate("");
+    setCreateTimeout("15");
   };
 
   const getWebhookUrl = (wh: WebhookConfig) => {
@@ -153,6 +156,7 @@ export default function WebhooksScreen() {
           direction === "outgoing" && bodyTemplate.trim()
             ? bodyTemplate.trim()
             : undefined,
+        timeout_secs: direction === "outgoing" ? parseInt(createTimeout, 10) || 15 : undefined,
       });
       resetForm();
       setShowCreate(false);
@@ -241,6 +245,7 @@ export default function WebhooksScreen() {
     setEditBodyTemplate(wh.body_template || "");
     setEditMaxRetries(String(wh.max_retries ?? 3));
     setEditRetryDelay(String(wh.retry_delay_secs ?? 60));
+    setEditTimeout(String(wh.timeout_secs ?? 15));
   };
 
   const handleEdit = async () => {
@@ -258,6 +263,7 @@ export default function WebhooksScreen() {
           body_template: editBodyTemplate.trim() || undefined,
           max_retries: parseInt(editMaxRetries, 10) || 3,
           retry_delay_secs: parseInt(editRetryDelay, 10) || 60,
+          timeout_secs: parseInt(editTimeout, 10) || 15,
         } : {}),
       });
       setEditWebhook(null);
@@ -606,6 +612,15 @@ export default function WebhooksScreen() {
                       multiline
                       numberOfLines={3}
                     />
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Timeout (seconds)</Text>
+                    <TextInput
+                      style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                      value={createTimeout}
+                      onChangeText={setCreateTimeout}
+                      keyboardType="numeric"
+                      placeholder="15"
+                      placeholderTextColor={colors.textTertiary}
+                    />
                   </>
                 ) : null}
 
@@ -722,6 +737,15 @@ export default function WebhooksScreen() {
                           style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                           value={editRetryDelay}
                           onChangeText={setEditRetryDelay}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Timeout (s)</Text>
+                        <TextInput
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          value={editTimeout}
+                          onChangeText={setEditTimeout}
                           keyboardType="numeric"
                         />
                       </View>
