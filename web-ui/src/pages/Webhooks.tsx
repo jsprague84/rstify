@@ -341,6 +341,92 @@ function headersToText(headers?: string | null): string {
   }
 }
 
+type AuthType = 'none' | 'bearer' | 'basic' | 'apikey';
+
+function detectAuthFromHeaders(headersText: string): { type: AuthType; token?: string; username?: string; password?: string; keyName?: string; keyValue?: string } {
+  const parsed = parseHeaders(headersText);
+  if (!parsed) return { type: 'none' };
+  const authValue = Object.entries(parsed).find(([k]) => k.toLowerCase() === 'authorization')?.[1];
+  if (!authValue) return { type: 'none' };
+  if (authValue.startsWith('Bearer ')) return { type: 'bearer', token: authValue.slice(7) };
+  if (authValue.startsWith('Basic ')) {
+    try {
+      const decoded = atob(authValue.slice(6));
+      const [username, ...rest] = decoded.split(':');
+      return { type: 'basic', username, password: rest.join(':') };
+    } catch { return { type: 'basic' }; }
+  }
+  return { type: 'none' };
+}
+
+function mergeAuthHeader(headersText: string, authType: AuthType, authFields: { token?: string; username?: string; password?: string; keyName?: string; keyValue?: string }): string {
+  // Remove existing Authorization header
+  const lines = headersText.split('\n').filter(l => {
+    const idx = l.indexOf(':');
+    return idx <= 0 || l.slice(0, idx).trim().toLowerCase() !== 'authorization';
+  });
+
+  let authHeader = '';
+  if (authType === 'bearer' && authFields.token) {
+    authHeader = `Authorization: Bearer ${authFields.token}`;
+  } else if (authType === 'basic' && authFields.username) {
+    authHeader = `Authorization: Basic ${btoa(`${authFields.username}:${authFields.password || ''}`)}`;
+  } else if (authType === 'apikey' && authFields.keyName && authFields.keyValue) {
+    // For API key in header, use the key name as header name
+    const filtered = lines.filter(l => {
+      const idx = l.indexOf(':');
+      return idx <= 0 || l.slice(0, idx).trim() !== authFields.keyName;
+    });
+    return [...filtered.filter(l => l.trim()), `${authFields.keyName}: ${authFields.keyValue}`].join('\n');
+  }
+
+  if (authHeader) {
+    return [...lines.filter(l => l.trim()), authHeader].join('\n');
+  }
+  return lines.filter(l => l.trim()).join('\n');
+}
+
+function AuthSection({ headers, onHeadersChange }: { headers: string; onHeadersChange: (h: string) => void }) {
+  const detected = detectAuthFromHeaders(headers);
+  const [authType, setAuthType] = useState<AuthType>(detected.type);
+  const [token, setToken] = useState(detected.token || '');
+  const [username, setUsername] = useState(detected.username || '');
+  const [password, setPassword] = useState(detected.password || '');
+  const [keyName, setKeyName] = useState(detected.keyName || 'X-API-Key');
+  const [keyValue, setKeyValue] = useState(detected.keyValue || '');
+
+  const updateHeaders = (type: AuthType, fields: { token?: string; username?: string; password?: string; keyName?: string; keyValue?: string }) => {
+    onHeadersChange(mergeAuthHeader(headers, type, fields));
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Authentication</label>
+      <select value={authType} onChange={e => { const t = e.target.value as AuthType; setAuthType(t); updateHeaders(t, { token, username, password, keyName, keyValue }); }} className={inputCls}>
+        <option value="none">None</option>
+        <option value="bearer">Bearer Token</option>
+        <option value="basic">Basic Auth</option>
+        <option value="apikey">API Key</option>
+      </select>
+      {authType === 'bearer' && (
+        <input placeholder="Token" value={token} onChange={e => { setToken(e.target.value); updateHeaders('bearer', { token: e.target.value }); }} className={inputCls} />
+      )}
+      {authType === 'basic' && (
+        <div className="grid grid-cols-2 gap-2">
+          <input placeholder="Username" value={username} onChange={e => { setUsername(e.target.value); updateHeaders('basic', { username: e.target.value, password }); }} className={inputCls} />
+          <input placeholder="Password" type="password" value={password} onChange={e => { setPassword(e.target.value); updateHeaders('basic', { username, password: e.target.value }); }} className={inputCls} />
+        </div>
+      )}
+      {authType === 'apikey' && (
+        <div className="grid grid-cols-2 gap-2">
+          <input placeholder="Header name" value={keyName} onChange={e => { setKeyName(e.target.value); updateHeaders('apikey', { keyName: e.target.value, keyValue }); }} className={inputCls} />
+          <input placeholder="API key value" value={keyValue} onChange={e => { setKeyValue(e.target.value); updateHeaders('apikey', { keyName, keyValue: e.target.value }); }} className={inputCls} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 function WebhookForm({ topics, apps, onSubmit, onClose }: {
   topics: Topic[];
   apps: Application[];
@@ -464,9 +550,11 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
             </div>
           </div>
 
+          <AuthSection headers={form.headers} onHeadersChange={h => setForm(f => ({ ...f, headers: h }))} />
+
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Headers (one per line: Key: Value)</label>
-            <textarea placeholder="Content-Type: application/json" value={form.headers} onChange={e => setForm(f => ({ ...f, headers: e.target.value }))} className={inputCls} rows={2} />
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Additional Headers (one per line: Key: Value)</label>
+            <textarea placeholder="X-Custom-Header: value" value={form.headers} onChange={e => setForm(f => ({ ...f, headers: e.target.value }))} className={inputCls} rows={2} />
           </div>
 
           <div>
@@ -651,9 +739,11 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
               ))}
             </div>
           </div>
+          <AuthSection headers={form.headers} onHeadersChange={h => setForm(f => ({ ...f, headers: h }))} />
+
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Headers (one per line: Key: Value)</label>
-            <textarea placeholder="Content-Type: application/json" value={form.headers} onChange={e => setForm(f => ({ ...f, headers: e.target.value }))} className={inputCls} rows={2} />
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Additional Headers (one per line: Key: Value)</label>
+            <textarea placeholder="X-Custom-Header: value" value={form.headers} onChange={e => setForm(f => ({ ...f, headers: e.target.value }))} className={inputCls} rows={2} />
           </div>
           <div>
             <textarea placeholder="Body template" value={form.body_template} onChange={e => setForm(f => ({ ...f, body_template: e.target.value }))} className={inputCls} rows={3} />

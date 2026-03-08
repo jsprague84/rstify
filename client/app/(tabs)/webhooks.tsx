@@ -43,6 +43,10 @@ export default function WebhooksScreen() {
   const [editRetryDelay, setEditRetryDelay] = useState("60");
   const [editTimeout, setEditTimeout] = useState("15");
   const [editFollowRedirects, setEditFollowRedirects] = useState(true);
+  const [editAuthType, setEditAuthType] = useState<"none" | "bearer" | "basic">("none");
+  const [editAuthToken, setEditAuthToken] = useState("");
+  const [editAuthUser, setEditAuthUser] = useState("");
+  const [editAuthPass, setEditAuthPass] = useState("");
   const [deliveriesWebhook, setDeliveriesWebhook] = useState<WebhookConfig | null>(null);
   const [deliveries, setDeliveries] = useState<WebhookDeliveryLog[]>([]);
   const [deliveriesLoading, setDeliveriesLoading] = useState(false);
@@ -56,6 +60,10 @@ export default function WebhooksScreen() {
   const [targetUrl, setTargetUrl] = useState("");
   const [httpMethod, setHttpMethod] = useState("POST");
   const [createHeaders, setCreateHeaders] = useState("");
+  const [createAuthType, setCreateAuthType] = useState<"none" | "bearer" | "basic">("none");
+  const [createAuthToken, setCreateAuthToken] = useState("");
+  const [createAuthUser, setCreateAuthUser] = useState("");
+  const [createAuthPass, setCreateAuthPass] = useState("");
   const [bodyTemplate, setBodyTemplate] = useState("");
   const [createMaxRetries, setCreateMaxRetries] = useState("3");
   const [createRetryDelay, setCreateRetryDelay] = useState("60");
@@ -118,6 +126,38 @@ export default function WebhooksScreen() {
     return Object.keys(headers).length > 0 ? headers : undefined;
   };
 
+  const mergeAuthIntoHeaders = (headersText: string, authType: string, authToken: string, authUser: string, authPass: string): Record<string, string> | undefined => {
+    const base = parseTextToHeaders(headersText) || {};
+    // Remove existing auth
+    for (const k of Object.keys(base)) {
+      if (k.toLowerCase() === "authorization") delete base[k];
+    }
+    if (authType === "bearer" && authToken) {
+      base["Authorization"] = `Bearer ${authToken}`;
+    } else if (authType === "basic" && authUser) {
+      const encoded = btoa(`${authUser}:${authPass}`);
+      base["Authorization"] = `Basic ${encoded}`;
+    }
+    return Object.keys(base).length > 0 ? base : undefined;
+  };
+
+  const detectAuthFromHeaders = (headersJson: string | null): { type: "none" | "bearer" | "basic"; token: string; user: string; pass: string } => {
+    if (!headersJson) return { type: "none", token: "", user: "", pass: "" };
+    try {
+      const obj = JSON.parse(headersJson);
+      const authValue = Object.entries(obj).find(([k]) => k.toLowerCase() === "authorization")?.[1] as string | undefined;
+      if (authValue?.startsWith("Bearer ")) return { type: "bearer", token: authValue.slice(7), user: "", pass: "" };
+      if (authValue?.startsWith("Basic ")) {
+        try {
+          const decoded = atob(authValue.slice(6));
+          const [user, ...rest] = decoded.split(":");
+          return { type: "basic", token: "", user, pass: rest.join(":") };
+        } catch { /* fall through */ }
+      }
+    } catch { /* fall through */ }
+    return { type: "none", token: "", user: "", pass: "" };
+  };
+
   const resetForm = () => {
     setDirection("incoming");
     setName("");
@@ -127,6 +167,10 @@ export default function WebhooksScreen() {
     setHttpMethod("POST");
     setCreateHeaders("");
     setBodyTemplate("");
+    setCreateAuthType("none");
+    setCreateAuthToken("");
+    setCreateAuthUser("");
+    setCreateAuthPass("");
     setCreateMaxRetries("3");
     setCreateRetryDelay("60");
     setCreateTimeout("15");
@@ -158,7 +202,7 @@ export default function WebhooksScreen() {
         target_topic_id: selectedTopicId ?? undefined,
         target_url: direction === "outgoing" ? targetUrl.trim() : undefined,
         http_method: direction === "outgoing" ? httpMethod : undefined,
-        headers: direction === "outgoing" ? parseTextToHeaders(createHeaders) : undefined,
+        headers: direction === "outgoing" ? mergeAuthIntoHeaders(createHeaders, createAuthType, createAuthToken, createAuthUser, createAuthPass) : undefined,
         body_template:
           direction === "outgoing" && bodyTemplate.trim()
             ? bodyTemplate.trim()
@@ -252,6 +296,11 @@ export default function WebhooksScreen() {
     setEditTargetUrl(wh.target_url || "");
     setEditHttpMethod(wh.http_method || "POST");
     setEditHeaders(parseHeadersToText(wh.headers));
+    const auth = detectAuthFromHeaders(wh.headers);
+    setEditAuthType(auth.type);
+    setEditAuthToken(auth.token);
+    setEditAuthUser(auth.user);
+    setEditAuthPass(auth.pass);
     setEditBodyTemplate(wh.body_template || "");
     setEditMaxRetries(String(wh.max_retries ?? 3));
     setEditRetryDelay(String(wh.retry_delay_secs ?? 60));
@@ -270,7 +319,7 @@ export default function WebhooksScreen() {
         ...(isOutgoing ? {
           target_url: editTargetUrl.trim() || undefined,
           http_method: editHttpMethod,
-          headers: parseTextToHeaders(editHeaders),
+          headers: mergeAuthIntoHeaders(editHeaders, editAuthType, editAuthToken, editAuthUser, editAuthPass),
           body_template: editBodyTemplate.trim() || undefined,
           max_retries: parseInt(editMaxRetries, 10) || 3,
           retry_delay_secs: parseInt(editRetryDelay, 10) || 60,
@@ -606,9 +655,47 @@ export default function WebhooksScreen() {
                         </Pressable>
                       ))}
                     </View>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Authentication</Text>
+                    <View style={styles.methodRow}>
+                      {(["none", "bearer", "basic"] as const).map((t) => (
+                        <Pressable key={t} onPress={() => setCreateAuthType(t)} style={[styles.methodBtn, createAuthType === t && { backgroundColor: colors.primary }]}>
+                          <Text style={[styles.methodBtnText, createAuthType === t && { color: "#fff" }, { color: createAuthType === t ? "#fff" : colors.text }]}>
+                            {t === "none" ? "None" : t === "bearer" ? "Bearer" : "Basic"}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    {createAuthType === "bearer" && (
+                      <TextInput
+                        style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                        placeholder="Bearer token"
+                        placeholderTextColor={colors.textTertiary}
+                        value={createAuthToken}
+                        onChangeText={setCreateAuthToken}
+                      />
+                    )}
+                    {createAuthType === "basic" && (
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <TextInput
+                          style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          placeholder="Username"
+                          placeholderTextColor={colors.textTertiary}
+                          value={createAuthUser}
+                          onChangeText={setCreateAuthUser}
+                        />
+                        <TextInput
+                          style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          placeholder="Password"
+                          placeholderTextColor={colors.textTertiary}
+                          value={createAuthPass}
+                          onChangeText={setCreateAuthPass}
+                          secureTextEntry
+                        />
+                      </View>
+                    )}
                     <TextInput
                       style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                      placeholder="Headers (one per line: Key: Value)"
+                      placeholder="Additional headers (one per line: Key: Value)"
                       placeholderTextColor={colors.textTertiary}
                       value={createHeaders}
                       onChangeText={setCreateHeaders}
@@ -739,9 +826,47 @@ export default function WebhooksScreen() {
                         </Pressable>
                       ))}
                     </View>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Authentication</Text>
+                    <View style={styles.methodRow}>
+                      {(["none", "bearer", "basic"] as const).map((t) => (
+                        <Pressable key={t} onPress={() => setEditAuthType(t)} style={[styles.methodBtn, editAuthType === t && { backgroundColor: colors.primary }]}>
+                          <Text style={[styles.methodBtnText, { color: editAuthType === t ? "#fff" : colors.text }]}>
+                            {t === "none" ? "None" : t === "bearer" ? "Bearer" : "Basic"}
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                    {editAuthType === "bearer" && (
+                      <TextInput
+                        style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                        placeholder="Bearer token"
+                        placeholderTextColor={colors.textTertiary}
+                        value={editAuthToken}
+                        onChangeText={setEditAuthToken}
+                      />
+                    )}
+                    {editAuthType === "basic" && (
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                        <TextInput
+                          style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          placeholder="Username"
+                          placeholderTextColor={colors.textTertiary}
+                          value={editAuthUser}
+                          onChangeText={setEditAuthUser}
+                        />
+                        <TextInput
+                          style={[styles.input, { flex: 1, backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          placeholder="Password"
+                          placeholderTextColor={colors.textTertiary}
+                          value={editAuthPass}
+                          onChangeText={setEditAuthPass}
+                          secureTextEntry
+                        />
+                      </View>
+                    )}
                     <TextInput
                       style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                      placeholder="Headers (one per line: Key: Value)"
+                      placeholder="Additional headers (one per line: Key: Value)"
                       placeholderTextColor={colors.textTertiary}
                       value={editHeaders}
                       onChangeText={setEditHeaders}
