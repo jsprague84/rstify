@@ -7,6 +7,7 @@ edition.workspace = true
 rstify-core = { workspace = true }
 rstify-db = { workspace = true }
 rstify-auth = { workspace = true }
+rstify-jobs = { workspace = true }
 rumqttd = { version = "0.20", features = ["websocket"] }
 tokio = { workspace = true }
 tracing = { workspace = true }
