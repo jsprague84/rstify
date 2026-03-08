@@ -4,6 +4,7 @@ pub mod auth;
 pub mod clients;
 pub mod health;
 pub mod messages;
+pub mod mqtt;
 pub mod ntfy_publish;
 pub mod stats;
 pub mod topics;
@@ -106,6 +107,11 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
             get(webhooks::list_webhook_deliveries),
         )
         .route("/api/wh/{token}", post(webhooks::receive_webhook))
+        // MQTT Bridges
+        .route("/api/mqtt/bridges", get(mqtt::list_bridges))
+        .route("/api/mqtt/bridges", post(mqtt::create_bridge))
+        .route("/api/mqtt/bridges/{id}", put(mqtt::update_bridge))
+        .route("/api/mqtt/bridges/{id}", delete(mqtt::delete_bridge))
         // Permissions
         .route("/api/permissions", post(topics::create_permission))
         .route("/api/permissions", get(topics::list_permissions))

@@ -1,5 +1,6 @@
 use rstify_db::repositories::{
-    SqliteApplicationRepo, SqliteClientRepo, SqliteMessageRepo, SqliteTopicRepo, SqliteUserRepo,
+    SqliteApplicationRepo, SqliteClientRepo, SqliteMessageRepo, SqliteMqttBridgeRepo,
+    SqliteTopicRepo, SqliteUserRepo,
 };
 use sqlx::SqlitePool;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -30,6 +31,7 @@ pub struct AppState {
     pub client_repo: SqliteClientRepo,
     pub topic_repo: SqliteTopicRepo,
     pub message_repo: SqliteMessageRepo,
+    pub mqtt_bridge_repo: SqliteMqttBridgeRepo,
     pub jwt_secret: String,
     pub upload_dir: String,
     pub max_upload_size: usize,
@@ -55,6 +57,7 @@ impl AppState {
             client_repo: SqliteClientRepo::new(pool.clone()),
             topic_repo: SqliteTopicRepo::new(pool.clone()),
             message_repo: SqliteMessageRepo::new(pool.clone()),
+            mqtt_bridge_repo: SqliteMqttBridgeRepo::new(pool.clone()),
             jwt_secret,
             upload_dir,
             max_upload_size,
