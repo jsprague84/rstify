@@ -107,7 +107,8 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
             get(webhooks::list_webhook_deliveries),
         )
         .route("/api/wh/{token}", post(webhooks::receive_webhook))
-        // MQTT Bridges
+        // MQTT
+        .route("/api/mqtt/status", get(mqtt::mqtt_status))
         .route("/api/mqtt/bridges", get(mqtt::list_bridges))
         .route("/api/mqtt/bridges", post(mqtt::create_bridge))
         .route("/api/mqtt/bridges/{id}", put(mqtt::update_bridge))

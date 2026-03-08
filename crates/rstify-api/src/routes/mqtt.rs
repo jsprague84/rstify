@@ -2,10 +2,63 @@ use axum::extract::{Path, State};
 use axum::Json;
 use rstify_core::models::{CreateMqttBridge, MqttBridge, UpdateMqttBridge};
 use rstify_core::repositories::MqttBridgeRepository;
+use serde::Serialize;
+use utoipa::ToSchema;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
+
+#[derive(Serialize, ToSchema)]
+pub struct MqttStatusResponse {
+    pub enabled: bool,
+    pub listen_addr: Option<String>,
+    pub ws_listen_addr: Option<String>,
+    pub connections: usize,
+    pub bridges_active: usize,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/mqtt/status",
+    responses((status = 200, body = MqttStatusResponse))
+)]
+pub async fn mqtt_status(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+) -> Result<Json<MqttStatusResponse>, ApiError> {
+    let mqtt_enabled = std::env::var("MQTT_ENABLED")
+        .map(|v| v == "true" || v == "1")
+        .unwrap_or(false);
+
+    let listen_addr = if mqtt_enabled {
+        Some(std::env::var("MQTT_LISTEN_ADDR").unwrap_or_else(|_| "0.0.0.0:1883".to_string()))
+    } else {
+        None
+    };
+
+    let ws_listen_addr = if mqtt_enabled {
+        std::env::var("MQTT_WS_LISTEN_ADDR").ok()
+    } else {
+        None
+    };
+
+    let connections = state.connections.active_count().await;
+
+    let bridges: Vec<MqttBridge> = state
+        .mqtt_bridge_repo
+        .list_enabled()
+        .await
+        .unwrap_or_default();
+
+    Ok(Json(MqttStatusResponse {
+        enabled: mqtt_enabled,
+        listen_addr,
+        ws_listen_addr,
+        connections,
+        bridges_active: bridges.len(),
+    }))
+}
 
 #[utoipa::path(
     get,
