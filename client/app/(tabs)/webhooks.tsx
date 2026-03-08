@@ -566,7 +566,7 @@ export default function WebhooksScreen() {
                       keyboardType="url"
                     />
                     <View style={styles.methodRow}>
-                      {["GET", "POST", "PUT"].map((m) => (
+                      {["GET", "POST", "PUT", "PATCH", "DELETE"].map((m) => (
                         <Pressable
                           key={m}
                           style={[
@@ -678,7 +678,7 @@ export default function WebhooksScreen() {
                       keyboardType="url"
                     />
                     <View style={styles.methodRow}>
-                      {["GET", "POST", "PUT"].map((m) => (
+                      {["GET", "POST", "PUT", "PATCH", "DELETE"].map((m) => (
                         <Pressable
                           key={m}
                           style={[styles.methodBtn, { backgroundColor: colors.backgroundTertiary }, editHttpMethod === m && [styles.methodBtnActive, { backgroundColor: colors.primary }]]}

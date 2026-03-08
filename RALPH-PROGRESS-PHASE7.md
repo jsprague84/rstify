@@ -4,7 +4,7 @@
 
 ### Phase A1: Bug Fixes & Foundation
 - [x] TASK 1: Fix Content-Type header override bug — extracted headers_contain_content_type() helper, both fire functions now check before setting default, unit test added
-- [ ] TASK 2: Add PATCH and DELETE HTTP methods
+- [x] TASK 2: Add PATCH and DELETE HTTP methods — added DELETE match arm in both fire functions, PATCH+DELETE to web UI and mobile method pickers
 - [ ] TASK 3: Request timeout configuration (per-webhook)
 - [ ] TASK 4: Follow redirects toggle (per-webhook)
 - [ ] TASK 5: Retry config in create form

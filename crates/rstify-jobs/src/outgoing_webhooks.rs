@@ -58,6 +58,7 @@ pub async fn fire_outgoing_webhooks(
             "GET" => client.get(target_url),
             "PUT" => client.put(target_url).body(body.clone()),
             "PATCH" => client.patch(target_url).body(body.clone()),
+            "DELETE" => client.delete(target_url),
             _ => client.post(target_url).body(body.clone()),
         };
 
@@ -217,6 +218,7 @@ pub async fn fire_single_outgoing_webhook(
         "GET" => client.get(target_url),
         "PUT" => client.put(target_url).body(body.clone()),
         "PATCH" => client.patch(target_url).body(body.clone()),
+        "DELETE" => client.delete(target_url),
         _ => client.post(target_url).body(body.clone()),
     };
 

@@ -378,7 +378,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">HTTP Method</label>
             <div className="flex gap-2">
-              {['GET', 'POST', 'PUT'].map(m => (
+              {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
                 <button key={m} type="button" onClick={() => setForm(f => ({ ...f, http_method: m }))} className={btnCls(form.http_method === m)}>
                   {m}
                 </button>
@@ -542,7 +542,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">HTTP Method</label>
             <div className="flex gap-2">
-              {['GET', 'POST', 'PUT'].map(m => (
+              {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
                 <button key={m} type="button" onClick={() => setForm(f => ({ ...f, http_method: m }))} className={btnCls(form.http_method === m)}>
                   {m}
                 </button>
