@@ -42,12 +42,27 @@ export default function Dashboard() {
         </div>
       )}
       {health && <ServerInfo health={health} version={version} />}
-      {mqttStatus?.enabled && <MqttStatusCard status={mqttStatus} />}
+      {mqttStatus && <MqttStatusCard status={mqttStatus} />}
     </div>
   );
 }
 
 function MqttStatusCard({ status }: { status: MqttStatus }) {
+  if (!status.enabled) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mt-4">
+        <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">MQTT Broker</h3>
+        <div className="flex items-center gap-4 text-sm">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-gray-400" />
+            <span className="text-gray-500 dark:text-gray-400">Disabled</span>
+          </span>
+          <span className="text-gray-400 dark:text-gray-500">Set MQTT_ENABLED=true to activate the integrated MQTT broker</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mt-4">
       <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">MQTT Broker</h3>

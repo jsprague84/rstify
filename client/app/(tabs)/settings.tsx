@@ -714,6 +714,16 @@ export default function SettingsScreen() {
                     </Text>
                   </View>
                 </View>
+                {!mqttStatus.enabled ? (
+                  <View style={[styles.row, { paddingVertical: 4 }]}>
+                    <Ionicons name="information-circle-outline" size={20} color={colors.textTertiary} />
+                    <View style={styles.rowContent}>
+                      <Text style={[styles.rowLabel, { color: colors.textTertiary, fontSize: 12 }]}>
+                        Set MQTT_ENABLED=true to activate
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
                 {mqttStatus.listen_addr ? (
                   <View style={styles.row}>
                     <Ionicons name="link-outline" size={20} color={colors.textSecondary} />

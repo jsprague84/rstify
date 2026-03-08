@@ -38,7 +38,7 @@
 - [x] TASK 21: Fix MQTT connections count + enhanced status endpoint — removed incorrect WebSocket connections count from MQTT status, added BridgeStatusInfo struct with per-bridge connected status, BridgeManager.bridge_statuses() method, updated MqttStatusResponse to include bridge details, updated web and mobile types
 
 ### Phase B2: MQTT UI Improvements
-- [ ] TASK 22: Dashboard MqttStatusCard shows disabled state
+- [x] TASK 22: Dashboard MqttStatusCard shows disabled state — removed conditional gate, always show card; when disabled: gray dot + "Disabled" + env var hint; mobile shows info note when disabled
 - [ ] TASK 23: Broker status banner on Bridges page
 - [ ] TASK 24: Bridge connection status indicators
 
