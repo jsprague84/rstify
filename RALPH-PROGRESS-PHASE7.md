@@ -17,7 +17,7 @@
 ### Phase A3: Health & Monitoring
 - [x] TASK 9: Webhook health indicator on list view — list endpoint returns health data (last_delivery_at, success_rate from last 10 deliveries), web shows color-coded Health column with tooltip, mobile shows health dot next to name
 - [x] TASK 10: Response time sparkline (web only) — backend returns last 20 durations per webhook, Sparkline.tsx pure SVG polyline component with avg-based color coding, shown in webhook list table
-- [ ] TASK 11: Enhanced delivery log viewer (web only)
+- [x] TASK 11: Enhanced delivery log viewer (web only) — backend adds offset/success filter params, web UI has All/Success/Failed filter buttons, expandable rows, relative time with tooltip, TEST badge, color-coded status, load more pagination
 
 ### Phase A4: Code Generation & Workflow
 - [ ] TASK 12: Copy as curl command

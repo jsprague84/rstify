@@ -622,52 +622,111 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
   );
 }
 
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr + 'Z').getTime();
+  const secs = Math.floor(diff / 1000);
+  if (secs < 60) return `${secs}s ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+function statusBadgeCls(code: number | undefined, success: boolean): string {
+  if (!code) return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+  if (code < 300) return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
+  if (code < 400) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
+  if (code < 500) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+  return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+}
+
 function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
   const [logs, setLogs] = useState<WebhookDeliveryLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const [filter, setFilter] = useState<'all' | 'success' | 'failed'>('all');
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState(false);
 
-  useEffect(() => {
-    api.listWebhookDeliveries(webhookId)
-      .then(setLogs)
-      .catch(e => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [webhookId]);
+  const fetchLogs = useCallback(async (reset = false) => {
+    const offset = reset ? 0 : logs.length;
+    if (reset) setLoading(true); else setLoadingMore(true);
+    try {
+      const successParam = filter === 'all' ? undefined : filter === 'success';
+      const result = await api.listWebhookDeliveries(webhookId, 20, successParam, offset);
+      if (reset) setLogs(result); else setLogs(prev => [...prev, ...result]);
+      setHasMore(result.length === 20);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed');
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [webhookId, filter, logs.length]);
+
+  useEffect(() => { fetchLogs(true); }, [webhookId, filter]);
 
   if (loading) return <div className="text-sm text-gray-500 dark:text-gray-400">Loading...</div>;
   if (error) return <div className="text-sm text-red-600">{error}</div>;
-  if (logs.length === 0) return <div className="text-sm text-gray-500 dark:text-gray-400">No delivery attempts yet.</div>;
 
   return (
-    <div className="max-h-96 overflow-y-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-600">
-            <th className="pb-1 pr-2">Time</th>
-            <th className="pb-1 pr-2">Status</th>
-            <th className="pb-1 pr-2">Duration</th>
-            <th className="pb-1">Response</th>
-          </tr>
-        </thead>
-        <tbody>
-          {logs.map(log => (
-            <tr key={log.id} className="border-b dark:border-gray-700">
-              <td className="py-1 pr-2 whitespace-nowrap text-gray-600 dark:text-gray-300">{new Date(log.attempted_at + 'Z').toLocaleString()}</td>
-              <td className="py-1 pr-2">
-                <span className={`inline-block px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                  log.success ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                }`}>
-                  {log.status_code || 'ERR'}
-                </span>
-              </td>
-              <td className="py-1 pr-2 text-gray-600 dark:text-gray-300">{log.duration_ms}ms</td>
-              <td className="py-1 text-gray-500 dark:text-gray-400 truncate max-w-xs" title={log.response_body_preview || ''}>
-                {log.response_body_preview ? log.response_body_preview.slice(0, 80) : '\u2014'}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      <div className="flex gap-1">
+        {(['all', 'success', 'failed'] as const).map(f => (
+          <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 text-xs rounded font-medium ${filter === f ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
+            {f === 'all' ? 'All' : f === 'success' ? 'Success' : 'Failed'}
+          </button>
+        ))}
+      </div>
+      {logs.length === 0 ? (
+        <div className="text-sm text-gray-500 dark:text-gray-400">No delivery attempts{filter !== 'all' ? ' matching filter' : ''}.</div>
+      ) : (
+        <div className="max-h-96 overflow-y-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-600">
+                <th className="pb-1 pr-2">Time</th>
+                <th className="pb-1 pr-2">Status</th>
+                <th className="pb-1 pr-2">Duration</th>
+                <th className="pb-1">Response</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map(log => (
+                <tr key={log.id} className="border-b dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}>
+                  <td className="py-1.5 pr-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
+                    <span title={new Date(log.attempted_at + 'Z').toLocaleString()}>{relativeTime(log.attempted_at)}</span>
+                    {!log.message_id && <span className="ml-1 px-1 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-[10px] font-medium">TEST</span>}
+                  </td>
+                  <td className="py-1.5 pr-2">
+                    <span className={`inline-block px-1.5 py-0.5 rounded-full text-xs font-medium ${statusBadgeCls(log.status_code, log.success)}`}>
+                      {log.status_code || 'ERR'}
+                    </span>
+                  </td>
+                  <td className="py-1.5 pr-2 text-gray-600 dark:text-gray-300">{log.duration_ms}ms</td>
+                  <td className="py-1.5 text-gray-500 dark:text-gray-400">
+                    {expandedId === log.id ? (
+                      <pre className="whitespace-pre-wrap break-all max-h-40 overflow-auto bg-gray-50 dark:bg-gray-800 rounded p-2 font-mono">{log.response_body_preview || '\u2014'}</pre>
+                    ) : (
+                      <span className="truncate block max-w-xs" title={log.response_body_preview || ''}>{log.response_body_preview ? log.response_body_preview.slice(0, 80) : '\u2014'}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {hasMore && (
+            <div className="text-center py-2">
+              <button onClick={() => fetchLogs(false)} disabled={loadingMore} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50">
+                {loadingMore ? 'Loading...' : 'Load more'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

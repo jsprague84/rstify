@@ -423,6 +423,8 @@ pub async fn receive_webhook(
 #[derive(Deserialize)]
 pub struct DeliveryLogParams {
     pub limit: Option<i64>,
+    pub offset: Option<i64>,
+    pub success: Option<bool>,
 }
 
 /// GET /api/webhooks/{id}/deliveries - List recent delivery attempts
@@ -456,13 +458,28 @@ pub async fn list_webhook_deliveries(
     }
 
     let limit = params.limit.unwrap_or(20).clamp(1, 100);
-    let logs = sqlx::query_as::<_, WebhookDeliveryLog>(
-        "SELECT * FROM webhook_delivery_log WHERE webhook_config_id = ? ORDER BY attempted_at DESC LIMIT ?",
-    )
-    .bind(id)
-    .bind(limit)
-    .fetch_all(&state.pool)
-    .await
+    let offset = params.offset.unwrap_or(0).max(0);
+
+    let logs = if let Some(success) = params.success {
+        sqlx::query_as::<_, WebhookDeliveryLog>(
+            "SELECT * FROM webhook_delivery_log WHERE webhook_config_id = ? AND success = ? ORDER BY attempted_at DESC LIMIT ? OFFSET ?",
+        )
+        .bind(id)
+        .bind(success)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await
+    } else {
+        sqlx::query_as::<_, WebhookDeliveryLog>(
+            "SELECT * FROM webhook_delivery_log WHERE webhook_config_id = ? ORDER BY attempted_at DESC LIMIT ? OFFSET ?",
+        )
+        .bind(id)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await
+    }
     .map_err(|e| ApiError::from(rstify_core::error::CoreError::Database(e.to_string())))?;
 
     Ok(Json(logs))

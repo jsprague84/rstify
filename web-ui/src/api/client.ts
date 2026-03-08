@@ -158,8 +158,10 @@ export const api = {
   deleteWebhook(id: number): Promise<void> {
     return request(`/api/webhooks/${id}`, { method: 'DELETE' });
   },
-  listWebhookDeliveries(id: number, limit = 20): Promise<WebhookDeliveryLog[]> {
-    return request(`/api/webhooks/${id}/deliveries?limit=${limit}`);
+  listWebhookDeliveries(id: number, limit = 20, success?: boolean, offset = 0): Promise<WebhookDeliveryLog[]> {
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    if (success !== undefined) params.set('success', String(success));
+    return request(`/api/webhooks/${id}/deliveries?${params}`);
   },
   testWebhook(id: number, payload?: { title?: string; message?: string; priority?: number; topic?: string }): Promise<WebhookTestResult> {
     return request(`/api/webhooks/${id}/test`, {
