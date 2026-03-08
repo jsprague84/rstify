@@ -64,14 +64,14 @@ pub async fn fire_outgoing_webhooks(
         // Add custom headers
         if let Some(ref headers_json) = config.headers {
             if let Ok(headers) = serde_json::from_str::<HashMap<String, String>>(headers_json) {
-                for (key, value) in headers {
-                    req = req.header(&key, &value);
+                for (key, value) in &headers {
+                    req = req.header(key, value);
                 }
             }
         }
 
-        // Default content-type for body methods
-        if config.http_method != "GET" {
+        // Default content-type for body methods (only if user didn't set one)
+        if config.http_method != "GET" && !headers_contain_content_type(config.headers.as_deref()) {
             req = req.header("Content-Type", "application/json");
         }
 
@@ -222,13 +222,13 @@ pub async fn fire_single_outgoing_webhook(
 
     if let Some(ref headers_json) = config.headers {
         if let Ok(headers) = serde_json::from_str::<HashMap<String, String>>(headers_json) {
-            for (key, value) in headers {
-                req = req.header(&key, &value);
+            for (key, value) in &headers {
+                req = req.header(key, value);
             }
         }
     }
 
-    if config.http_method != "GET" {
+    if config.http_method != "GET" && !headers_contain_content_type(config.headers.as_deref()) {
         req = req.header("Content-Type", "application/json");
     }
 
@@ -283,6 +283,19 @@ pub async fn fire_single_outgoing_webhook(
     }
 }
 
+/// Check if a headers JSON string contains a Content-Type header (case-insensitive).
+fn headers_contain_content_type(headers_json: Option<&str>) -> bool {
+    let Some(json) = headers_json else {
+        return false;
+    };
+    let Ok(headers) = serde_json::from_str::<HashMap<String, String>>(json) else {
+        return false;
+    };
+    headers
+        .keys()
+        .any(|k| k.eq_ignore_ascii_case("content-type"))
+}
+
 #[derive(sqlx::FromRow)]
 struct OutgoingWebhookRow {
     id: i64,
@@ -292,4 +305,46 @@ struct OutgoingWebhookRow {
     body_template: Option<String>,
     max_retries: i32,
     retry_delay_secs: i32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_headers_contain_content_type() {
+        // No headers
+        assert!(!headers_contain_content_type(None));
+
+        // Empty JSON
+        assert!(!headers_contain_content_type(Some("{}")));
+
+        // Invalid JSON
+        assert!(!headers_contain_content_type(Some("not json")));
+
+        // Has Content-Type (exact case)
+        assert!(headers_contain_content_type(Some(
+            r#"{"Content-Type": "text/xml"}"#
+        )));
+
+        // Has content-type (lowercase)
+        assert!(headers_contain_content_type(Some(
+            r#"{"content-type": "text/plain"}"#
+        )));
+
+        // Has CONTENT-TYPE (uppercase)
+        assert!(headers_contain_content_type(Some(
+            r#"{"CONTENT-TYPE": "application/xml"}"#
+        )));
+
+        // Has other headers but not Content-Type
+        assert!(!headers_contain_content_type(Some(
+            r#"{"Authorization": "Bearer token123"}"#
+        )));
+
+        // Has Content-Type among other headers
+        assert!(headers_contain_content_type(Some(
+            r#"{"Authorization": "Bearer token123", "Content-Type": "text/xml"}"#
+        )));
+    }
 }
