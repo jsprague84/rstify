@@ -11,10 +11,7 @@ use tracing::{debug, warn};
 /// Skips messages that originated from MQTT (anti-loop protection).
 ///
 /// This is a blocking function that should be run in a dedicated thread.
-pub fn run_mqtt_publisher(
-    mut link_tx: LinkTx,
-    mut rx: broadcast::Receiver<Arc<MessageResponse>>,
-) {
+pub fn run_mqtt_publisher(mut link_tx: LinkTx, mut rx: broadcast::Receiver<Arc<MessageResponse>>) {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

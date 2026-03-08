@@ -13,6 +13,7 @@ rstify-db = { workspace = true }
 rstify-auth = { workspace = true }
 rstify-api = { workspace = true }
 rstify-jobs = { workspace = true }
+rstify-mqtt = { workspace = true }
 axum = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }

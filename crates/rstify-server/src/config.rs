@@ -10,6 +10,7 @@ pub struct Config {
     pub rate_limit_max: u32,
     pub rate_limit_rps: f64,
     pub fcm_enabled: bool,
+    pub mqtt_enabled: bool,
 }
 
 impl Config {
@@ -47,6 +48,9 @@ impl Config {
                 .unwrap_or(10.0),
             fcm_enabled: env::var("FCM_PROJECT_ID").is_ok()
                 && env::var("FCM_SERVICE_ACCOUNT_PATH").is_ok(),
+            mqtt_enabled: env::var("MQTT_ENABLED")
+                .map(|v| v == "true" || v == "1")
+                .unwrap_or(false),
         }
     }
 }

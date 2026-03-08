@@ -117,6 +117,51 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
+    // Start MQTT broker if enabled (must clone state before build_router takes ownership)
+    if config.mqtt_enabled {
+        let mqtt_config = rstify_mqtt::MqttConfig::from_env();
+        let mqtt_pool = state.pool.clone();
+        let mqtt_jwt_secret = state.jwt_secret.clone();
+        let mqtt_topic_repo = state.topic_repo.clone();
+        let mqtt_message_repo = state.message_repo.clone();
+        let mqtt_connections = state.connections.clone();
+
+        match rstify_mqtt::MqttService::start(mqtt_config, mqtt_pool.clone(), mqtt_jwt_secret) {
+            Ok((link_tx, link_rx)) => {
+                let global_tx = mqtt_connections.global_topic_sender();
+                let global_rx = mqtt_connections.subscribe_all_topics();
+
+                let ingest_pool = mqtt_pool.clone();
+                std::thread::Builder::new()
+                    .name("mqtt-ingest".to_string())
+                    .spawn(move || {
+                        rstify_mqtt::ingest::run_mqtt_ingest(
+                            link_rx,
+                            mqtt_topic_repo,
+                            mqtt_message_repo,
+                            global_tx,
+                            ingest_pool,
+                        );
+                    })
+                    .expect("Failed to spawn MQTT ingest thread");
+
+                std::thread::Builder::new()
+                    .name("mqtt-publisher".to_string())
+                    .spawn(move || {
+                        rstify_mqtt::publish::run_mqtt_publisher(link_tx, global_rx);
+                    })
+                    .expect("Failed to spawn MQTT publisher thread");
+
+                info!("MQTT broker, ingest, and publisher started");
+            }
+            Err(e) => {
+                tracing::error!("Failed to start MQTT service: {e}");
+            }
+        }
+    } else {
+        info!("MQTT broker disabled (set MQTT_ENABLED=true to enable)");
+    }
+
     let app = rstify_api::build_router(state, limiter);
 
     // CORS configuration
