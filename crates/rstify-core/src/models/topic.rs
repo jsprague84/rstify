@@ -10,6 +10,16 @@ pub struct Topic {
     pub everyone_read: bool,
     pub everyone_write: bool,
     pub created_at: String,
+    pub notify_policy: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notify_priority_min: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notify_condition: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notify_digest_interval: Option<i32>,
+    pub store_policy: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub store_interval: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -25,6 +35,12 @@ pub struct UpdateTopic {
     pub description: Option<String>,
     pub everyone_read: Option<bool>,
     pub everyone_write: Option<bool>,
+    pub notify_policy: Option<String>,
+    pub notify_priority_min: Option<i32>,
+    pub notify_condition: Option<String>,
+    pub notify_digest_interval: Option<i32>,
+    pub store_policy: Option<String>,
+    pub store_interval: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]

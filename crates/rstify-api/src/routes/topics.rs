@@ -147,6 +147,12 @@ pub async fn update_topic(
             req.description.as_deref(),
             req.everyone_read,
             req.everyone_write,
+            req.notify_policy.as_deref(),
+            req.notify_priority_min,
+            req.notify_condition.as_deref(),
+            req.notify_digest_interval,
+            req.store_policy.as_deref(),
+            req.store_interval,
         )
         .await
         .map_err(ApiError::from)?;

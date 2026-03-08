@@ -92,6 +92,12 @@ impl TopicRepository for SqliteTopicRepo {
         description: Option<&str>,
         everyone_read: Option<bool>,
         everyone_write: Option<bool>,
+        notify_policy: Option<&str>,
+        notify_priority_min: Option<i32>,
+        notify_condition: Option<&str>,
+        notify_digest_interval: Option<i32>,
+        store_policy: Option<&str>,
+        store_interval: Option<i32>,
     ) -> Result<Topic, CoreError> {
         let current = self
             .find_by_id(id)
@@ -101,13 +107,30 @@ impl TopicRepository for SqliteTopicRepo {
         let new_desc = description.or(current.description.as_deref());
         let new_read = everyone_read.unwrap_or(current.everyone_read);
         let new_write = everyone_write.unwrap_or(current.everyone_write);
+        let new_notify_policy = notify_policy.unwrap_or(&current.notify_policy);
+        let new_notify_priority_min = notify_priority_min.or(current.notify_priority_min);
+        let new_notify_condition = notify_condition
+            .map(|s| s.to_string())
+            .or(current.notify_condition);
+        let new_notify_digest_interval = notify_digest_interval.or(current.notify_digest_interval);
+        let new_store_policy = store_policy.unwrap_or(&current.store_policy);
+        let new_store_interval = store_interval.or(current.store_interval);
 
         sqlx::query_as::<_, Topic>(
-            "UPDATE topics SET description = ?, everyone_read = ?, everyone_write = ? WHERE id = ? RETURNING *",
+            "UPDATE topics SET description = ?, everyone_read = ?, everyone_write = ?, \
+             notify_policy = ?, notify_priority_min = ?, notify_condition = ?, \
+             notify_digest_interval = ?, store_policy = ?, store_interval = ? \
+             WHERE id = ? RETURNING *",
         )
         .bind(new_desc)
         .bind(new_read)
         .bind(new_write)
+        .bind(new_notify_policy)
+        .bind(new_notify_priority_min)
+        .bind(new_notify_condition)
+        .bind(new_notify_digest_interval)
+        .bind(new_store_policy)
+        .bind(new_store_interval)
         .bind(id)
         .fetch_one(&self.pool)
         .await
