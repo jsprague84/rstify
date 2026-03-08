@@ -126,6 +126,22 @@ export default function Webhooks() {
             )
           },
           { key: 'enabled', header: 'Enabled', render: w => w.enabled ? 'Yes' : 'No' },
+          { key: 'health', header: 'Health', render: w => {
+            if (w.direction !== 'outgoing' || w.recent_success_rate == null) {
+              return <span className="inline-flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 inline-block" />No data</span>;
+            }
+            const rate = w.recent_success_rate;
+            const color = rate >= 0.8 ? 'green' : rate >= 0.5 ? 'amber' : 'red';
+            const label = rate >= 0.8 ? 'Healthy' : rate >= 0.5 ? 'Degraded' : 'Failing';
+            const dotCls = color === 'green' ? 'bg-green-500' : color === 'amber' ? 'bg-amber-500' : 'bg-red-500';
+            const textCls = color === 'green' ? 'text-green-700 dark:text-green-400' : color === 'amber' ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400';
+            return (
+              <span className={`inline-flex items-center gap-1 text-xs ${textCls}`} title={`${Math.round(rate * 100)}% success rate${w.last_delivery_at ? ` | Last: ${new Date(w.last_delivery_at).toLocaleString()}` : ''}`}>
+                <span className={`w-2 h-2 rounded-full ${dotCls} inline-block`} />
+                {label}
+              </span>
+            );
+          }},
         ]}
         actions={w => (
           <div className="flex gap-2 justify-end">

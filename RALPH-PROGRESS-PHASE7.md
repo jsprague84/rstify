@@ -15,7 +15,7 @@
 - [x] TASK 8: Auth presets for outgoing webhooks — web UI AuthSection component with None/Bearer/Basic/API Key dropdown, auto-detects existing auth from headers on edit; mobile has button picker for None/Bearer/Basic with appropriate inputs
 
 ### Phase A3: Health & Monitoring
-- [ ] TASK 9: Webhook health indicator on list view
+- [x] TASK 9: Webhook health indicator on list view — list endpoint returns health data (last_delivery_at, success_rate from last 10 deliveries), web shows color-coded Health column with tooltip, mobile shows health dot next to name
 - [ ] TASK 10: Response time sparkline (web only)
 - [ ] TASK 11: Enhanced delivery log viewer (web only)
 

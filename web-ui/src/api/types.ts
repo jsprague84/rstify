@@ -153,6 +153,10 @@ export interface WebhookConfig {
   timeout_secs: number;
   follow_redirects: boolean;
   created_at: string;
+  // Health data (from list endpoint)
+  last_delivery_at?: string;
+  last_delivery_success?: boolean;
+  recent_success_rate?: number;
 }
 
 export interface CreateWebhookConfig {

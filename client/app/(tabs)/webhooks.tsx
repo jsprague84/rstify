@@ -418,6 +418,9 @@ export default function WebhooksScreen() {
               <View style={styles.webhookInfo}>
                 <View style={styles.nameRow}>
                   <Text style={[styles.webhookName, { color: colors.text }]}>{item.name}</Text>
+                  {item.direction === "outgoing" && item.recent_success_rate != null && (
+                    <View style={[styles.healthDot, { backgroundColor: item.recent_success_rate >= 0.8 ? "#22c55e" : item.recent_success_rate >= 0.5 ? "#f59e0b" : "#ef4444" }]} />
+                  )}
                   {getDirectionBadge(item.direction)}
                 </View>
                 <Text style={[styles.webhookType, { color: colors.textTertiary }]}>{item.webhook_type}</Text>
@@ -980,6 +983,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingVertical: 4,
+  },
+  healthDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   header: {
     flexDirection: "row",

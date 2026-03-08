@@ -7,7 +7,7 @@ use rstify_core::models::{
 };
 use rstify_core::repositories::{MessageRepository, TopicRepository};
 use rstify_jobs::outgoing_webhooks::fire_single_outgoing_webhook;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
@@ -86,17 +86,83 @@ pub async fn create_webhook(
     Ok(Json(config))
 }
 
-#[utoipa::path(get, path = "/api/webhooks", responses((status = 200, body = Vec<WebhookConfig>)))]
+#[derive(Serialize, utoipa::ToSchema)]
+pub struct WebhookConfigWithHealth {
+    #[serde(flatten)]
+    pub config: WebhookConfig,
+    pub last_delivery_at: Option<String>,
+    pub last_delivery_success: Option<bool>,
+    pub recent_success_rate: Option<f64>,
+}
+
+#[derive(sqlx::FromRow)]
+struct WebhookHealthRow {
+    webhook_config_id: i64,
+    last_delivery_at: Option<String>,
+    last_delivery_success: Option<bool>,
+    recent_success_rate: Option<f64>,
+}
+
+#[utoipa::path(get, path = "/api/webhooks", responses((status = 200, body = Vec<WebhookConfigWithHealth>)))]
 pub async fn list_webhooks(
     State(state): State<AppState>,
     auth: AuthUser,
-) -> Result<Json<Vec<WebhookConfig>>, ApiError> {
+) -> Result<Json<Vec<WebhookConfigWithHealth>>, ApiError> {
     let configs = state
         .message_repo
         .list_webhook_configs_by_user(auth.user.id)
         .await
         .map_err(ApiError::from)?;
-    Ok(Json(configs))
+
+    // Fetch health data for all webhooks in one query
+    let config_ids: Vec<i64> = configs.iter().map(|c| c.id).collect();
+    let health_data: Vec<WebhookHealthRow> = if config_ids.is_empty() {
+        vec![]
+    } else {
+        let placeholders: Vec<String> = config_ids.iter().map(|_| "?".to_string()).collect();
+        let sql = format!(
+            r#"SELECT
+                webhook_config_id,
+                MAX(attempted_at) as last_delivery_at,
+                (SELECT success FROM webhook_delivery_log w2 WHERE w2.webhook_config_id = w1.webhook_config_id ORDER BY attempted_at DESC LIMIT 1) as last_delivery_success,
+                CAST(SUM(CASE WHEN success THEN 1 ELSE 0 END) AS REAL) / COUNT(*) as recent_success_rate
+            FROM (
+                SELECT webhook_config_id, attempted_at, success,
+                    ROW_NUMBER() OVER (PARTITION BY webhook_config_id ORDER BY attempted_at DESC) as rn
+                FROM webhook_delivery_log
+                WHERE webhook_config_id IN ({})
+            ) w1
+            WHERE rn <= 10
+            GROUP BY webhook_config_id"#,
+            placeholders.join(",")
+        );
+        let mut query = sqlx::query_as::<_, WebhookHealthRow>(&sql);
+        for id in &config_ids {
+            query = query.bind(id);
+        }
+        query
+            .fetch_all(&state.pool)
+            .await
+            .unwrap_or_default()
+    };
+
+    let health_map: std::collections::HashMap<i64, &WebhookHealthRow> =
+        health_data.iter().map(|h| (h.webhook_config_id, h)).collect();
+
+    let result: Vec<WebhookConfigWithHealth> = configs
+        .into_iter()
+        .map(|config| {
+            let health = health_map.get(&config.id);
+            WebhookConfigWithHealth {
+                last_delivery_at: health.and_then(|h| h.last_delivery_at.clone()),
+                last_delivery_success: health.and_then(|h| h.last_delivery_success),
+                recent_success_rate: health.map(|h| h.recent_success_rate.unwrap_or(0.0)),
+                config,
+            }
+        })
+        .collect();
+
+    Ok(Json(result))
 }
 
 #[utoipa::path(
