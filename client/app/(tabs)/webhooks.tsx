@@ -44,6 +44,7 @@ export default function WebhooksScreen() {
   const [editTimeout, setEditTimeout] = useState("15");
   const [editFollowRedirects, setEditFollowRedirects] = useState(true);
   const [editGroupName, setEditGroupName] = useState("");
+  const [editContentType, setEditContentType] = useState("application/json");
   const [editAuthType, setEditAuthType] = useState<"none" | "bearer" | "basic">("none");
   const [editAuthToken, setEditAuthToken] = useState("");
   const [editAuthUser, setEditAuthUser] = useState("");
@@ -61,6 +62,7 @@ export default function WebhooksScreen() {
   const [targetUrl, setTargetUrl] = useState("");
   const [httpMethod, setHttpMethod] = useState("POST");
   const [createHeaders, setCreateHeaders] = useState("");
+  const [createContentType, setCreateContentType] = useState("application/json");
   const [createAuthType, setCreateAuthType] = useState<"none" | "bearer" | "basic">("none");
   const [createAuthToken, setCreateAuthToken] = useState("");
   const [createAuthUser, setCreateAuthUser] = useState("");
@@ -178,6 +180,7 @@ export default function WebhooksScreen() {
     setCreateTimeout("15");
     setCreateFollowRedirects(true);
     setCreateGroupName("");
+    setCreateContentType("application/json");
   };
 
   const getWebhookUrl = (wh: WebhookConfig) => {
@@ -205,7 +208,11 @@ export default function WebhooksScreen() {
         target_topic_id: selectedTopicId ?? undefined,
         target_url: direction === "outgoing" ? targetUrl.trim() : undefined,
         http_method: direction === "outgoing" ? httpMethod : undefined,
-        headers: direction === "outgoing" ? mergeAuthIntoHeaders(createHeaders, createAuthType, createAuthToken, createAuthUser, createAuthPass) : undefined,
+        headers: direction === "outgoing" ? (() => {
+          const h = mergeAuthIntoHeaders(createHeaders, createAuthType, createAuthToken, createAuthUser, createAuthPass) || {};
+          h["Content-Type"] = createContentType;
+          return h;
+        })() : undefined,
         body_template:
           direction === "outgoing" && bodyTemplate.trim()
             ? bodyTemplate.trim()
@@ -337,6 +344,14 @@ export default function WebhooksScreen() {
     setEditTargetUrl(wh.target_url || "");
     setEditHttpMethod(wh.http_method || "POST");
     setEditHeaders(parseHeadersToText(wh.headers));
+    // Detect content type from headers
+    if (wh.headers) {
+      try {
+        const obj = JSON.parse(wh.headers);
+        const ct = Object.entries(obj).find(([k]) => k.toLowerCase() === "content-type")?.[1] as string | undefined;
+        setEditContentType(ct || "application/json");
+      } catch { setEditContentType("application/json"); }
+    } else { setEditContentType("application/json"); }
     const auth = detectAuthFromHeaders(wh.headers);
     setEditAuthType(auth.type);
     setEditAuthToken(auth.token);
@@ -362,7 +377,11 @@ export default function WebhooksScreen() {
         ...(isOutgoing ? {
           target_url: editTargetUrl.trim() || undefined,
           http_method: editHttpMethod,
-          headers: mergeAuthIntoHeaders(editHeaders, editAuthType, editAuthToken, editAuthUser, editAuthPass),
+          headers: (() => {
+            const h = mergeAuthIntoHeaders(editHeaders, editAuthType, editAuthToken, editAuthUser, editAuthPass) || {};
+            h["Content-Type"] = editContentType;
+            return h;
+          })(),
           body_template: editBodyTemplate.trim() || undefined,
           max_retries: parseInt(editMaxRetries, 10) || 3,
           retry_delay_secs: parseInt(editRetryDelay, 10) || 60,
@@ -746,6 +765,18 @@ export default function WebhooksScreen() {
                         </Pressable>
                       ))}
                     </View>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Content-Type</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={[styles.methodRow, { flexWrap: "nowrap" }]}>
+                        {["application/json", "application/x-www-form-urlencoded", "text/plain", "application/xml"].map((ct) => (
+                          <Pressable key={ct} onPress={() => setCreateContentType(ct)} style={[styles.methodBtn, createContentType === ct && { backgroundColor: colors.primary }]}>
+                            <Text style={[styles.methodBtnText, { color: createContentType === ct ? "#fff" : colors.text }]}>
+                              {ct.replace("application/", "")}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </ScrollView>
                     <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Authentication</Text>
                     <View style={styles.methodRow}>
                       {(["none", "bearer", "basic"] as const).map((t) => (
@@ -955,6 +986,18 @@ export default function WebhooksScreen() {
                         </Pressable>
                       ))}
                     </View>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Content-Type</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={[styles.methodRow, { flexWrap: "nowrap" }]}>
+                        {["application/json", "application/x-www-form-urlencoded", "text/plain", "application/xml"].map((ct) => (
+                          <Pressable key={ct} onPress={() => setEditContentType(ct)} style={[styles.methodBtn, editContentType === ct && { backgroundColor: colors.primary }]}>
+                            <Text style={[styles.methodBtnText, { color: editContentType === ct ? "#fff" : colors.text }]}>
+                              {ct.replace("application/", "")}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </ScrollView>
                     <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Authentication</Text>
                     <View style={styles.methodRow}>
                       {(["none", "bearer", "basic"] as const).map((t) => (

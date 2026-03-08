@@ -548,6 +548,51 @@ function mergeAuthHeader(headersText: string, authType: AuthType, authFields: { 
   return lines.filter(l => l.trim()).join('\n');
 }
 
+const CONTENT_TYPES = [
+  'application/json',
+  'application/x-www-form-urlencoded',
+  'text/plain',
+  'application/xml',
+] as const;
+
+function ContentTypeSelector({ headers, onHeadersChange }: { headers: string; onHeadersChange: (h: string) => void }) {
+  const lines = headers.split('\n');
+  const ctLine = lines.find(l => l.trim().toLowerCase().startsWith('content-type:'));
+  const current = ctLine ? ctLine.split(':').slice(1).join(':').trim() : 'application/json';
+  const isCustom = current && !CONTENT_TYPES.includes(current as typeof CONTENT_TYPES[number]);
+  const [customValue, setCustomValue] = useState(isCustom ? current : '');
+
+  const setCT = (val: string) => {
+    const filtered = lines.filter(l => !l.trim().toLowerCase().startsWith('content-type:'));
+    const newLines = [...filtered.filter(l => l.trim()), `Content-Type: ${val}`];
+    onHeadersChange(newLines.join('\n'));
+  };
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Content-Type</label>
+      <div className="flex gap-2 flex-wrap">
+        {CONTENT_TYPES.map(ct => (
+          <button key={ct} type="button" onClick={() => setCT(ct)} className={btnCls(current === ct)}>
+            {ct.replace('application/', '')}
+          </button>
+        ))}
+        <button type="button" onClick={() => { setCustomValue(isCustom ? current : ''); setCT(customValue || 'custom'); }} className={btnCls(!!isCustom)}>
+          Custom
+        </button>
+      </div>
+      {isCustom && (
+        <input
+          className={`${inputCls} mt-1`}
+          placeholder="Custom Content-Type"
+          value={customValue}
+          onChange={e => { setCustomValue(e.target.value); setCT(e.target.value); }}
+        />
+      )}
+    </div>
+  );
+}
+
 function AuthSection({ headers, onHeadersChange }: { headers: string; onHeadersChange: (h: string) => void }) {
   const detected = detectAuthFromHeaders(headers);
   const [authType, setAuthType] = useState<AuthType>(detected.type);
@@ -730,6 +775,8 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
               ))}
             </div>
           </div>
+
+          <ContentTypeSelector headers={form.headers} onHeadersChange={h => setForm(f => ({ ...f, headers: h }))} />
 
           <AuthSection headers={form.headers} onHeadersChange={h => setForm(f => ({ ...f, headers: h }))} />
 
@@ -1010,6 +1057,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
               ))}
             </div>
           </div>
+          <ContentTypeSelector headers={form.headers} onHeadersChange={h => setForm(f => ({ ...f, headers: h }))} />
           <AuthSection headers={form.headers} onHeadersChange={h => setForm(f => ({ ...f, headers: h }))} />
 
           <div>
