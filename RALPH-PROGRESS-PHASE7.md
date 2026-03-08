@@ -21,7 +21,7 @@
 
 ### Phase A4: Code Generation & Workflow
 - [x] TASK 12: Copy as curl command — web UI Curl button in actions, mobile code-slash icon button, generates proper curl with method/headers/body for both incoming and outgoing webhooks
-- [ ] TASK 13: Copy as code — Python, JavaScript, Go (web only)
+- [x] TASK 13: Copy as code — Python, JavaScript, Go (web only) — CodeGenerator component with tab interface for Python/JS/Go code generation, copy button, shown via Code button for outgoing webhooks
 - [ ] TASK 14: Webhook quick-duplicate
 - [ ] TASK 15: Inline enable/disable toggle
 - [ ] TASK 16: Regenerate webhook token

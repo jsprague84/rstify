@@ -4,6 +4,7 @@ import type { WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig, WebhookDe
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import Sparkline from '../components/Sparkline';
+import CodeGenerator from '../components/CodeGenerator';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
 
@@ -17,6 +18,7 @@ export default function Webhooks() {
   const [deleteWh, setDeleteWh] = useState<WebhookConfig | null>(null);
   const [logsWh, setLogsWh] = useState<WebhookConfig | null>(null);
   const [testResult, setTestResult] = useState<{ wh: WebhookConfig; result: WebhookTestResult | null; loading: boolean; error: string; customPayload: string } | null>(null);
+  const [codeWh, setCodeWh] = useState<WebhookConfig | null>(null);
 
   const load = useCallback(() => {
     Promise.all([
@@ -179,6 +181,7 @@ export default function Webhooks() {
           <div className="flex gap-2 justify-end">
             <button onClick={() => handleTest(w)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 text-sm">Test</button>
             <button onClick={() => copyCurl(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Curl</button>
+            {w.direction === 'outgoing' && <button onClick={() => setCodeWh(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Code</button>}
             <button onClick={() => setLogsWh(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Logs</button>
             <button onClick={() => setEditWh(w)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
             <button onClick={() => setDeleteWh(w)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
@@ -219,6 +222,16 @@ export default function Webhooks() {
           {(testResult.result || testResult.loading || testResult.error) && (
             <TestResultDisplay result={testResult.result} loading={testResult.loading} error={testResult.error} webhookUrl={getWebhookUrl(testResult.wh)} direction={testResult.wh.direction} />
           )}
+        </Modal>
+      )}
+      {codeWh && codeWh.target_url && (
+        <Modal open onClose={() => setCodeWh(null)} title={`Code \u2014 ${codeWh.name}`}>
+          <CodeGenerator
+            url={codeWh.target_url}
+            method={codeWh.http_method}
+            headers={codeWh.headers ? (() => { try { return JSON.parse(codeWh.headers!); } catch { return {}; } })() : {}}
+            body={codeWh.body_template || '{"title":"Test","message":"Hello"}'}
+          />
         </Modal>
       )}
       <ConfirmDialog
