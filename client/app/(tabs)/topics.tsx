@@ -40,6 +40,12 @@ export default function TopicsScreen() {
   const [editDesc, setEditDesc] = useState("");
   const [editEveryoneRead, setEditEveryoneRead] = useState(false);
   const [editEveryoneWrite, setEditEveryoneWrite] = useState(false);
+  const [editNotifyPolicy, setEditNotifyPolicy] = useState("always");
+  const [editNotifyPriorityMin, setEditNotifyPriorityMin] = useState("0");
+  const [editNotifyCondition, setEditNotifyCondition] = useState("");
+  const [editNotifyDigestInterval, setEditNotifyDigestInterval] = useState("300");
+  const [editStorePolicy, setEditStorePolicy] = useState("all");
+  const [editStoreInterval, setEditStoreInterval] = useState("60");
 
   const fetchTopics = useCallback(async () => {
     setIsLoading(true);
@@ -96,6 +102,12 @@ export default function TopicsScreen() {
         description: editDesc || undefined,
         everyone_read: editEveryoneRead,
         everyone_write: editEveryoneWrite,
+        notify_policy: editNotifyPolicy,
+        notify_priority_min: editNotifyPolicy === "threshold" ? Number(editNotifyPriorityMin) : undefined,
+        notify_condition: editNotifyPolicy === "on_change" ? editNotifyCondition || undefined : undefined,
+        notify_digest_interval: editNotifyPolicy === "digest" ? Number(editNotifyDigestInterval) : undefined,
+        store_policy: editStorePolicy,
+        store_interval: editStorePolicy === "interval" ? Number(editStoreInterval) : undefined,
       });
       setShowEdit(false);
       setEditTopic(null);
@@ -271,6 +283,12 @@ export default function TopicsScreen() {
                     setEditDesc(item.description || "");
                     setEditEveryoneRead(item.everyone_read);
                     setEditEveryoneWrite(item.everyone_write);
+                    setEditNotifyPolicy(item.notify_policy || "always");
+                    setEditNotifyPriorityMin(String(item.notify_priority_min ?? 0));
+                    setEditNotifyCondition(item.notify_condition || "");
+                    setEditNotifyDigestInterval(String(item.notify_digest_interval ?? 300));
+                    setEditStorePolicy(item.store_policy || "all");
+                    setEditStoreInterval(String(item.store_interval ?? 60));
                     setShowEdit(true);
                   },
                 },
@@ -397,6 +415,100 @@ export default function TopicsScreen() {
                   <Text style={[styles.toggleLabel, { color: colors.text }]}>Public Write</Text>
                   <Switch value={editEveryoneWrite} onValueChange={setEditEveryoneWrite} />
                 </View>
+
+                <View style={[styles.sectionHeader, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Notification Policy</Text>
+                </View>
+                <View style={styles.policyRow}>
+                  {(["always", "never", "threshold", "on_change", "digest"] as const).map((p) => (
+                    <Pressable
+                      key={p}
+                      style={[
+                        styles.policyChip,
+                        { borderColor: colors.border },
+                        editNotifyPolicy === p && { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ]}
+                      onPress={() => setEditNotifyPolicy(p)}
+                    >
+                      <Text
+                        style={[
+                          styles.policyChipText,
+                          { color: colors.textSecondary },
+                          editNotifyPolicy === p && { color: "#fff" },
+                        ]}
+                      >
+                        {p === "on_change" ? "Change" : p === "threshold" ? "Threshold" : p === "digest" ? "Digest" : p.charAt(0).toUpperCase() + p.slice(1)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                {editNotifyPolicy === "threshold" && (
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                    placeholder="Min priority (0-10)"
+                    placeholderTextColor={colors.textTertiary}
+                    value={editNotifyPriorityMin}
+                    onChangeText={setEditNotifyPriorityMin}
+                    keyboardType="numeric"
+                  />
+                )}
+                {editNotifyPolicy === "on_change" && (
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                    placeholder="Field to watch (e.g. message)"
+                    placeholderTextColor={colors.textTertiary}
+                    value={editNotifyCondition}
+                    onChangeText={setEditNotifyCondition}
+                  />
+                )}
+                {editNotifyPolicy === "digest" && (
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                    placeholder="Digest interval (seconds)"
+                    placeholderTextColor={colors.textTertiary}
+                    value={editNotifyDigestInterval}
+                    onChangeText={setEditNotifyDigestInterval}
+                    keyboardType="numeric"
+                  />
+                )}
+
+                <View style={[styles.sectionHeader, { borderTopColor: colors.border }]}>
+                  <Text style={[styles.sectionTitle, { color: colors.text }]}>Storage Policy</Text>
+                </View>
+                <View style={styles.policyRow}>
+                  {(["all", "interval", "on_change"] as const).map((p) => (
+                    <Pressable
+                      key={p}
+                      style={[
+                        styles.policyChip,
+                        { borderColor: colors.border },
+                        editStorePolicy === p && { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ]}
+                      onPress={() => setEditStorePolicy(p)}
+                    >
+                      <Text
+                        style={[
+                          styles.policyChipText,
+                          { color: colors.textSecondary },
+                          editStorePolicy === p && { color: "#fff" },
+                        ]}
+                      >
+                        {p === "on_change" ? "Change" : p === "interval" ? "Interval" : "All"}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                {editStorePolicy === "interval" && (
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                    placeholder="Store interval (seconds)"
+                    placeholderTextColor={colors.textTertiary}
+                    value={editStoreInterval}
+                    onChangeText={setEditStoreInterval}
+                    keyboardType="numeric"
+                  />
+                )}
+
                 <View style={styles.modalButtons}>
                   <Pressable
                     style={[styles.cancelButton, { backgroundColor: colors.backgroundTertiary }]}
@@ -505,4 +617,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   toggleLabel: { fontSize: 15 },
+  sectionHeader: {
+    borderTopWidth: 1,
+    paddingTop: 12,
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  policyRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  policyChip: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  policyChipText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
 });
