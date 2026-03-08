@@ -11,7 +11,7 @@
 
 ### Phase A2: Testing & Response Viewer
 - [x] TASK 6: Custom test payload for outgoing webhooks (web only) — backend accepts optional TestWebhookPayload body, web UI shows JSON editor before sending test, API client updated
-- [ ] TASK 7: Full response viewer for webhook tests (web only)
+- [x] TASK 7: Full response viewer for webhook tests (web only) — DetailedWebhookResponse captures headers/body/duration, tabbed Body|Headers view with status badge, duration display, JSON formatting, copy button
 - [ ] TASK 8: Auth presets for outgoing webhooks
 
 ### Phase A3: Health & Monitoring

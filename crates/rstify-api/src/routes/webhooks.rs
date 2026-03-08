@@ -428,12 +428,17 @@ pub async fn test_webhook(
         let result = fire_single_outgoing_webhook(&state.pool, &existing, &test_message).await;
 
         match result {
-            Ok((status, body_preview)) => Ok(Json(serde_json::json!({
-                "success": true,
-                "direction": "outgoing",
-                "status_code": status,
-                "response_preview": body_preview,
-            }))),
+            Ok(detail) => {
+                let success = (200..300).contains(&(detail.status as i32));
+                Ok(Json(serde_json::json!({
+                    "success": success,
+                    "direction": "outgoing",
+                    "status_code": detail.status,
+                    "response_preview": detail.response_body,
+                    "response_headers": detail.response_headers,
+                    "duration_ms": detail.duration_ms,
+                })))
+            }
             Err(err) => Ok(Json(serde_json::json!({
                 "success": false,
                 "direction": "outgoing",

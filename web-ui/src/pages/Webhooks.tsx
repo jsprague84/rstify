@@ -244,20 +244,51 @@ function TestResultDisplay({ result, loading, error, webhookUrl, direction }: {
   }
 
   // Outgoing result
+  const [tab, setTab] = useState<'body' | 'headers'>('body');
+  const statusColor = result.status_code
+    ? result.status_code < 300 ? 'bg-green-500' : result.status_code < 400 ? 'bg-blue-500' : result.status_code < 500 ? 'bg-amber-500' : 'bg-red-500'
+    : 'bg-gray-500';
+
+  const formatBody = (raw: string) => {
+    try { return JSON.stringify(JSON.parse(raw), null, 2); } catch { return raw; }
+  };
+
   return (
-    <div className="space-y-2">
-      <div className={`flex items-center gap-2 text-sm font-medium ${result.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-        <span className={`inline-block w-2 h-2 rounded-full ${result.success ? 'bg-green-500' : 'bg-red-500'}`} />
-        {result.success ? 'Test successful' : 'Test failed'}
-        {result.status_code && <span className="text-gray-500 dark:text-gray-400 font-normal">(HTTP {result.status_code})</span>}
+    <div className="space-y-3">
+      <div className="flex items-center gap-3">
+        <div className={`flex items-center gap-2 text-sm font-medium ${result.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          <span className={`inline-block w-2 h-2 rounded-full ${statusColor}`} />
+          {result.status_code && <span className="font-mono">HTTP {result.status_code}</span>}
+        </div>
+        {result.duration_ms != null && (
+          <span className="text-xs text-gray-500 dark:text-gray-400">{result.duration_ms}ms</span>
+        )}
       </div>
       {result.error && (
         <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-2">{result.error}</div>
       )}
-      {result.response_preview && (
+      {(result.response_preview || result.response_headers) && (
         <div>
-          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Response:</div>
-          <pre className="bg-gray-50 dark:bg-gray-700 rounded p-2 text-xs text-gray-700 dark:text-gray-300 max-h-40 overflow-auto whitespace-pre-wrap">{result.response_preview}</pre>
+          <div className="flex gap-1 border-b border-gray-200 dark:border-gray-600 mb-2">
+            <button onClick={() => setTab('body')} className={`px-3 py-1 text-xs font-medium ${tab === 'body' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>Body</button>
+            <button onClick={() => setTab('headers')} className={`px-3 py-1 text-xs font-medium ${tab === 'headers' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>Headers</button>
+          </div>
+          {tab === 'body' && result.response_preview && (
+            <div className="relative">
+              <pre className="bg-gray-50 dark:bg-gray-800 rounded p-3 text-xs text-gray-700 dark:text-gray-300 max-h-64 overflow-auto whitespace-pre-wrap font-mono">{formatBody(result.response_preview)}</pre>
+              <button
+                onClick={() => navigator.clipboard.writeText(result.response_preview!)}
+                className="absolute top-2 right-2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >Copy</button>
+            </div>
+          )}
+          {tab === 'headers' && result.response_headers && (
+            <div className="bg-gray-50 dark:bg-gray-800 rounded p-3 text-xs font-mono max-h-64 overflow-auto">
+              {Object.entries(result.response_headers).map(([k, v]) => (
+                <div key={k} className="text-gray-700 dark:text-gray-300"><span className="text-indigo-600 dark:text-indigo-400">{k}:</span> {v}</div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

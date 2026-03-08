@@ -202,6 +202,8 @@ export interface WebhookTestResult {
   direction: string;
   status_code?: number;
   response_preview?: string;
+  response_headers?: Record<string, string>;
+  duration_ms?: number;
   error?: string;
   webhook_url?: string;
   curl_example?: string;

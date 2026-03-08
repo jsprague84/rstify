@@ -194,13 +194,20 @@ async fn log_delivery(
     }
 }
 
+/// Detailed response from a webhook test fire.
+pub struct DetailedWebhookResponse {
+    pub status: u16,
+    pub response_headers: HashMap<String, String>,
+    pub response_body: Option<String>,
+    pub duration_ms: u64,
+}
+
 /// Fire a single outgoing webhook synchronously (for test endpoint).
-/// Returns (status_code, response_body_preview) on success or error string on failure.
 pub async fn fire_single_outgoing_webhook(
     pool: &SqlitePool,
     config: &rstify_core::models::WebhookConfig,
     message: &MessageResponse,
-) -> Result<(u16, Option<String>), String> {
+) -> Result<DetailedWebhookResponse, String> {
     let target_url = config
         .target_url
         .as_deref()
@@ -259,32 +266,34 @@ pub async fn fire_single_outgoing_webhook(
         Ok(resp) => {
             let status = resp.status().as_u16();
             let success = resp.status().is_success();
-            let body_preview = resp
+            let response_headers: HashMap<String, String> = resp
+                .headers()
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+                .collect();
+            let response_body = resp
                 .text()
                 .await
                 .ok()
-                .map(|t| t.chars().take(512).collect::<String>());
+                .map(|t| t.chars().take(65536).collect::<String>());
 
             log_delivery(
                 pool,
                 config.id,
                 None,
                 Some(status as i32),
-                body_preview.as_deref(),
+                response_body.as_deref().map(|b| &b[..b.len().min(512)]),
                 duration_ms,
                 success,
             )
             .await;
 
-            if success {
-                Ok((status, body_preview))
-            } else {
-                Err(format!(
-                    "HTTP {} - {}",
-                    status,
-                    body_preview.unwrap_or_default()
-                ))
-            }
+            Ok(DetailedWebhookResponse {
+                status,
+                response_headers,
+                response_body,
+                duration_ms: duration_ms as u64,
+            })
         }
         Err(e) => {
             log_delivery(
