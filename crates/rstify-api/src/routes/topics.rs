@@ -140,6 +140,44 @@ pub async fn update_topic(
         )));
     }
 
+    // Validate notification policy fields
+    if let Some(ref policy) = req.notify_policy {
+        if !["always", "never", "threshold", "on_change", "digest"].contains(&policy.as_str()) {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                "notify_policy must be one of: always, never, threshold, on_change, digest"
+                    .to_string(),
+            )));
+        }
+    }
+    if let Some(ref policy) = req.store_policy {
+        if !["all", "on_change", "interval"].contains(&policy.as_str()) {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                "store_policy must be one of: all, on_change, interval".to_string(),
+            )));
+        }
+    }
+    if let Some(ref condition) = req.notify_condition {
+        if serde_json::from_str::<serde_json::Value>(condition).is_err() {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                "notify_condition must be valid JSON".to_string(),
+            )));
+        }
+    }
+    if let Some(interval) = req.notify_digest_interval {
+        if interval <= 0 {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                "notify_digest_interval must be positive".to_string(),
+            )));
+        }
+    }
+    if let Some(interval) = req.store_interval {
+        if interval <= 0 {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                "store_interval must be positive".to_string(),
+            )));
+        }
+    }
+
     let updated = state
         .topic_repo
         .update(
