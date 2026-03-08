@@ -25,10 +25,7 @@ fn test_broker_config_builds_correctly() {
     assert_eq!(v4.len(), 1);
 
     let server = v4.values().next().unwrap();
-    assert_eq!(
-        server.listen,
-        "127.0.0.1:11883".parse().unwrap()
-    );
+    assert_eq!(server.listen, "127.0.0.1:11883".parse().unwrap());
     assert!(broker_config.ws.is_none());
 }
 
@@ -147,7 +144,10 @@ async fn test_broker_start_and_client_publish() {
         }
     }
 
-    assert!(found, "Internal link should have received the published message");
+    assert!(
+        found,
+        "Internal link should have received the published message"
+    );
 
     // Cleanup
     let _ = client.disconnect().await;

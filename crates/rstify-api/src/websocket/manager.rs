@@ -4,6 +4,7 @@ use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 
 const CHANNEL_CAPACITY: usize = 256;
+const GLOBAL_CHANNEL_CAPACITY: usize = 1024;
 
 #[derive(Clone)]
 pub struct ConnectionManager {
@@ -11,6 +12,8 @@ pub struct ConnectionManager {
     user_channels: Arc<RwLock<HashMap<i64, broadcast::Sender<Arc<MessageResponse>>>>>,
     /// Channels keyed by topic name for ntfy-style topic subscriptions
     topic_channels: Arc<RwLock<HashMap<String, broadcast::Sender<Arc<MessageResponse>>>>>,
+    /// Global channel for cross-protocol forwarding (e.g. to MQTT publisher)
+    global_topic_tx: broadcast::Sender<Arc<MessageResponse>>,
 }
 
 impl Default for ConnectionManager {
@@ -21,10 +24,22 @@ impl Default for ConnectionManager {
 
 impl ConnectionManager {
     pub fn new() -> Self {
+        let (global_topic_tx, _) = broadcast::channel(GLOBAL_CHANNEL_CAPACITY);
         Self {
             user_channels: Arc::new(RwLock::new(HashMap::new())),
             topic_channels: Arc::new(RwLock::new(HashMap::new())),
+            global_topic_tx,
         }
+    }
+
+    /// Subscribe to ALL topic broadcasts (for cross-protocol forwarding like MQTT)
+    pub fn subscribe_all_topics(&self) -> broadcast::Receiver<Arc<MessageResponse>> {
+        self.global_topic_tx.subscribe()
+    }
+
+    /// Get the global topic sender (for MQTT ingest to broadcast without going through topic channels)
+    pub fn global_topic_sender(&self) -> broadcast::Sender<Arc<MessageResponse>> {
+        self.global_topic_tx.clone()
     }
 
     /// Count active connections (receivers) across all channels
@@ -65,12 +80,15 @@ impl ConnectionManager {
         }
     }
 
-    /// Broadcast a message to a topic's subscribers
+    /// Broadcast a message to a topic's subscribers and the global channel
     pub async fn broadcast_to_topic(&self, topic_name: &str, msg: MessageResponse) {
+        let msg = Arc::new(msg);
         let channels = self.topic_channels.read().await;
         if let Some(sender) = channels.get(topic_name) {
-            let _ = sender.send(Arc::new(msg));
+            let _ = sender.send(msg.clone());
         }
+        // Also send to global channel for cross-protocol forwarding (MQTT)
+        let _ = self.global_topic_tx.send(msg);
     }
 
     /// Remove channels that have no active receivers to prevent memory leaks.
