@@ -733,13 +733,6 @@ export default function SettingsScreen() {
                   </View>
                 ) : null}
                 <View style={styles.row}>
-                  <Ionicons name="people-outline" size={20} color={colors.textSecondary} />
-                  <View style={styles.rowContent}>
-                    <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Connections</Text>
-                    <Text style={[styles.rowValue, { color: colors.text }]}>{mqttStatus.connections}</Text>
-                  </View>
-                </View>
-                <View style={styles.row}>
                   <Ionicons name="git-branch-outline" size={20} color={colors.textSecondary} />
                   <View style={styles.rowContent}>
                     <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Active Bridges</Text>

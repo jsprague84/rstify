@@ -58,8 +58,7 @@ function MqttStatusCard({ status }: { status: MqttStatus }) {
         </span>
         {status.listen_addr && <span className="text-gray-500 dark:text-gray-400">{status.listen_addr}</span>}
         {status.ws_listen_addr && <span className="text-gray-500 dark:text-gray-400">WS: {status.ws_listen_addr}</span>}
-        <span className="text-gray-500 dark:text-gray-400">{status.connections} connections</span>
-        <span className="text-gray-500 dark:text-gray-400">{status.bridges_active} bridges</span>
+        <span className="text-gray-500 dark:text-gray-400">{status.bridges_active} bridge{status.bridges_active !== 1 ? 's' : ''} active</span>
       </div>
     </div>
   );

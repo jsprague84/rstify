@@ -2,6 +2,7 @@ use axum::extract::{Path, State};
 use axum::Json;
 use rstify_core::models::{CreateMqttBridge, MqttBridge, UpdateMqttBridge};
 use rstify_core::repositories::MqttBridgeRepository;
+use rstify_mqtt::bridge::BridgeStatusInfo;
 use serde::Serialize;
 use utoipa::ToSchema;
 
@@ -14,8 +15,8 @@ pub struct MqttStatusResponse {
     pub enabled: bool,
     pub listen_addr: Option<String>,
     pub ws_listen_addr: Option<String>,
-    pub connections: usize,
     pub bridges_active: usize,
+    pub bridges: Vec<BridgeStatusInfo>,
 }
 
 #[utoipa::path(
@@ -43,20 +44,21 @@ pub async fn mqtt_status(
         None
     };
 
-    let connections = state.connections.active_count().await;
-
-    let bridges: Vec<MqttBridge> = state
-        .mqtt_bridge_repo
-        .list_enabled()
-        .await
-        .unwrap_or_default();
+    let (bridges_active, bridges) = if let Some(ref bm) = state.bridge_manager {
+        let manager = bm.lock().await;
+        let statuses = manager.bridge_statuses();
+        let active = statuses.iter().filter(|b| b.connected).count();
+        (active, statuses)
+    } else {
+        (0, vec![])
+    };
 
     Ok(Json(MqttStatusResponse {
         enabled: mqtt_enabled,
         listen_addr,
         ws_listen_addr,
-        connections,
-        bridges_active: bridges.len(),
+        bridges_active,
+        bridges,
     }))
 }
 

@@ -35,7 +35,7 @@
 
 ### Phase B1: Backend Infrastructure
 - [x] TASK 20: Wire BridgeManager into AppState — added BridgeManager to AppState with builder method, created and started in main.rs after MQTT broker init, CRUD handlers in mqtt.rs now start/stop/restart bridges via BridgeManager
-- [ ] TASK 21: Fix MQTT connections count + enhanced status endpoint
+- [x] TASK 21: Fix MQTT connections count + enhanced status endpoint — removed incorrect WebSocket connections count from MQTT status, added BridgeStatusInfo struct with per-bridge connected status, BridgeManager.bridge_statuses() method, updated MqttStatusResponse to include bridge details, updated web and mobile types
 
 ### Phase B2: MQTT UI Improvements
 - [ ] TASK 22: Dashboard MqttStatusCard shows disabled state

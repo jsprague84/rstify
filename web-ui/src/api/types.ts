@@ -279,12 +279,18 @@ export interface UpdateMqttBridge {
   enabled?: boolean;
 }
 
+export interface BridgeStatusInfo {
+  id: number;
+  name: string;
+  connected: boolean;
+}
+
 export interface MqttStatus {
   enabled: boolean;
   listen_addr?: string;
   ws_listen_addr?: string;
-  connections: number;
   bridges_active: number;
+  bridges: BridgeStatusInfo[];
 }
 
 export interface WebhookVariable {

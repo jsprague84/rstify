@@ -18,3 +18,4 @@ sqlx = { workspace = true }
 anyhow = { workspace = true }
 bytes = "1"
 chrono = { workspace = true }
+utoipa = { workspace = true }

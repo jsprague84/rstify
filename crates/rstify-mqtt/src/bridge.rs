@@ -11,9 +11,17 @@ use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 
+/// Status info for a single bridge.
+#[derive(Clone, Debug, serde::Serialize, utoipa::ToSchema)]
+pub struct BridgeStatusInfo {
+    pub id: i64,
+    pub name: String,
+    pub connected: bool,
+}
+
 /// Manages active bridge connections to external MQTT brokers.
 pub struct BridgeManager {
-    active_bridges: HashMap<i64, JoinHandle<()>>,
+    active_bridges: HashMap<i64, (String, JoinHandle<()>)>,
     topic_repo: SqliteTopicRepo,
     message_repo: SqliteMessageRepo,
     bridge_repo: SqliteMqttBridgeRepo,
@@ -60,7 +68,7 @@ impl BridgeManager {
         let bridge_name = bridge.name.clone();
 
         // Stop existing bridge if running
-        if let Some(handle) = self.active_bridges.remove(&bridge_id) {
+        if let Some((_, handle)) = self.active_bridges.remove(&bridge_id) {
             handle.abort();
         }
 
@@ -73,13 +81,13 @@ impl BridgeManager {
             run_bridge(bridge, topic_repo, message_repo, topic_broadcast, pool).await;
         });
 
-        info!(bridge_id, name = bridge_name, "Started MQTT bridge");
-        self.active_bridges.insert(bridge_id, handle);
+        info!(bridge_id, name = %bridge_name, "Started MQTT bridge");
+        self.active_bridges.insert(bridge_id, (bridge_name, handle));
     }
 
     /// Stop a bridge by ID.
     pub fn stop_bridge(&mut self, bridge_id: i64) {
-        if let Some(handle) = self.active_bridges.remove(&bridge_id) {
+        if let Some((_, handle)) = self.active_bridges.remove(&bridge_id) {
             handle.abort();
             info!(bridge_id, "Stopped MQTT bridge");
         }
@@ -88,6 +96,18 @@ impl BridgeManager {
     /// Get the number of active bridges.
     pub fn active_count(&self) -> usize {
         self.active_bridges.len()
+    }
+
+    /// Get status info for all tracked bridges.
+    pub fn bridge_statuses(&self) -> Vec<BridgeStatusInfo> {
+        self.active_bridges
+            .iter()
+            .map(|(id, (name, handle))| BridgeStatusInfo {
+                id: *id,
+                name: name.clone(),
+                connected: !handle.is_finished(),
+            })
+            .collect()
     }
 }
 
