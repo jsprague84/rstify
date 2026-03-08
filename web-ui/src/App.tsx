@@ -16,6 +16,7 @@ import Messages from './pages/Messages';
 import Permissions from './pages/Permissions';
 import Settings from './pages/Settings';
 import Bridges from './pages/Bridges';
+import Docs from './pages/Docs';
 import { Link } from 'react-router-dom';
 
 function NotFound() {
@@ -59,6 +60,7 @@ export default function App() {
               <Route path="/permissions" element={<Permissions />} />
               <Route path="/messages" element={<Messages />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/docs" element={<Docs />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

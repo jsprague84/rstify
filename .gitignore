@@ -7,3 +7,5 @@
 # Firebase credentials
 *-firebase-adminsdk-*.json
 client/google-services.json
+# Ralph planning docs (local only)
+/ralph/

@@ -3,7 +3,7 @@
 **Complete guide to using rstify - A Gotify-compatible notification server with enhanced features**
 
 Version: 0.1.0
-Last Updated: 2026-03-05
+Last Updated: 2026-03-08
 
 ---
 
@@ -33,7 +33,7 @@ Last Updated: 2026-03-05
 **rstify** is a self-hosted notification server that:
 - ✅ Is **100% compatible** with Gotify clients and apps
 - ✅ Adds **webhooks** for receiving external notifications
-- ✅ Supports **file attachments** up to 10MB
+- ✅ Supports **file attachments** up to 25 MiB
 - ✅ Provides **advanced topics** with permissions
 - ✅ Offers **ntfy-style** publishing for flexibility
 - ✅ Includes **dark mode** web UI
@@ -409,23 +409,56 @@ curl -X POST https://your-rstify.com/api/permissions \
 
 ### What are Webhooks?
 
-Webhooks let you receive notifications from external services:
-- Receive from GitHub, GitLab, Jenkins, etc.
-- Transform webhook payloads into messages
-- Route to specific topics or applications
-- Template-based message formatting
+rstify supports both **incoming** and **outgoing** webhooks:
+- **Incoming** -- receive HTTP requests from external services (GitHub, GitLab, Jenkins) and convert them into messages
+- **Outgoing** -- fire HTTP requests when messages are published to a topic
+- Template-based message formatting with `{{field.path}}` syntax
+- User-defined template variables with `{{env.KEY}}` substitution
+- Health monitoring with success rates and response time sparklines
+- Webhook groups for organization
 
 ### Creating a Webhook
 
 **Via Web UI:**
 1. Navigate to **Webhooks**
 2. Click **"+ New Webhook"**
-3. Fill in:
-   - **Name:** GitHub Webhook
-   - **Type:** Incoming
-   - **Target:** Choose topic or application
-   - **Template:** Define message format
-4. Copy the webhook URL
+3. Choose **Incoming** or **Outgoing** direction
+4. Fill in:
+   - **Name:** descriptive name
+   - **Target:** topic or application (incoming) or URL (outgoing)
+   - **Template:** define message format
+   - **Group:** optional group name for organization
+5. For incoming: copy the generated webhook URL
+6. For outgoing: configure HTTP method, auth, content type, retries
+
+### Outgoing Webhook Configuration
+
+| Setting | Description |
+|---------|-------------|
+| **HTTP Method** | GET, POST, PUT, PATCH, DELETE |
+| **Authentication** | None, Bearer Token, Basic Auth, API Key |
+| **Content-Type** | JSON, form-urlencoded, plain text, XML, custom |
+| **Timeout** | Per-webhook timeout in seconds (default: 15) |
+| **Follow Redirects** | Toggle redirect following per webhook |
+| **Max Retries** | Number of retry attempts on failure |
+| **Retry Delay** | Seconds between retry attempts |
+
+### Template Variables
+
+Define reusable variables in the **Variables** section. Reference them in outgoing webhook URLs and request bodies using `{{env.KEY}}`:
+
+```
+URL:  https://api.example.com/v1/notify?key={{env.API_KEY}}
+Body: {"channel": "{{env.SLACK_CHANNEL}}", "text": "{{message}}"}
+```
+
+### Webhook Actions
+
+- **Test** -- send a test delivery with optional custom payload
+- **Copy curl** -- generate a curl command to reproduce the call
+- **Generate code** -- example code in Python, JavaScript, Go (web only)
+- **Duplicate** -- clone a webhook with all settings preserved
+- **Regenerate Token** -- generate a new token for incoming webhooks
 
 **Via API:**
 ```bash
@@ -561,12 +594,12 @@ curl https://your-rstify.com/api/attachments/{id} \
 
 | Type | Extensions | Max Size |
 |------|------------|----------|
-| Images | PNG, JPG, GIF, WebP | 10MB |
-| Documents | PDF, DOCX, TXT, MD | 10MB |
-| Videos | MP4, WebM | 10MB |
-| Audio | MP3, OGG, WAV | 10MB |
-| Archives | ZIP, TAR, GZ | 10MB |
-| Other | Any file | 10MB |
+| Images | PNG, JPG, GIF, WebP | 25 MiB |
+| Documents | PDF, DOCX, TXT, MD | 25 MiB |
+| Videos | MP4, WebM | 25 MiB |
+| Audio | MP3, OGG, WAV | 25 MiB |
+| Archives | ZIP, TAR, GZ | 25 MiB |
+| Other | Any file | 25 MiB |
 
 ### Best Practices
 
@@ -577,7 +610,7 @@ curl https://your-rstify.com/api/attachments/{id} \
 
 ❌ **Don't:**
 - Upload sensitive data without encryption
-- Exceed 10MB limit
+- Exceed 25 MiB limit
 - Upload executables (.exe, .sh) unless necessary
 
 ---
@@ -1005,7 +1038,7 @@ Response: {
    ```
 
 **Issue: File upload fails**
-- Check file size < 10MB
+- Check file size < 25 MiB
 - Verify authentication
 - Check disk space on server
 

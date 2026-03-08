@@ -32,6 +32,11 @@ const navSections = [
       { to: '/settings', label: 'Settings' },
     ],
   },
+  {
+    items: [
+      { to: '/docs', label: 'Documentation' },
+    ],
+  },
 ];
 
 export default function Sidebar() {
