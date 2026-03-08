@@ -116,6 +116,7 @@ pub trait MessageRepository: Send + Sync {
         headers: Option<&str>,
         body_template: Option<&str>,
         timeout_secs: Option<i32>,
+        follow_redirects: Option<bool>,
     ) -> Result<WebhookConfig, CoreError>;
     async fn find_webhook_config_by_id(&self, id: i64) -> Result<Option<WebhookConfig>, CoreError>;
     async fn find_webhook_config_by_token(
@@ -139,6 +140,7 @@ pub trait MessageRepository: Send + Sync {
         max_retries: Option<i32>,
         retry_delay_secs: Option<i32>,
         timeout_secs: Option<i32>,
+        follow_redirects: Option<bool>,
     ) -> Result<WebhookConfig, CoreError>;
     async fn delete_webhook_config(&self, id: i64) -> Result<(), CoreError>;
 }

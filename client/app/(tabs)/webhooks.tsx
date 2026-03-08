@@ -42,6 +42,7 @@ export default function WebhooksScreen() {
   const [editMaxRetries, setEditMaxRetries] = useState("3");
   const [editRetryDelay, setEditRetryDelay] = useState("60");
   const [editTimeout, setEditTimeout] = useState("15");
+  const [editFollowRedirects, setEditFollowRedirects] = useState(true);
   const [deliveriesWebhook, setDeliveriesWebhook] = useState<WebhookConfig | null>(null);
   const [deliveries, setDeliveries] = useState<WebhookDeliveryLog[]>([]);
   const [deliveriesLoading, setDeliveriesLoading] = useState(false);
@@ -57,6 +58,7 @@ export default function WebhooksScreen() {
   const [createHeaders, setCreateHeaders] = useState("");
   const [bodyTemplate, setBodyTemplate] = useState("");
   const [createTimeout, setCreateTimeout] = useState("15");
+  const [createFollowRedirects, setCreateFollowRedirects] = useState(true);
 
   // Server base URL for webhook URL display
   const [serverBase, setServerBase] = useState("");
@@ -124,6 +126,7 @@ export default function WebhooksScreen() {
     setCreateHeaders("");
     setBodyTemplate("");
     setCreateTimeout("15");
+    setCreateFollowRedirects(true);
   };
 
   const getWebhookUrl = (wh: WebhookConfig) => {
@@ -157,6 +160,7 @@ export default function WebhooksScreen() {
             ? bodyTemplate.trim()
             : undefined,
         timeout_secs: direction === "outgoing" ? parseInt(createTimeout, 10) || 15 : undefined,
+        follow_redirects: direction === "outgoing" ? createFollowRedirects : undefined,
       });
       resetForm();
       setShowCreate(false);
@@ -246,6 +250,7 @@ export default function WebhooksScreen() {
     setEditMaxRetries(String(wh.max_retries ?? 3));
     setEditRetryDelay(String(wh.retry_delay_secs ?? 60));
     setEditTimeout(String(wh.timeout_secs ?? 15));
+    setEditFollowRedirects(wh.follow_redirects ?? true);
   };
 
   const handleEdit = async () => {
@@ -264,6 +269,7 @@ export default function WebhooksScreen() {
           max_retries: parseInt(editMaxRetries, 10) || 3,
           retry_delay_secs: parseInt(editRetryDelay, 10) || 60,
           timeout_secs: parseInt(editTimeout, 10) || 15,
+          follow_redirects: editFollowRedirects,
         } : {}),
       });
       setEditWebhook(null);
@@ -621,6 +627,10 @@ export default function WebhooksScreen() {
                       placeholder="15"
                       placeholderTextColor={colors.textTertiary}
                     />
+                    <View style={styles.switchRow}>
+                      <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginBottom: 0 }]}>Follow Redirects</Text>
+                      <Switch value={createFollowRedirects} onValueChange={setCreateFollowRedirects} />
+                    </View>
                   </>
                 ) : null}
 
@@ -750,6 +760,10 @@ export default function WebhooksScreen() {
                         />
                       </View>
                     </View>
+                    <View style={styles.switchRow}>
+                      <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginBottom: 0 }]}>Follow Redirects</Text>
+                      <Switch value={editFollowRedirects} onValueChange={setEditFollowRedirects} />
+                    </View>
                   </>
                 )}
                 <View style={styles.modalButtons}>
@@ -810,6 +824,12 @@ export default function WebhooksScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  switchRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 4,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",

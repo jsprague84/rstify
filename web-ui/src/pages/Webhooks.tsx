@@ -289,6 +289,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
     target_topic_id: undefined as number | undefined,
     target_application_id: undefined as number | undefined,
     timeout_secs: 15,
+    follow_redirects: true,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -313,6 +314,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
         headers: form.direction === 'outgoing' && form.headers ? parseHeaders(form.headers) : undefined,
         body_template: form.direction === 'outgoing' && form.body_template ? form.body_template : undefined,
         timeout_secs: form.direction === 'outgoing' ? form.timeout_secs : undefined,
+        follow_redirects: form.direction === 'outgoing' ? form.follow_redirects : undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -402,6 +404,11 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Timeout (seconds)</label>
             <input type="number" min={1} max={120} value={form.timeout_secs} onChange={e => setForm(f => ({ ...f, timeout_secs: parseInt(e.target.value) || 15 }))} className={inputCls} />
           </div>
+
+          <label className="flex items-center gap-2 text-sm dark:text-gray-300">
+            <input type="checkbox" checked={form.follow_redirects} onChange={e => setForm(f => ({ ...f, follow_redirects: e.target.checked }))} />
+            Follow redirects
+          </label>
         </>
       )}
 
@@ -489,6 +496,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
     max_retries: webhook.max_retries ?? 3,
     retry_delay_secs: webhook.retry_delay_secs ?? 60,
     timeout_secs: webhook.timeout_secs ?? 15,
+    follow_redirects: webhook.follow_redirects ?? true,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -510,6 +518,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
           max_retries: form.max_retries,
           retry_delay_secs: form.retry_delay_secs,
           timeout_secs: form.timeout_secs,
+          follow_redirects: form.follow_redirects,
         } : {}),
       });
     } catch (err) {
@@ -580,6 +589,11 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
               <input type="number" min={1} max={120} value={form.timeout_secs} onChange={e => setForm(f => ({ ...f, timeout_secs: parseInt(e.target.value) || 15 }))} className={inputCls} />
             </div>
           </div>
+
+          <label className="flex items-center gap-2 text-sm dark:text-gray-300">
+            <input type="checkbox" checked={form.follow_redirects} onChange={e => setForm(f => ({ ...f, follow_redirects: e.target.checked }))} />
+            Follow redirects
+          </label>
         </>
       ) : (
         <div>

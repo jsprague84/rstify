@@ -6,7 +6,7 @@
 - [x] TASK 1: Fix Content-Type header override bug — extracted headers_contain_content_type() helper, both fire functions now check before setting default, unit test added
 - [x] TASK 2: Add PATCH and DELETE HTTP methods — added DELETE match arm in both fire functions, PATCH+DELETE to web UI and mobile method pickers
 - [x] TASK 3: Request timeout configuration (per-webhook) — migration 022, model/trait/impl updated, per-webhook timeout in reqwest client, UI in both web and mobile create/edit forms
-- [ ] TASK 4: Follow redirects toggle (per-webhook)
+- [x] TASK 4: Follow redirects toggle (per-webhook) — migration 023, model/trait/impl updated, reqwest redirect Policy per-webhook in both fire functions, UI checkbox in web create/edit forms, Switch in mobile create/edit forms
 - [ ] TASK 5: Retry config in create form
 
 ### Phase A2: Testing & Response Viewer

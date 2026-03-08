@@ -193,6 +193,7 @@ export interface WebhookConfig {
   max_retries: number;
   retry_delay_secs: number;
   timeout_secs: number;
+  follow_redirects: boolean;
 }
 
 export interface CreateWebhookConfig {
@@ -208,6 +209,7 @@ export interface CreateWebhookConfig {
   headers?: Record<string, string>;
   body_template?: string;
   timeout_secs?: number;
+  follow_redirects?: boolean;
 }
 
 export interface UpdateWebhookConfig {
@@ -221,6 +223,7 @@ export interface UpdateWebhookConfig {
   max_retries?: number;
   retry_delay_secs?: number;
   timeout_secs?: number;
+  follow_redirects?: boolean;
 }
 
 export interface WebhookDeliveryLog {
