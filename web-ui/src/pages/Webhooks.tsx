@@ -46,6 +46,38 @@ export default function Webhooks() {
     load();
   };
 
+  const handleDuplicate = async (w: WebhookConfig) => {
+    try {
+      await api.createWebhook({
+        name: `${w.name} (copy)`,
+        webhook_type: w.webhook_type,
+        direction: w.direction,
+        target_topic_id: w.target_topic_id ?? undefined,
+        target_application_id: w.target_application_id ?? undefined,
+        target_url: w.target_url ?? undefined,
+        http_method: w.http_method,
+        headers: w.headers ? JSON.parse(w.headers) : undefined,
+        body_template: w.body_template ?? undefined,
+        max_retries: w.max_retries,
+        retry_delay_secs: w.retry_delay_secs,
+        timeout_secs: w.timeout_secs,
+        follow_redirects: w.follow_redirects,
+      });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Duplicate failed');
+    }
+  };
+
+  const handleToggleEnabled = async (w: WebhookConfig) => {
+    try {
+      await api.updateWebhook(w.id, { enabled: !w.enabled });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Toggle failed');
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteWh) return;
     await api.deleteWebhook(deleteWh.id);
@@ -154,7 +186,15 @@ export default function Webhooks() {
               <WebhookUrlDisplay url={getWebhookUrl(w)} />
             )
           },
-          { key: 'enabled', header: 'Enabled', render: w => w.enabled ? 'Yes' : 'No' },
+          { key: 'enabled', header: 'Enabled', render: w => (
+            <button
+              onClick={() => handleToggleEnabled(w)}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${w.enabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+              title={w.enabled ? 'Enabled – click to disable' : 'Disabled – click to enable'}
+            >
+              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${w.enabled ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+            </button>
+          )},
           { key: 'health', header: 'Health', render: w => {
             if (w.direction !== 'outgoing' || w.recent_success_rate == null) {
               return <span className="inline-flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 inline-block" />No data</span>;
@@ -183,6 +223,7 @@ export default function Webhooks() {
             <button onClick={() => copyCurl(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Curl</button>
             {w.direction === 'outgoing' && <button onClick={() => setCodeWh(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Code</button>}
             <button onClick={() => setLogsWh(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Logs</button>
+            <button onClick={() => handleDuplicate(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Dup</button>
             <button onClick={() => setEditWh(w)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
             <button onClick={() => setDeleteWh(w)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
           </div>
