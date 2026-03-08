@@ -161,8 +161,11 @@ export const api = {
   listWebhookDeliveries(id: number, limit = 20): Promise<WebhookDeliveryLog[]> {
     return request(`/api/webhooks/${id}/deliveries?limit=${limit}`);
   },
-  testWebhook(id: number): Promise<WebhookTestResult> {
-    return request(`/api/webhooks/${id}/test`, { method: 'POST' });
+  testWebhook(id: number, payload?: { title?: string; message?: string; priority?: number; topic?: string }): Promise<WebhookTestResult> {
+    return request(`/api/webhooks/${id}/test`, {
+      method: 'POST',
+      ...(payload ? { body: JSON.stringify(payload) } : {}),
+    });
   },
 
   // Permissions

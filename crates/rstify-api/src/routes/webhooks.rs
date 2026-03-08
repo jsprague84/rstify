@@ -366,6 +366,14 @@ pub async fn list_webhook_deliveries(
     Ok(Json(logs))
 }
 
+#[derive(Deserialize, Default, utoipa::ToSchema)]
+pub struct TestWebhookPayload {
+    pub title: Option<String>,
+    pub message: Option<String>,
+    pub priority: Option<i32>,
+    pub topic: Option<String>,
+}
+
 /// POST /api/webhooks/{id}/test - Send a test delivery for a webhook
 #[utoipa::path(post, path = "/api/webhooks/{id}/test", responses((status = 200)))]
 pub async fn test_webhook(
@@ -373,7 +381,9 @@ pub async fn test_webhook(
     auth: AuthUser,
     headers: HeaderMap,
     Path(id): Path<i64>,
+    payload: Option<Json<TestWebhookPayload>>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    let payload = payload.map(|p| p.0).unwrap_or_default();
     let host = headers
         .get("host")
         .and_then(|v| v.to_str().ok())
@@ -400,10 +410,10 @@ pub async fn test_webhook(
         let test_message = MessageResponse {
             id: 0,
             appid: None,
-            topic: existing.target_topic_id.map(|_| "test-topic".to_string()),
-            title: Some("Test Webhook".to_string()),
-            message: "This is a test message from rstify webhook system.".to_string(),
-            priority: 5,
+            topic: payload.topic.or_else(|| existing.target_topic_id.map(|_| "test-topic".to_string())),
+            title: Some(payload.title.unwrap_or_else(|| "Test Webhook".to_string())),
+            message: payload.message.unwrap_or_else(|| "This is a test message from rstify webhook system.".to_string()),
+            priority: payload.priority.unwrap_or(5),
             tags: None,
             click_url: None,
             icon_url: None,

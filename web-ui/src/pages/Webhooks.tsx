@@ -15,7 +15,7 @@ export default function Webhooks() {
   const [editWh, setEditWh] = useState<WebhookConfig | null>(null);
   const [deleteWh, setDeleteWh] = useState<WebhookConfig | null>(null);
   const [logsWh, setLogsWh] = useState<WebhookConfig | null>(null);
-  const [testResult, setTestResult] = useState<{ wh: WebhookConfig; result: WebhookTestResult | null; loading: boolean; error: string } | null>(null);
+  const [testResult, setTestResult] = useState<{ wh: WebhookConfig; result: WebhookTestResult | null; loading: boolean; error: string; customPayload: string } | null>(null);
 
   const load = useCallback(() => {
     Promise.all([
@@ -50,13 +50,36 @@ export default function Webhooks() {
     load();
   };
 
+  const defaultTestPayload = JSON.stringify({ title: 'Test Webhook', message: 'This is a test message from rstify.', priority: 5, topic: 'test-topic' }, null, 2);
+
   const handleTest = async (wh: WebhookConfig) => {
-    setTestResult({ wh, result: null, loading: true, error: '' });
+    if (wh.direction === 'outgoing') {
+      // Show payload editor first
+      setTestResult({ wh, result: null, loading: false, error: '', customPayload: defaultTestPayload });
+      return;
+    }
+    setTestResult({ wh, result: null, loading: true, error: '', customPayload: '' });
     try {
       const result = await api.testWebhook(wh.id);
-      setTestResult({ wh, result, loading: false, error: '' });
+      setTestResult({ wh, result, loading: false, error: '', customPayload: '' });
     } catch (err) {
-      setTestResult({ wh, result: null, loading: false, error: err instanceof Error ? err.message : 'Test failed' });
+      setTestResult({ wh, result: null, loading: false, error: err instanceof Error ? err.message : 'Test failed', customPayload: '' });
+    }
+  };
+
+  const handleSendTest = async () => {
+    if (!testResult) return;
+    const { wh, customPayload } = testResult;
+    setTestResult(prev => prev ? { ...prev, loading: true, error: '', result: null } : null);
+    try {
+      let payload: { title?: string; message?: string; priority?: number; topic?: string } | undefined;
+      if (customPayload.trim()) {
+        payload = JSON.parse(customPayload);
+      }
+      const result = await api.testWebhook(wh.id, payload);
+      setTestResult(prev => prev ? { ...prev, result, loading: false } : null);
+    } catch (err) {
+      setTestResult(prev => prev ? { ...prev, loading: false, error: err instanceof Error ? err.message : 'Test failed' } : null);
     }
   };
 
@@ -130,7 +153,23 @@ export default function Webhooks() {
       )}
       {testResult && (
         <Modal open onClose={() => setTestResult(null)} title={`Test \u2014 ${testResult.wh.name}`}>
-          <TestResultDisplay result={testResult.result} loading={testResult.loading} error={testResult.error} webhookUrl={getWebhookUrl(testResult.wh)} direction={testResult.wh.direction} />
+          {testResult.wh.direction === 'outgoing' && !testResult.result && !testResult.loading && !testResult.error && (
+            <div className="space-y-3">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Test Payload (JSON)</label>
+              <textarea
+                value={testResult.customPayload}
+                onChange={e => setTestResult(prev => prev ? { ...prev, customPayload: e.target.value } : null)}
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm p-2 font-mono text-gray-900 dark:text-gray-100"
+                rows={6}
+              />
+              <div className="flex justify-end">
+                <button onClick={handleSendTest} className="px-4 py-2 text-sm text-white bg-green-600 rounded-md hover:bg-green-700">Send Test</button>
+              </div>
+            </div>
+          )}
+          {(testResult.result || testResult.loading || testResult.error) && (
+            <TestResultDisplay result={testResult.result} loading={testResult.loading} error={testResult.error} webhookUrl={getWebhookUrl(testResult.wh)} direction={testResult.wh.direction} />
+          )}
         </Modal>
       )}
       <ConfirmDialog

@@ -10,7 +10,7 @@
 - [x] TASK 5: Retry config in create form — added max_retries and retry_delay_secs to CreateWebhookConfig model/trait/impl/API, 3-column grid in web and mobile create forms matching edit form layout
 
 ### Phase A2: Testing & Response Viewer
-- [ ] TASK 6: Custom test payload for outgoing webhooks (web only)
+- [x] TASK 6: Custom test payload for outgoing webhooks (web only) — backend accepts optional TestWebhookPayload body, web UI shows JSON editor before sending test, API client updated
 - [ ] TASK 7: Full response viewer for webhook tests (web only)
 - [ ] TASK 8: Auth presets for outgoing webhooks
 
