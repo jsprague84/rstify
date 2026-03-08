@@ -807,7 +807,7 @@ export default function SettingsScreen() {
                       }}
                     >
                       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                        <View style={[styles.statusDot, { backgroundColor: b.enabled ? "#22c55e" : "#9ca3af" }]} />
+                        <View style={[styles.statusDot, { backgroundColor: !b.enabled ? "#9ca3af" : mqttStatus?.bridges?.find(s => s.id === b.id)?.connected ? "#22c55e" : "#ef4444" }]} />
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.userName, { color: colors.text }]}>{b.name}</Text>
                           <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{b.remote_url}</Text>

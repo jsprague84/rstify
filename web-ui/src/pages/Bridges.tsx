@@ -75,12 +75,24 @@ export default function Bridges() {
         columns={[
           { key: 'name', header: 'Name' },
           { key: 'remote_url', header: 'Broker URL' },
-          { key: 'enabled', header: 'Status', render: b => (
-            <span className={`inline-flex items-center gap-1.5 text-xs ${b.enabled ? 'text-green-600' : 'text-gray-400'}`}>
-              <span className={`w-2 h-2 rounded-full ${b.enabled ? 'bg-green-500' : 'bg-gray-400'}`} />
-              {b.enabled ? 'Active' : 'Disabled'}
-            </span>
-          )},
+          { key: 'enabled', header: 'Status', render: b => {
+            if (!b.enabled) {
+              return (
+                <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+                  <span className="w-2 h-2 rounded-full bg-gray-400" />
+                  Disabled
+                </span>
+              );
+            }
+            const bridgeInfo = mqttStatus?.bridges?.find(s => s.id === b.id);
+            const connected = bridgeInfo?.connected ?? false;
+            return (
+              <span className={`inline-flex items-center gap-1.5 text-xs ${connected ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`} />
+                {connected ? 'Connected' : 'Disconnected'}
+              </span>
+            );
+          }},
           { key: 'subscribe_topics', header: 'Subscribe', render: b => (
             <span className="text-xs text-gray-600 dark:text-gray-400">
               {parseTopics(b.subscribe_topics).join(', ') || '—'}

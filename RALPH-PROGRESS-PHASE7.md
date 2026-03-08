@@ -40,7 +40,7 @@
 ### Phase B2: MQTT UI Improvements
 - [x] TASK 22: Dashboard MqttStatusCard shows disabled state — removed conditional gate, always show card; when disabled: gray dot + "Disabled" + env var hint; mobile shows info note when disabled
 - [x] TASK 23: Broker status banner on Bridges page — green banner when running (listen addr, WS addr, active bridges), amber banner when disabled with env var hint
-- [ ] TASK 24: Bridge connection status indicators
+- [x] TASK 24: Bridge connection status indicators — web shows Connected (green)/Disconnected (red)/Disabled (gray) using BridgeStatusInfo from status endpoint, mobile bridge list dots reflect connection status
 
 ### Phase B3: Final Audit
 - [ ] TASK 25: Comprehensive implementation audit (all tasks verified across backend, web, mobile)
