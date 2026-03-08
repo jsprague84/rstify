@@ -1,7 +1,7 @@
 mod config;
 mod telemetry;
 
-use axum::http::{HeaderValue, Method};
+use axum::http::{HeaderValue, Method, header};
 use rstify_api::middleware::rate_limit::RateLimiter;
 use rstify_api::state::AppState;
 use rstify_auth::password::hash_password;
@@ -199,7 +199,13 @@ async fn main() -> anyhow::Result<()> {
                 Method::DELETE,
                 Method::OPTIONS,
             ])
-            .allow_headers(tower_http::cors::Any)
+            .allow_headers([
+                header::AUTHORIZATION,
+                header::CONTENT_TYPE,
+                header::ACCEPT,
+                header::HeaderName::from_static("x-gotify-key"),
+                header::HeaderName::from_static("x-requested-with"),
+            ])
             .allow_credentials(true)
     };
 
