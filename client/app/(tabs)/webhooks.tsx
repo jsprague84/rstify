@@ -348,6 +348,37 @@ export default function WebhooksScreen() {
     }
   };
 
+  const generateCurl = (wh: WebhookConfig): string => {
+    if (wh.direction === "outgoing" && wh.target_url) {
+      const parts = [`curl -X ${wh.http_method} '${wh.target_url}'`];
+      if (wh.headers) {
+        try {
+          const h = JSON.parse(wh.headers) as Record<string, string>;
+          for (const [k, v] of Object.entries(h)) parts.push(`-H '${k}: ${v}'`);
+        } catch { /* skip */ }
+      }
+      if (wh.http_method !== "GET" && wh.http_method !== "DELETE") {
+        const body = wh.body_template || '{"title":"Test","message":"Hello"}';
+        parts.push(`-d '${body.replace(/'/g, "'\\''")}'`);
+        if (!wh.headers || !wh.headers.toLowerCase().includes("content-type")) {
+          parts.push("-H 'Content-Type: application/json'");
+        }
+      }
+      return parts.join(" \\\n  ");
+    }
+    const url = getWebhookUrl(wh);
+    return `curl -X POST '${url}' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"title":"Test","message":"Hello"}'`;
+  };
+
+  const handleCopyCurl = async (wh: WebhookConfig) => {
+    try {
+      await Clipboard.setStringAsync(generateCurl(wh));
+      Alert.alert("Copied", "curl command copied to clipboard");
+    } catch {
+      Alert.alert("Error", "Failed to copy");
+    }
+  };
+
   const handleCopyUrl = async (wh: WebhookConfig) => {
     const url = getWebhookUrl(wh);
     try {
@@ -451,6 +482,9 @@ export default function WebhooksScreen() {
                       size={18}
                       color={testingId === item.id ? colors.textTertiary : colors.success}
                     />
+                  </Pressable>
+                  <Pressable onPress={() => handleCopyCurl(item)} hitSlop={8}>
+                    <Ionicons name="code-slash-outline" size={18} color={colors.textSecondary} />
                   </Pressable>
                   <Pressable onPress={() => openDeliveries(item)} hitSlop={8}>
                     <Ionicons name="list-outline" size={18} color={colors.textSecondary} />

@@ -20,7 +20,7 @@
 - [x] TASK 11: Enhanced delivery log viewer (web only) — backend adds offset/success filter params, web UI has All/Success/Failed filter buttons, expandable rows, relative time with tooltip, TEST badge, color-coded status, load more pagination
 
 ### Phase A4: Code Generation & Workflow
-- [ ] TASK 12: Copy as curl command
+- [x] TASK 12: Copy as curl command — web UI Curl button in actions, mobile code-slash icon button, generates proper curl with method/headers/body for both incoming and outgoing webhooks
 - [ ] TASK 13: Copy as code — Python, JavaScript, Go (web only)
 - [ ] TASK 14: Webhook quick-duplicate
 - [ ] TASK 15: Inline enable/disable toggle

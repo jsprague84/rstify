@@ -89,6 +89,32 @@ export default function Webhooks() {
     return `${base}/api/wh/${wh.token}`;
   };
 
+  const generateCurl = (w: WebhookConfig) => {
+    if (w.direction === 'outgoing' && w.target_url) {
+      const parts = [`curl -X ${w.http_method} '${w.target_url}'`];
+      if (w.headers) {
+        try {
+          const h = JSON.parse(w.headers) as Record<string, string>;
+          for (const [k, v] of Object.entries(h)) parts.push(`-H '${k}: ${v}'`);
+        } catch { /* skip */ }
+      }
+      if (w.http_method !== 'GET' && w.http_method !== 'DELETE') {
+        const body = w.body_template || '{"title":"Test","message":"Hello"}';
+        parts.push(`-d '${body.replace(/'/g, "'\\''")}'`);
+        if (!w.headers || !w.headers.toLowerCase().includes('content-type')) {
+          parts.push("-H 'Content-Type: application/json'");
+        }
+      }
+      return parts.join(' \\\n  ');
+    }
+    const url = getWebhookUrl(w);
+    return `curl -X POST '${url}' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"title":"Test","message":"Hello"}'`;
+  };
+
+  const copyCurl = (w: WebhookConfig) => {
+    navigator.clipboard.writeText(generateCurl(w));
+  };
+
   const directionBadge = (dir: string) => {
     const isOut = dir === 'outgoing';
     return (
@@ -152,6 +178,7 @@ export default function Webhooks() {
         actions={w => (
           <div className="flex gap-2 justify-end">
             <button onClick={() => handleTest(w)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 text-sm">Test</button>
+            <button onClick={() => copyCurl(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Curl</button>
             <button onClick={() => setLogsWh(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Logs</button>
             <button onClick={() => setEditWh(w)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
             <button onClick={() => setDeleteWh(w)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
