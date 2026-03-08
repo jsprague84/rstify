@@ -66,6 +66,12 @@ export interface Topic {
   everyone_read: boolean;
   everyone_write: boolean;
   created_at: string;
+  notify_policy: string;
+  notify_priority_min?: number;
+  notify_condition?: string;
+  notify_digest_interval?: number;
+  store_policy: string;
+  store_interval?: number;
 }
 
 export interface CreateTopic {
@@ -123,6 +129,7 @@ export interface MessageResponse {
   actions: MessageAction[] | null;
   extras: Record<string, unknown> | null;
   content_type: string | null;
+  source?: string;
   attachments?: AttachmentInfo[];
   date: string;
 }
@@ -260,4 +267,63 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   token: string;
+}
+
+export interface MqttBridge {
+  id: number;
+  user_id: number;
+  name: string;
+  remote_url: string;
+  subscribe_topics: string;
+  publish_topics?: string;
+  qos?: number;
+  topic_prefix?: string;
+  auto_create_topics: boolean;
+  enabled: boolean;
+  created_at: string;
+}
+
+export interface CreateMqttBridge {
+  name: string;
+  remote_url: string;
+  subscribe_topics: string[];
+  publish_topics?: string[];
+  username?: string;
+  password?: string;
+  qos?: number;
+  topic_prefix?: string;
+  auto_create_topics?: boolean;
+}
+
+export interface UpdateMqttBridge {
+  name?: string;
+  remote_url?: string;
+  subscribe_topics?: string[];
+  publish_topics?: string[];
+  username?: string;
+  password?: string;
+  qos?: number;
+  topic_prefix?: string;
+  auto_create_topics?: boolean;
+  enabled?: boolean;
+}
+
+export interface MqttStatus {
+  enabled: boolean;
+  listen_addr?: string;
+  ws_listen_addr?: string;
+  connections: number;
+  bridges_active: number;
+}
+
+export interface UpdateTopic {
+  description?: string;
+  everyone_read?: boolean;
+  everyone_write?: boolean;
+  notify_policy?: string;
+  notify_priority_min?: number;
+  notify_condition?: string;
+  notify_digest_interval?: number;
+  store_policy?: string;
+  store_interval?: number;
 }

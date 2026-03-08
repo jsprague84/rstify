@@ -6,6 +6,7 @@ import type {
   Client,
   CreateApplication,
   CreateClient,
+  CreateMqttBridge,
   CreateTopic,
   CreateTopicMessage,
   CreateTopicPermission,
@@ -15,11 +16,15 @@ import type {
   LoginRequest,
   LoginResponse,
   MessageResponse,
+  MqttBridge,
+  MqttStatus,
   PagedMessages,
   StatsResponse,
   Topic,
   TopicPermission,
   UpdateApplication,
+  UpdateMqttBridge,
+  UpdateTopic,
   UpdateUser,
   UpdateWebhookConfig,
   UserResponse,
@@ -360,7 +365,7 @@ export class RstifyClient {
   // Topics - update
   async updateTopic(
     name: string,
-    data: { description?: string; everyone_read?: boolean; everyone_write?: boolean },
+    data: UpdateTopic,
   ): Promise<Topic> {
     return this.request("PUT", `/api/topics/${encodeURIComponent(name)}`, data);
   }
@@ -449,6 +454,27 @@ export class RstifyClient {
 
   async listWebhookDeliveries(id: number, limit = 20): Promise<WebhookDeliveryLog[]> {
     return this.request("GET", `/api/webhooks/${id}/deliveries?limit=${limit}`);
+  }
+
+  // MQTT
+  async getMqttStatus(): Promise<MqttStatus> {
+    return this.request("GET", "/api/mqtt/status");
+  }
+
+  async listBridges(): Promise<MqttBridge[]> {
+    return this.request("GET", "/api/mqtt/bridges");
+  }
+
+  async createBridge(req: CreateMqttBridge): Promise<MqttBridge> {
+    return this.request("POST", "/api/mqtt/bridges", req);
+  }
+
+  async updateBridge(id: number, req: UpdateMqttBridge): Promise<MqttBridge> {
+    return this.request("PUT", `/api/mqtt/bridges/${id}`, req);
+  }
+
+  async deleteBridge(id: number): Promise<void> {
+    await this.request("DELETE", `/api/mqtt/bridges/${id}`);
   }
 
   // Stats (admin)
