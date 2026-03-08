@@ -236,6 +236,42 @@ export default function WebhooksScreen() {
     }
   };
 
+  const handleDuplicate = (webhook: WebhookConfig) => {
+    Alert.alert("Duplicate Webhook", `Create a copy of "${webhook.name}"?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Duplicate",
+        onPress: async () => {
+          try {
+            const api = getApiClient();
+            await api.createWebhook({
+              name: `${webhook.name} (copy)`,
+              webhook_type: webhook.webhook_type,
+              direction: webhook.direction,
+              target_topic_id: webhook.target_topic_id ?? undefined,
+              target_application_id: webhook.target_application_id ?? undefined,
+              template: webhook.template ? JSON.parse(webhook.template) : {},
+              target_url: webhook.target_url ?? undefined,
+              http_method: webhook.http_method,
+              headers: webhook.headers ? JSON.parse(webhook.headers) : undefined,
+              body_template: webhook.body_template ?? undefined,
+              max_retries: webhook.max_retries,
+              retry_delay_secs: webhook.retry_delay_secs,
+              timeout_secs: webhook.timeout_secs,
+              follow_redirects: webhook.follow_redirects,
+            });
+            fetchData();
+          } catch (e) {
+            Alert.alert(
+              "Error",
+              e instanceof Error ? e.message : "Duplicate failed",
+            );
+          }
+        },
+      },
+    ]);
+  };
+
   const handleDelete = (webhook: WebhookConfig) => {
     Alert.alert("Delete Webhook", `Delete "${webhook.name}"?`, [
       { text: "Cancel", style: "cancel" },
@@ -485,6 +521,9 @@ export default function WebhooksScreen() {
                   </Pressable>
                   <Pressable onPress={() => handleCopyCurl(item)} hitSlop={8}>
                     <Ionicons name="code-slash-outline" size={18} color={colors.textSecondary} />
+                  </Pressable>
+                  <Pressable onPress={() => handleDuplicate(item)} hitSlop={8}>
+                    <Ionicons name="copy-outline" size={18} color={colors.textSecondary} />
                   </Pressable>
                   <Pressable onPress={() => openDeliveries(item)} hitSlop={8}>
                     <Ionicons name="list-outline" size={18} color={colors.textSecondary} />
