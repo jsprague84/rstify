@@ -209,7 +209,14 @@ export default function Messages() {
                     ));
                   }} />
                   <MessageActions message={m} />
-                  <p className="text-xs text-gray-400 mt-2">{m.date}</p>
+                  <p className="text-xs text-gray-400 mt-2">
+                    {m.date}
+                    {m.source && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs">
+                        via {m.source}
+                      </span>
+                    )}
+                  </p>
                 </div>
                 <button onClick={() => setDeleteMsg(m)} className="text-red-500 hover:text-red-700 text-sm ml-4">Delete</button>
               </div>

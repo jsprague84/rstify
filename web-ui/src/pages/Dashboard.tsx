@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
-import type { StatsResponse, HealthResponse, VersionResponse } from '../api/types';
+import type { StatsResponse, HealthResponse, VersionResponse, MqttStatus } from '../api/types';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Dashboard() {
@@ -8,11 +8,13 @@ export default function Dashboard() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [version, setVersion] = useState<VersionResponse | null>(null);
+  const [mqttStatus, setMqttStatus] = useState<MqttStatus | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
     api.getHealth().then(setHealth).catch(() => {});
     api.getVersion().then(setVersion).catch(() => {});
+    api.getMqttStatus().then(setMqttStatus).catch(() => {});
     if (!user?.is_admin) return;
     api.getStats().then(setStats).catch(e => setError(e.message));
   }, [user]);
@@ -40,6 +42,25 @@ export default function Dashboard() {
         </div>
       )}
       {health && <ServerInfo health={health} version={version} />}
+      {mqttStatus?.enabled && <MqttStatusCard status={mqttStatus} />}
+    </div>
+  );
+}
+
+function MqttStatusCard({ status }: { status: MqttStatus }) {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mt-4">
+      <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">MQTT Broker</h3>
+      <div className="flex items-center gap-4 text-sm">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+          <span className="text-gray-700 dark:text-gray-300">Running</span>
+        </span>
+        {status.listen_addr && <span className="text-gray-500 dark:text-gray-400">{status.listen_addr}</span>}
+        {status.ws_listen_addr && <span className="text-gray-500 dark:text-gray-400">WS: {status.ws_listen_addr}</span>}
+        <span className="text-gray-500 dark:text-gray-400">{status.connections} connections</span>
+        <span className="text-gray-500 dark:text-gray-400">{status.bridges_active} bridges</span>
+      </div>
     </div>
   );
 }

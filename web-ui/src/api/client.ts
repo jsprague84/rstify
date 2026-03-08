@@ -7,6 +7,7 @@ import type {
   PagedMessages, MessageResponse, AttachmentInfo,
   WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig,
   WebhookDeliveryLog,
+  MqttBridge, CreateMqttBridge, UpdateMqttBridge, MqttStatus,
   StatsResponse, LoginResponse,
   HealthResponse, VersionResponse,
 } from './types';
@@ -123,7 +124,7 @@ export const api = {
   createTopic(data: CreateTopic): Promise<Topic> {
     return request('/api/topics', { method: 'POST', body: JSON.stringify(data) });
   },
-  updateTopic(name: string, data: { description?: string; everyone_read?: boolean; everyone_write?: boolean }): Promise<Topic> {
+  updateTopic(name: string, data: { description?: string; everyone_read?: boolean; everyone_write?: boolean; notify_policy?: string; notify_priority_min?: number; notify_condition?: string; notify_digest_interval?: number; store_policy?: string; store_interval?: number }): Promise<Topic> {
     return request(`/api/topics/${encodeURIComponent(name)}`, { method: 'PUT', body: JSON.stringify(data) });
   },
   deleteTopic(name: string): Promise<void> {
@@ -218,6 +219,23 @@ export const api = {
   },
   getVersion(): Promise<VersionResponse> {
     return request('/version');
+  },
+
+  // MQTT
+  getMqttStatus(): Promise<MqttStatus> {
+    return request('/api/mqtt/status');
+  },
+  listBridges(): Promise<MqttBridge[]> {
+    return request('/api/mqtt/bridges');
+  },
+  createBridge(data: CreateMqttBridge): Promise<MqttBridge> {
+    return request('/api/mqtt/bridges', { method: 'POST', body: JSON.stringify(data) });
+  },
+  updateBridge(id: number, data: UpdateMqttBridge): Promise<MqttBridge> {
+    return request(`/api/mqtt/bridges/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteBridge(id: number): Promise<void> {
+    return request(`/api/mqtt/bridges/${id}`, { method: 'DELETE' });
   },
 
   // Stats
