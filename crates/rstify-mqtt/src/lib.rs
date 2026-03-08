@@ -5,8 +5,10 @@ pub mod publish;
 
 pub use config::MqttConfig;
 
+use rstify_db::repositories::client::SqliteClientRepo;
 use rumqttd::local::{LinkRx, LinkTx};
 use rumqttd::{Broker, Config, ConnectionSettings, RouterConfig, ServerSettings};
+use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use tracing::{error, info};
@@ -85,11 +87,18 @@ impl MqttService {
     /// Start the MQTT broker and return the internal link handles.
     /// The broker runs in a separate thread. The returned LinkTx/LinkRx
     /// are used by ingest and publish tasks.
-    pub fn start(config: MqttConfig) -> anyhow::Result<(LinkTx, LinkRx)> {
-        let broker_config = Self::build_broker_config(&config);
+    pub fn start(
+        config: MqttConfig,
+        pool: SqlitePool,
+        jwt_secret: String,
+    ) -> anyhow::Result<(LinkTx, LinkRx)> {
+        let mut broker_config = Self::build_broker_config(&config);
 
-        // Auth handler will be set in Task 3
-        let _ = config.require_auth;
+        // Set auth handler on all server configs
+        if config.require_auth {
+            let client_repo = SqliteClientRepo::new(pool);
+            Self::set_auth_handlers(&mut broker_config, client_repo, jwt_secret);
+        }
 
         let broker = Broker::new(broker_config);
         let (mut link_tx, link_rx) = broker
@@ -101,10 +110,10 @@ impl MqttService {
             .subscribe("#")
             .map_err(|e| anyhow::anyhow!("Failed to subscribe to all MQTT topics: {:?}", e))?;
 
-        info!(
-            "MQTT broker starting on {}",
-            config.listen_addr
-        );
+        info!("MQTT broker starting on {}", config.listen_addr);
+        if let Some(ref ws) = config.ws_listen_addr {
+            info!("MQTT WebSocket starting on {}", ws);
+        }
 
         // Start broker in a separate thread (rumqttd uses its own tokio runtimes)
         std::thread::Builder::new()
@@ -118,5 +127,56 @@ impl MqttService {
             .map_err(|e| anyhow::anyhow!("Failed to spawn MQTT broker thread: {}", e))?;
 
         Ok((link_tx, link_rx))
+    }
+
+    fn set_auth_handlers(
+        broker_config: &mut Config,
+        client_repo: SqliteClientRepo,
+        jwt_secret: String,
+    ) {
+        // Set auth on v4 servers
+        if let Some(ref mut v4) = broker_config.v4 {
+            for (_, server) in v4.iter_mut() {
+                let repo = client_repo.clone();
+                let secret = jwt_secret.clone();
+                server.set_auth_handler(move |client_id, username, password| {
+                    let repo = repo.clone();
+                    let secret = secret.clone();
+                    async move {
+                        auth::authenticate(client_id, username, password, repo, secret).await
+                    }
+                });
+            }
+        }
+
+        // Set auth on v5 servers
+        if let Some(ref mut v5) = broker_config.v5 {
+            for (_, server) in v5.iter_mut() {
+                let repo = client_repo.clone();
+                let secret = jwt_secret.clone();
+                server.set_auth_handler(move |client_id, username, password| {
+                    let repo = repo.clone();
+                    let secret = secret.clone();
+                    async move {
+                        auth::authenticate(client_id, username, password, repo, secret).await
+                    }
+                });
+            }
+        }
+
+        // Set auth on WebSocket servers
+        if let Some(ref mut ws) = broker_config.ws {
+            for (_, server) in ws.iter_mut() {
+                let repo = client_repo.clone();
+                let secret = jwt_secret.clone();
+                server.set_auth_handler(move |client_id, username, password| {
+                    let repo = repo.clone();
+                    let secret = secret.clone();
+                    async move {
+                        auth::authenticate(client_id, username, password, repo, secret).await
+                    }
+                });
+            }
+        }
     }
 }
