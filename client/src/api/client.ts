@@ -460,6 +460,10 @@ export class RstifyClient {
     return this.request("POST", `/api/webhooks/${id}/test`);
   }
 
+  async regenerateWebhookToken(id: number): Promise<WebhookConfig> {
+    return this.request("POST", `/api/webhooks/${id}/regenerate-token`);
+  }
+
   // MQTT
   async getMqttStatus(): Promise<MqttStatus> {
     return this.request("GET", "/api/mqtt/status");

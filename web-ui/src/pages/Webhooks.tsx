@@ -236,7 +236,18 @@ export default function Webhooks() {
       )}
       {editWh && (
         <Modal open onClose={() => setEditWh(null)} title="Edit Webhook">
-          <EditWebhookForm webhook={editWh} topics={topics} apps={apps} onSubmit={d => handleUpdate(editWh.id, d)} onClose={() => setEditWh(null)} />
+          <EditWebhookForm
+            webhook={editWh}
+            topics={topics}
+            apps={apps}
+            onSubmit={d => handleUpdate(editWh.id, d)}
+            onClose={() => setEditWh(null)}
+            onRegenerate={editWh.direction !== 'outgoing' ? async () => {
+              const updated = await api.regenerateWebhookToken(editWh.id);
+              setEditWh(updated);
+              load();
+            } : undefined}
+          />
         </Modal>
       )}
       {logsWh && (
@@ -812,12 +823,13 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
   );
 }
 
-function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
+function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerate }: {
   webhook: WebhookConfig;
   topics: Topic[];
   apps: Application[];
   onSubmit: (d: UpdateWebhookConfig) => Promise<void>;
   onClose: () => void;
+  onRegenerate?: () => Promise<void>;
 }) {
   const [form, setForm] = useState({
     name: webhook.name,
@@ -871,12 +883,23 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
 
       {/* Show webhook URL for incoming webhooks */}
       {webhookUrl && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-3 space-y-1">
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-3 space-y-2">
           <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Webhook URL</div>
           <div className="flex items-center gap-2">
             <code className="text-xs text-blue-800 dark:text-blue-200 break-all flex-1">{webhookUrl}</code>
             <button type="button" onClick={() => navigator.clipboard.writeText(webhookUrl)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">Copy</button>
           </div>
+          {onRegenerate && (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm('Regenerate token? The old webhook URL will stop working.')) {
+                  onRegenerate();
+                }
+              }}
+              className="text-xs text-amber-600 dark:text-amber-400 hover:underline"
+            >Regenerate Token</button>
+          )}
         </div>
       )}
 

@@ -145,4 +145,9 @@ pub trait MessageRepository: Send + Sync {
         follow_redirects: Option<bool>,
     ) -> Result<WebhookConfig, CoreError>;
     async fn delete_webhook_config(&self, id: i64) -> Result<(), CoreError>;
+    async fn regenerate_webhook_token(
+        &self,
+        id: i64,
+        new_token: &str,
+    ) -> Result<WebhookConfig, CoreError>;
 }

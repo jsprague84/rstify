@@ -147,10 +147,7 @@ pub async fn list_webhooks(
         for id in &config_ids {
             query = query.bind(id);
         }
-        query
-            .fetch_all(&state.pool)
-            .await
-            .unwrap_or_default()
+        query.fetch_all(&state.pool).await.unwrap_or_default()
     };
 
     // Fetch recent durations (last 20 per webhook)
@@ -175,13 +172,19 @@ pub async fn list_webhooks(
         query.fetch_all(&state.pool).await.unwrap_or_default()
     };
 
-    let mut durations_map: std::collections::HashMap<i64, Vec<i64>> = std::collections::HashMap::new();
+    let mut durations_map: std::collections::HashMap<i64, Vec<i64>> =
+        std::collections::HashMap::new();
     for row in &duration_data {
-        durations_map.entry(row.webhook_config_id).or_default().push(row.duration_ms);
+        durations_map
+            .entry(row.webhook_config_id)
+            .or_default()
+            .push(row.duration_ms);
     }
 
-    let health_map: std::collections::HashMap<i64, &WebhookHealthRow> =
-        health_data.iter().map(|h| (h.webhook_config_id, h)).collect();
+    let health_map: std::collections::HashMap<i64, &WebhookHealthRow> = health_data
+        .iter()
+        .map(|h| (h.webhook_config_id, h))
+        .collect();
 
     let result: Vec<WebhookConfigWithHealth> = configs
         .into_iter()
@@ -529,9 +532,13 @@ pub async fn test_webhook(
         let test_message = MessageResponse {
             id: 0,
             appid: None,
-            topic: payload.topic.or_else(|| existing.target_topic_id.map(|_| "test-topic".to_string())),
+            topic: payload
+                .topic
+                .or_else(|| existing.target_topic_id.map(|_| "test-topic".to_string())),
             title: Some(payload.title.unwrap_or_else(|| "Test Webhook".to_string())),
-            message: payload.message.unwrap_or_else(|| "This is a test message from rstify webhook system.".to_string()),
+            message: payload.message.unwrap_or_else(|| {
+                "This is a test message from rstify webhook system.".to_string()
+            }),
             priority: payload.priority.unwrap_or(5),
             tags: None,
             click_url: None,
@@ -578,4 +585,38 @@ pub async fn test_webhook(
             "curl_example": curl_cmd,
         })))
     }
+}
+
+/// POST /api/webhooks/{id}/regenerate-token - Regenerate webhook token
+#[utoipa::path(post, path = "/api/webhooks/{id}/regenerate-token", responses((status = 200, body = WebhookConfig)))]
+pub async fn regenerate_webhook_token(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<i64>,
+) -> Result<Json<WebhookConfig>, ApiError> {
+    let existing = state
+        .message_repo
+        .find_webhook_config_by_id(id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Webhook config not found".to_string(),
+            ))
+        })?;
+
+    if existing.user_id != auth.user.id && !auth.user.is_admin {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Not your webhook config".to_string(),
+        )));
+    }
+
+    let new_token = generate_webhook_token();
+    let updated = state
+        .message_repo
+        .regenerate_webhook_token(id, &new_token)
+        .await
+        .map_err(ApiError::from)?;
+
+    Ok(Json(updated))
 }

@@ -24,7 +24,7 @@
 - [x] TASK 13: Copy as code — Python, JavaScript, Go (web only) — CodeGenerator component with tab interface for Python/JS/Go code generation, copy button, shown via Code button for outgoing webhooks
 - [x] TASK 14: Webhook quick-duplicate — web UI Dup button in list actions, mobile copy-outline icon with Alert.alert confirmation, creates copy with " (copy)" suffix preserving all config fields
 - [x] TASK 15: Inline enable/disable toggle — web UI replaced Yes/No text with clickable toggle switch in Enabled column, mobile already had Switch component
-- [ ] TASK 16: Regenerate webhook token
+- [x] TASK 16: Regenerate webhook token — new POST /api/webhooks/{id}/regenerate-token endpoint, regenerate_webhook_token in trait/impl, web UI button in edit form with confirm dialog, mobile button with Alert.alert confirmation
 
 ### Phase A5: Organization & Templates
 - [ ] TASK 17: Webhook groups/folders

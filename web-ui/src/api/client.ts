@@ -163,6 +163,9 @@ export const api = {
     if (success !== undefined) params.set('success', String(success));
     return request(`/api/webhooks/${id}/deliveries?${params}`);
   },
+  regenerateWebhookToken(id: number): Promise<WebhookConfig> {
+    return request(`/api/webhooks/${id}/regenerate-token`, { method: 'POST' });
+  },
   testWebhook(id: number, payload?: { title?: string; message?: string; priority?: number; topic?: string }): Promise<WebhookTestResult> {
     return request(`/api/webhooks/${id}/test`, {
       method: 'POST',

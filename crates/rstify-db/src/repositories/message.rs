@@ -556,4 +556,26 @@ impl MessageRepository for SqliteMessageRepo {
         }
         Ok(())
     }
+
+    async fn regenerate_webhook_token(
+        &self,
+        id: i64,
+        new_token: &str,
+    ) -> Result<WebhookConfig, CoreError> {
+        let result = sqlx::query("UPDATE webhook_configs SET token = ? WHERE id = ?")
+            .bind(new_token)
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))?;
+        if result.rows_affected() == 0 {
+            return Err(CoreError::NotFound(format!(
+                "Webhook config {} not found",
+                id
+            )));
+        }
+        self.find_webhook_config_by_id(id)
+            .await?
+            .ok_or_else(|| CoreError::NotFound(format!("Webhook config {} not found", id)))
+    }
 }

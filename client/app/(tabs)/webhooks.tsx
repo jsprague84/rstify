@@ -862,6 +862,37 @@ export default function WebhooksScreen() {
                   </Pressable>
                 )}
 
+                {/* Regenerate token for incoming */}
+                {editWebhook && editWebhook.direction !== "outgoing" && (
+                  <Pressable
+                    onPress={() => {
+                      Alert.alert(
+                        "Regenerate Token",
+                        "The old webhook URL will stop working. Continue?",
+                        [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Regenerate",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                const api = getApiClient();
+                                const updated = await api.regenerateWebhookToken(editWebhook.id);
+                                setEditWebhook(updated);
+                                fetchData();
+                              } catch (e) {
+                                Alert.alert("Error", e instanceof Error ? e.message : "Failed to regenerate token");
+                              }
+                            },
+                          },
+                        ],
+                      );
+                    }}
+                  >
+                    <Text style={{ color: "#d97706", fontSize: 13, marginTop: 4 }}>Regenerate Token</Text>
+                  </Pressable>
+                )}
+
                 {/* Type and direction info */}
                 {editWebhook && (
                   <Text style={[styles.infoText, { color: colors.textTertiary }]}>
