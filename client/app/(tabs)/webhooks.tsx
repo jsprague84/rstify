@@ -57,6 +57,8 @@ export default function WebhooksScreen() {
   const [httpMethod, setHttpMethod] = useState("POST");
   const [createHeaders, setCreateHeaders] = useState("");
   const [bodyTemplate, setBodyTemplate] = useState("");
+  const [createMaxRetries, setCreateMaxRetries] = useState("3");
+  const [createRetryDelay, setCreateRetryDelay] = useState("60");
   const [createTimeout, setCreateTimeout] = useState("15");
   const [createFollowRedirects, setCreateFollowRedirects] = useState(true);
 
@@ -125,6 +127,8 @@ export default function WebhooksScreen() {
     setHttpMethod("POST");
     setCreateHeaders("");
     setBodyTemplate("");
+    setCreateMaxRetries("3");
+    setCreateRetryDelay("60");
     setCreateTimeout("15");
     setCreateFollowRedirects(true);
   };
@@ -159,6 +163,8 @@ export default function WebhooksScreen() {
           direction === "outgoing" && bodyTemplate.trim()
             ? bodyTemplate.trim()
             : undefined,
+        max_retries: direction === "outgoing" ? parseInt(createMaxRetries, 10) || 3 : undefined,
+        retry_delay_secs: direction === "outgoing" ? parseInt(createRetryDelay, 10) || 60 : undefined,
         timeout_secs: direction === "outgoing" ? parseInt(createTimeout, 10) || 15 : undefined,
         follow_redirects: direction === "outgoing" ? createFollowRedirects : undefined,
       });
@@ -618,15 +624,35 @@ export default function WebhooksScreen() {
                       multiline
                       numberOfLines={3}
                     />
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Timeout (seconds)</Text>
-                    <TextInput
-                      style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                      value={createTimeout}
-                      onChangeText={setCreateTimeout}
-                      keyboardType="numeric"
-                      placeholder="15"
-                      placeholderTextColor={colors.textTertiary}
-                    />
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Max Retries</Text>
+                        <TextInput
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          value={createMaxRetries}
+                          onChangeText={setCreateMaxRetries}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Retry Delay (s)</Text>
+                        <TextInput
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          value={createRetryDelay}
+                          onChangeText={setCreateRetryDelay}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Timeout (s)</Text>
+                        <TextInput
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          value={createTimeout}
+                          onChangeText={setCreateTimeout}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    </View>
                     <View style={styles.switchRow}>
                       <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginBottom: 0 }]}>Follow Redirects</Text>
                       <Switch value={createFollowRedirects} onValueChange={setCreateFollowRedirects} />

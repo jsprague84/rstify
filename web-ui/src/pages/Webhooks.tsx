@@ -288,6 +288,8 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
     template: '',
     target_topic_id: undefined as number | undefined,
     target_application_id: undefined as number | undefined,
+    max_retries: 3,
+    retry_delay_secs: 60,
     timeout_secs: 15,
     follow_redirects: true,
   });
@@ -313,6 +315,8 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
         http_method: form.direction === 'outgoing' ? form.http_method : undefined,
         headers: form.direction === 'outgoing' && form.headers ? parseHeaders(form.headers) : undefined,
         body_template: form.direction === 'outgoing' && form.body_template ? form.body_template : undefined,
+        max_retries: form.direction === 'outgoing' ? form.max_retries : undefined,
+        retry_delay_secs: form.direction === 'outgoing' ? form.retry_delay_secs : undefined,
         timeout_secs: form.direction === 'outgoing' ? form.timeout_secs : undefined,
         follow_redirects: form.direction === 'outgoing' ? form.follow_redirects : undefined,
       });
@@ -400,9 +404,19 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
             <TemplateHelp />
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Timeout (seconds)</label>
-            <input type="number" min={1} max={120} value={form.timeout_secs} onChange={e => setForm(f => ({ ...f, timeout_secs: parseInt(e.target.value) || 15 }))} className={inputCls} />
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Max Retries</label>
+              <input type="number" min={0} max={10} value={form.max_retries} onChange={e => setForm(f => ({ ...f, max_retries: parseInt(e.target.value) || 0 }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Retry Delay (s)</label>
+              <input type="number" min={1} max={3600} value={form.retry_delay_secs} onChange={e => setForm(f => ({ ...f, retry_delay_secs: parseInt(e.target.value) || 60 }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Timeout (s)</label>
+              <input type="number" min={1} max={120} value={form.timeout_secs} onChange={e => setForm(f => ({ ...f, timeout_secs: parseInt(e.target.value) || 15 }))} className={inputCls} />
+            </div>
           </div>
 
           <label className="flex items-center gap-2 text-sm dark:text-gray-300">

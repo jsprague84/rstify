@@ -425,11 +425,13 @@ impl MessageRepository for SqliteMessageRepo {
         http_method: Option<&str>,
         headers: Option<&str>,
         body_template: Option<&str>,
+        max_retries: Option<i32>,
+        retry_delay_secs: Option<i32>,
         timeout_secs: Option<i32>,
         follow_redirects: Option<bool>,
     ) -> Result<WebhookConfig, CoreError> {
         sqlx::query_as::<_, WebhookConfig>(
-            "INSERT INTO webhook_configs (user_id, name, token, webhook_type, target_topic_id, target_application_id, template, enabled, direction, target_url, http_method, headers, body_template, timeout_secs, follow_redirects) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
+            "INSERT INTO webhook_configs (user_id, name, token, webhook_type, target_topic_id, target_application_id, template, enabled, direction, target_url, http_method, headers, body_template, max_retries, retry_delay_secs, timeout_secs, follow_redirects) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
         )
         .bind(user_id)
         .bind(name)
@@ -444,6 +446,8 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(http_method.unwrap_or("POST"))
         .bind(headers)
         .bind(body_template)
+        .bind(max_retries.unwrap_or(3))
+        .bind(retry_delay_secs.unwrap_or(60))
         .bind(timeout_secs.unwrap_or(15))
         .bind(follow_redirects.unwrap_or(true))
         .fetch_one(&self.pool)

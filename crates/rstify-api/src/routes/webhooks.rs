@@ -76,6 +76,8 @@ pub async fn create_webhook(
             req.http_method.as_deref(),
             headers_json.as_deref(),
             req.body_template.as_deref(),
+            req.max_retries,
+            req.retry_delay_secs,
             req.timeout_secs,
             req.follow_redirects,
         )

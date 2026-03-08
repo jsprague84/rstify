@@ -208,6 +208,8 @@ export interface CreateWebhookConfig {
   http_method?: string;
   headers?: Record<string, string>;
   body_template?: string;
+  max_retries?: number;
+  retry_delay_secs?: number;
   timeout_secs?: number;
   follow_redirects?: boolean;
 }
