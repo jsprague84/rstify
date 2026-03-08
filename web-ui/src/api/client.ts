@@ -7,6 +7,7 @@ import type {
   PagedMessages, MessageResponse, AttachmentInfo,
   WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig,
   WebhookDeliveryLog, WebhookTestResult,
+  WebhookVariable, CreateWebhookVariable, UpdateWebhookVariable,
   MqttBridge, CreateMqttBridge, UpdateMqttBridge, MqttStatus,
   StatsResponse, LoginResponse,
   HealthResponse, VersionResponse,
@@ -171,6 +172,20 @@ export const api = {
       method: 'POST',
       ...(payload ? { body: JSON.stringify(payload) } : {}),
     });
+  },
+
+  // Webhook Variables
+  listWebhookVariables(): Promise<WebhookVariable[]> {
+    return request('/api/webhook-variables');
+  },
+  createWebhookVariable(data: CreateWebhookVariable): Promise<WebhookVariable> {
+    return request('/api/webhook-variables', { method: 'POST', body: JSON.stringify(data) });
+  },
+  updateWebhookVariable(id: number, data: UpdateWebhookVariable): Promise<WebhookVariable> {
+    return request(`/api/webhook-variables/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+  },
+  deleteWebhookVariable(id: number): Promise<void> {
+    return request(`/api/webhook-variables/${id}`, { method: 'DELETE' });
   },
 
   // Permissions

@@ -9,6 +9,7 @@ pub mod ntfy_publish;
 pub mod stats;
 pub mod topics;
 pub mod users;
+pub mod webhook_variables;
 pub mod webhooks;
 
 use axum::routing::{delete, get, post, put};
@@ -112,6 +113,15 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
             post(webhooks::regenerate_webhook_token),
         )
         .route("/api/wh/{token}", post(webhooks::receive_webhook))
+        // Webhook variables
+        .route(
+            "/api/webhook-variables",
+            get(webhook_variables::list_variables).post(webhook_variables::create_variable),
+        )
+        .route(
+            "/api/webhook-variables/{id}",
+            put(webhook_variables::update_variable).delete(webhook_variables::delete_variable),
+        )
         // MQTT
         .route("/api/mqtt/status", get(mqtt::mqtt_status))
         .route("/api/mqtt/bridges", get(mqtt::list_bridges))

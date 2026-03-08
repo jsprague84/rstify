@@ -286,3 +286,21 @@ export interface MqttStatus {
   connections: number;
   bridges_active: number;
 }
+
+export interface WebhookVariable {
+  id: number;
+  user_id: number;
+  key: string;
+  value: string;
+  created_at: string;
+}
+
+export interface CreateWebhookVariable {
+  key: string;
+  value: string;
+}
+
+export interface UpdateWebhookVariable {
+  key?: string;
+  value?: string;
+}

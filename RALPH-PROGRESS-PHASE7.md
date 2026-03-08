@@ -29,7 +29,7 @@
 ### Phase A5: Organization & Templates
 - [x] TASK 17: Webhook groups/folders — migration 024 adds group_name column, model/trait/impl updated, web UI groups webhooks into collapsible sections with count badges and autocomplete group input in create/edit forms, mobile shows group in list subtitle and has group input in create/edit
 - [x] TASK 18: Content-Type selector for outgoing webhooks — web UI ContentTypeSelector component with json/form-urlencoded/plain/xml/custom buttons, mobile has horizontal ScrollView picker, both detect existing CT from headers on edit
-- [ ] TASK 19: User-defined template variables
+- [x] TASK 19: User-defined template variables — migration 025 creates webhook_variables table, WebhookVariable model/trait/impl/API CRUD endpoints, {{env.KEY}} substitution in outgoing webhook body/URL, web UI VariablesSection with key-value table and add/edit/delete
 
 ## Track B: MQTT Monitoring & Bridge Management
 

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig, WebhookDeliveryLog, WebhookTestResult, Topic, Application } from '../api/types';
+import type { WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig, WebhookDeliveryLog, WebhookTestResult, Topic, Application, WebhookVariable } from '../api/types';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import Sparkline from '../components/Sparkline';
@@ -20,16 +20,20 @@ export default function Webhooks() {
   const [testResult, setTestResult] = useState<{ wh: WebhookConfig; result: WebhookTestResult | null; loading: boolean; error: string; customPayload: string } | null>(null);
   const [codeWh, setCodeWh] = useState<WebhookConfig | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [variables, setVariables] = useState<WebhookVariable[]>([]);
+  const [showVars, setShowVars] = useState(false);
 
   const load = useCallback(() => {
     Promise.all([
       api.listWebhooks(),
       api.listTopics(),
       api.listApplications(),
-    ]).then(([wh, tp, ap]) => {
+      api.listWebhookVariables(),
+    ]).then(([wh, tp, ap, vars]) => {
       setWebhooks(wh);
       setTopics(tp);
       setApps(ap);
+      setVariables(vars);
     }).catch(e => setError(e.message));
   }, []);
 
@@ -167,10 +171,16 @@ export default function Webhooks() {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold dark:text-white">Webhooks</h2>
-        <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-          Create Webhook
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowVars(v => !v)} className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600">
+            Variables {variables.length > 0 && `(${variables.length})`}
+          </button>
+          <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+            Create Webhook
+          </button>
+        </div>
       </div>
+      {showVars && <VariablesSection variables={variables} onReload={load} />}
       {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
       {(() => {
         const columns = [
@@ -1104,5 +1114,94 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
         <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Save</button>
       </div>
     </form>
+  );
+}
+
+function VariablesSection({ variables, onReload }: { variables: WebhookVariable[]; onReload: () => void }) {
+  const [newKey, setNewKey] = useState('');
+  const [newValue, setNewValue] = useState('');
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editKey, setEditKey] = useState('');
+  const [editValue, setEditValue] = useState('');
+  const [error, setError] = useState('');
+
+  const handleAdd = async () => {
+    if (!newKey.trim()) return;
+    try {
+      await api.createWebhookVariable({ key: newKey.trim(), value: newValue });
+      setNewKey('');
+      setNewValue('');
+      onReload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed');
+    }
+  };
+
+  const handleSave = async (id: number) => {
+    try {
+      await api.updateWebhookVariable(id, { key: editKey, value: editValue });
+      setEditingId(null);
+      onReload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed');
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await api.deleteWebhookVariable(id);
+      onReload();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed');
+    }
+  };
+
+  return (
+    <div className="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Template Variables</h3>
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+        Define variables to use in webhook body templates with <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{env.KEY}}'}</code> syntax.
+      </p>
+      {error && <div className="text-xs text-red-600 dark:text-red-400 mb-2">{error}</div>}
+      <table className="w-full text-sm mb-2">
+        <thead>
+          <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
+            <th className="pb-1 pr-2">Key</th>
+            <th className="pb-1 pr-2">Value</th>
+            <th className="pb-1 w-20"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {variables.map(v => (
+            <tr key={v.id} className="border-t border-gray-200 dark:border-gray-700">
+              {editingId === v.id ? (
+                <>
+                  <td className="py-1 pr-2"><input value={editKey} onChange={e => setEditKey(e.target.value)} className={`${inputCls} text-xs`} /></td>
+                  <td className="py-1 pr-2"><input value={editValue} onChange={e => setEditValue(e.target.value)} className={`${inputCls} text-xs`} /></td>
+                  <td className="py-1">
+                    <button onClick={() => handleSave(v.id)} className="text-xs text-green-600 hover:underline mr-2">Save</button>
+                    <button onClick={() => setEditingId(null)} className="text-xs text-gray-500 hover:underline">Cancel</button>
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td className="py-1 pr-2 font-mono text-xs dark:text-gray-300">{v.key}</td>
+                  <td className="py-1 pr-2 text-xs text-gray-600 dark:text-gray-400">{v.value}</td>
+                  <td className="py-1">
+                    <button onClick={() => { setEditingId(v.id); setEditKey(v.key); setEditValue(v.value); }} className="text-xs text-indigo-600 hover:underline mr-2">Edit</button>
+                    <button onClick={() => handleDelete(v.id)} className="text-xs text-red-600 hover:underline">Del</button>
+                  </td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex gap-2">
+        <input placeholder="Key" value={newKey} onChange={e => setNewKey(e.target.value)} className={`${inputCls} text-xs flex-1`} />
+        <input placeholder="Value" value={newValue} onChange={e => setNewValue(e.target.value)} className={`${inputCls} text-xs flex-1`} />
+        <button onClick={handleAdd} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">Add</button>
+      </div>
+    </div>
   );
 }

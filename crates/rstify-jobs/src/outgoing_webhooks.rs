@@ -4,6 +4,27 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use tracing::{error, info, warn};
 
+/// Load user-defined webhook variables and apply {{env.KEY}} substitution.
+async fn apply_env_vars(pool: &SqlitePool, user_id: i64, text: &str) -> String {
+    if !text.contains("{{env.") {
+        return text.to_string();
+    }
+
+    let vars = sqlx::query_as::<_, (String, String)>(
+        "SELECT key, value FROM webhook_variables WHERE user_id = ?",
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    let mut result = text.to_string();
+    for (key, value) in &vars {
+        result = result.replace(&format!("{{{{env.{}}}}}", key), value);
+    }
+    result
+}
+
 /// Fire outgoing webhooks for a given topic when a message is published.
 /// Called from broadcast callback or directly from publish handlers.
 pub async fn fire_outgoing_webhooks(
@@ -13,7 +34,7 @@ pub async fn fire_outgoing_webhooks(
 ) {
     // Find all enabled outgoing webhook configs targeting this topic
     let configs = match sqlx::query_as::<_, OutgoingWebhookRow>(
-        r#"SELECT wc.id, wc.target_url, wc.http_method, wc.headers, wc.body_template,
+        r#"SELECT wc.id, wc.user_id, wc.target_url, wc.http_method, wc.headers, wc.body_template,
                   wc.max_retries, wc.retry_delay_secs, wc.timeout_secs, wc.follow_redirects
            FROM webhook_configs wc
            JOIN topics t ON wc.target_topic_id = t.id
@@ -54,21 +75,26 @@ pub async fn fire_outgoing_webhooks(
 
         let body = if let Some(ref tmpl) = config.body_template {
             // Simple template substitution
-            tmpl.replace("{{message}}", &message.message)
+            let substituted = tmpl
+                .replace("{{message}}", &message.message)
                 .replace("{{title}}", message.title.as_deref().unwrap_or(""))
                 .replace("{{topic}}", message.topic.as_deref().unwrap_or(""))
                 .replace("{{priority}}", &message.priority.to_string())
-                .replace("{{json}}", &message_json)
+                .replace("{{json}}", &message_json);
+            apply_env_vars(pool, config.user_id, &substituted).await
         } else {
             message_json.clone()
         };
 
+        // Apply env vars to target URL
+        let target_url = apply_env_vars(pool, config.user_id, target_url).await;
+
         let mut req = match config.http_method.as_str() {
-            "GET" => client.get(target_url),
-            "PUT" => client.put(target_url).body(body.clone()),
-            "PATCH" => client.patch(target_url).body(body.clone()),
-            "DELETE" => client.delete(target_url),
-            _ => client.post(target_url).body(body.clone()),
+            "GET" => client.get(&target_url),
+            "PUT" => client.put(&target_url).body(body.clone()),
+            "PATCH" => client.patch(&target_url).body(body.clone()),
+            "DELETE" => client.delete(&target_url),
+            _ => client.post(&target_url).body(body.clone()),
         };
 
         // Add custom headers
@@ -229,21 +255,26 @@ pub async fn fire_single_outgoing_webhook(
     let message_json = serde_json::to_string(message).unwrap_or_default();
 
     let body = if let Some(ref tmpl) = config.body_template {
-        tmpl.replace("{{message}}", &message.message)
+        let substituted = tmpl
+            .replace("{{message}}", &message.message)
             .replace("{{title}}", message.title.as_deref().unwrap_or(""))
             .replace("{{topic}}", message.topic.as_deref().unwrap_or(""))
             .replace("{{priority}}", &message.priority.to_string())
-            .replace("{{json}}", &message_json)
+            .replace("{{json}}", &message_json);
+        apply_env_vars(pool, config.user_id, &substituted).await
     } else {
         message_json
     };
 
+    // Apply env vars to target URL
+    let target_url = apply_env_vars(pool, config.user_id, target_url).await;
+
     let mut req = match config.http_method.as_str() {
-        "GET" => client.get(target_url),
-        "PUT" => client.put(target_url).body(body.clone()),
-        "PATCH" => client.patch(target_url).body(body.clone()),
-        "DELETE" => client.delete(target_url),
-        _ => client.post(target_url).body(body.clone()),
+        "GET" => client.get(&target_url),
+        "PUT" => client.put(&target_url).body(body.clone()),
+        "PATCH" => client.patch(&target_url).body(body.clone()),
+        "DELETE" => client.delete(&target_url),
+        _ => client.post(&target_url).body(body.clone()),
     };
 
     if let Some(ref headers_json) = config.headers {
@@ -327,6 +358,7 @@ fn headers_contain_content_type(headers_json: Option<&str>) -> bool {
 #[derive(sqlx::FromRow)]
 struct OutgoingWebhookRow {
     id: i64,
+    user_id: i64,
     target_url: Option<String>,
     http_method: String,
     headers: Option<String>,

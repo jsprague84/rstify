@@ -7,6 +7,7 @@ pub mod mqtt_bridge;
 pub mod topic;
 pub mod user;
 pub mod webhook_delivery;
+pub mod webhook_variable;
 
 pub use action::*;
 pub use application::*;
@@ -17,3 +18,4 @@ pub use mqtt_bridge::*;
 pub use topic::*;
 pub use user::*;
 pub use webhook_delivery::*;
+pub use webhook_variable::*;
