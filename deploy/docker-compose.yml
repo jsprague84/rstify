@@ -10,6 +10,15 @@ services:
       - RUST_LOG=${RUST_LOG:-rstify=info,tower_http=info}
       - FCM_PROJECT_ID=${FCM_PROJECT_ID:-}
       - FCM_SERVICE_ACCOUNT_PATH=${FCM_SERVICE_ACCOUNT_PATH:-}
+      - MQTT_ENABLED=${MQTT_ENABLED:-false}
+      - MQTT_LISTEN_ADDR=${MQTT_LISTEN_ADDR:-0.0.0.0:1883}
+      - MQTT_WS_LISTEN_ADDR=${MQTT_WS_LISTEN_ADDR:-}
+      - MQTT_REQUIRE_AUTH=${MQTT_REQUIRE_AUTH:-true}
+      - MQTT_MAX_PAYLOAD=${MQTT_MAX_PAYLOAD:-20480}
+      - MQTT_MAX_CONNECTIONS=${MQTT_MAX_CONNECTIONS:-1000}
+      - CORS_ORIGINS=${CORS_ORIGINS:-}
+    ports:
+      - "1883:1883"    # MQTT TCP
     volumes:
       - /home/ubuntu/docker/rstify/data:/data
       - /home/ubuntu/docker/rstify/uploads:/uploads

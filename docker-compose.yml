@@ -1,23 +1,18 @@
 services:
   rstify:
     build: .
+    env_file: .env
     ports:
       - "8080:8080"
       - "1883:1883"    # MQTT TCP
-      # - "8083:8083"  # MQTT WebSocket (uncomment if needed)
+      - "8083:8083"    # MQTT WebSocket
     volumes:
       - rstify_data:/data
       - rstify_uploads:/uploads
     environment:
+      # These override .env values — only set what must differ in Docker
       - DATABASE_URL=sqlite:///data/rstify.db
-      - JWT_SECRET=change-me-in-production
       - UPLOAD_DIR=/uploads
-      - RUST_LOG=info
-      # MQTT broker (uncomment to enable)
-      # - MQTT_ENABLED=true
-      # - MQTT_LISTEN_ADDR=0.0.0.0:1883
-      # - MQTT_WS_LISTEN_ADDR=0.0.0.0:8083
-      # - MQTT_REQUIRE_AUTH=true
 
 volumes:
   rstify_data:
