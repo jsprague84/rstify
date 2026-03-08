@@ -30,7 +30,11 @@ pub async fn create_webhook(
     }
 
     let token = generate_webhook_token();
-    let template_json = serde_json::to_string(&req.template).unwrap_or_default();
+    let template_json = req
+        .template
+        .as_ref()
+        .map(|t| serde_json::to_string(t).unwrap_or_default())
+        .unwrap_or_default();
 
     // Field size limits
     if template_json.len() > 65_536 {
@@ -47,6 +51,13 @@ pub async fn create_webhook(
         }
     }
 
+    let headers_json = req
+        .headers
+        .as_ref()
+        .map(|h| serde_json::to_string(h).unwrap_or_default());
+
+    let direction = req.direction.as_deref().unwrap_or("incoming");
+
     let config = state
         .message_repo
         .create_webhook_config(
@@ -58,6 +69,11 @@ pub async fn create_webhook(
             req.target_application_id,
             &template_json,
             req.enabled.unwrap_or(true),
+            direction,
+            req.target_url.as_deref(),
+            req.http_method.as_deref(),
+            headers_json.as_deref(),
+            req.body_template.as_deref(),
         )
         .await
         .map_err(ApiError::from)?;

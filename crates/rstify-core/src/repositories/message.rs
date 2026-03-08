@@ -110,6 +110,11 @@ pub trait MessageRepository: Send + Sync {
         target_application_id: Option<i64>,
         template: &str,
         enabled: bool,
+        direction: &str,
+        target_url: Option<&str>,
+        http_method: Option<&str>,
+        headers: Option<&str>,
+        body_template: Option<&str>,
     ) -> Result<WebhookConfig, CoreError>;
     async fn find_webhook_config_by_id(&self, id: i64) -> Result<Option<WebhookConfig>, CoreError>;
     async fn find_webhook_config_by_token(

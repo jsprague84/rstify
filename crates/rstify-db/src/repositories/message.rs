@@ -420,9 +420,14 @@ impl MessageRepository for SqliteMessageRepo {
         target_application_id: Option<i64>,
         template: &str,
         enabled: bool,
+        direction: &str,
+        target_url: Option<&str>,
+        http_method: Option<&str>,
+        headers: Option<&str>,
+        body_template: Option<&str>,
     ) -> Result<WebhookConfig, CoreError> {
         sqlx::query_as::<_, WebhookConfig>(
-            "INSERT INTO webhook_configs (user_id, name, token, webhook_type, target_topic_id, target_application_id, template, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
+            "INSERT INTO webhook_configs (user_id, name, token, webhook_type, target_topic_id, target_application_id, template, enabled, direction, target_url, http_method, headers, body_template) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
         )
         .bind(user_id)
         .bind(name)
@@ -432,6 +437,11 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(target_application_id)
         .bind(template)
         .bind(enabled)
+        .bind(direction)
+        .bind(target_url)
+        .bind(http_method.unwrap_or("POST"))
+        .bind(headers)
+        .bind(body_template)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| CoreError::Database(e.to_string()))

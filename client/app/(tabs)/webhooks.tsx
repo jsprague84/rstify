@@ -33,9 +33,13 @@ export default function WebhooksScreen() {
 
   const [editWebhook, setEditWebhook] = useState<WebhookConfig | null>(null);
   const [editName, setEditName] = useState("");
+  const [editEnabled, setEditEnabled] = useState(true);
   const [editTargetUrl, setEditTargetUrl] = useState("");
   const [editHttpMethod, setEditHttpMethod] = useState("POST");
+  const [editHeaders, setEditHeaders] = useState("");
   const [editBodyTemplate, setEditBodyTemplate] = useState("");
+  const [editMaxRetries, setEditMaxRetries] = useState("3");
+  const [editRetryDelay, setEditRetryDelay] = useState("60");
   const [deliveriesWebhook, setDeliveriesWebhook] = useState<WebhookConfig | null>(null);
   const [deliveries, setDeliveries] = useState<WebhookDeliveryLog[]>([]);
   const [deliveriesLoading, setDeliveriesLoading] = useState(false);
@@ -47,6 +51,7 @@ export default function WebhooksScreen() {
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [targetUrl, setTargetUrl] = useState("");
   const [httpMethod, setHttpMethod] = useState("POST");
+  const [createHeaders, setCreateHeaders] = useState("");
   const [bodyTemplate, setBodyTemplate] = useState("");
 
   const fetchData = useCallback(async () => {
@@ -73,6 +78,27 @@ export default function WebhooksScreen() {
     fetchData();
   }, [fetchData]);
 
+  const parseHeadersToText = (headers?: string | null): string => {
+    if (!headers) return "";
+    try {
+      const obj = JSON.parse(headers);
+      return Object.entries(obj).map(([k, v]) => `${k}: ${v}`).join("\n");
+    } catch {
+      return headers;
+    }
+  };
+
+  const parseTextToHeaders = (text: string): Record<string, string> | undefined => {
+    const headers: Record<string, string> = {};
+    for (const line of text.split("\n")) {
+      const idx = line.indexOf(":");
+      if (idx > 0) {
+        headers[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+      }
+    }
+    return Object.keys(headers).length > 0 ? headers : undefined;
+  };
+
   const resetForm = () => {
     setDirection("incoming");
     setName("");
@@ -80,6 +106,7 @@ export default function WebhooksScreen() {
     setSelectedTopicId(null);
     setTargetUrl("");
     setHttpMethod("POST");
+    setCreateHeaders("");
     setBodyTemplate("");
   };
 
@@ -103,6 +130,7 @@ export default function WebhooksScreen() {
         target_topic_id: selectedTopicId ?? undefined,
         target_url: direction === "outgoing" ? targetUrl.trim() : undefined,
         http_method: direction === "outgoing" ? httpMethod : undefined,
+        headers: direction === "outgoing" ? parseTextToHeaders(createHeaders) : undefined,
         body_template:
           direction === "outgoing" && bodyTemplate.trim()
             ? bodyTemplate.trim()
@@ -157,20 +185,31 @@ export default function WebhooksScreen() {
   const openEdit = (wh: WebhookConfig) => {
     setEditWebhook(wh);
     setEditName(wh.name);
+    setEditEnabled(wh.enabled);
     setEditTargetUrl(wh.target_url || "");
     setEditHttpMethod(wh.http_method || "POST");
+    setEditHeaders(parseHeadersToText(wh.headers));
     setEditBodyTemplate(wh.body_template || "");
+    setEditMaxRetries(String(wh.max_retries ?? 3));
+    setEditRetryDelay(String(wh.retry_delay_secs ?? 60));
   };
 
   const handleEdit = async () => {
     if (!editWebhook) return;
+    const isOutgoing = editWebhook.direction === "outgoing";
     try {
       const api = getApiClient();
       await api.updateWebhook(editWebhook.id, {
         name: editName.trim() || undefined,
-        target_url: editTargetUrl.trim() || undefined,
-        http_method: editHttpMethod,
-        body_template: editBodyTemplate.trim() || undefined,
+        enabled: editEnabled,
+        ...(isOutgoing ? {
+          target_url: editTargetUrl.trim() || undefined,
+          http_method: editHttpMethod,
+          headers: parseTextToHeaders(editHeaders),
+          body_template: editBodyTemplate.trim() || undefined,
+          max_retries: parseInt(editMaxRetries, 10) || 3,
+          retry_delay_secs: parseInt(editRetryDelay, 10) || 60,
+        } : {}),
       });
       setEditWebhook(null);
       fetchData();
@@ -464,6 +503,15 @@ export default function WebhooksScreen() {
                     </View>
                     <TextInput
                       style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                      placeholder="Headers (one per line: Key: Value)"
+                      placeholderTextColor={colors.textTertiary}
+                      value={createHeaders}
+                      onChangeText={setCreateHeaders}
+                      multiline
+                      numberOfLines={2}
+                    />
+                    <TextInput
+                      style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       placeholder="Body template (optional, use {{message}}, {{title}})"
                       placeholderTextColor={colors.textTertiary}
                       value={bodyTemplate}
@@ -502,6 +550,10 @@ export default function WebhooksScreen() {
                   value={editName}
                   onChangeText={setEditName}
                 />
+                <View style={styles.toggleRow}>
+                  <Text style={[styles.toggleLabel, { color: colors.text }]}>Enabled</Text>
+                  <Switch value={editEnabled} onValueChange={setEditEnabled} />
+                </View>
                 {editWebhook?.direction === "outgoing" && (
                   <>
                     <TextInput
@@ -526,6 +578,15 @@ export default function WebhooksScreen() {
                     </View>
                     <TextInput
                       style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                      placeholder="Headers (one per line: Key: Value)"
+                      placeholderTextColor={colors.textTertiary}
+                      value={editHeaders}
+                      onChangeText={setEditHeaders}
+                      multiline
+                      numberOfLines={2}
+                    />
+                    <TextInput
+                      style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                       placeholder="Body template"
                       placeholderTextColor={colors.textTertiary}
                       value={editBodyTemplate}
@@ -533,6 +594,26 @@ export default function WebhooksScreen() {
                       multiline
                       numberOfLines={3}
                     />
+                    <View style={styles.retryRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Max Retries</Text>
+                        <TextInput
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          value={editMaxRetries}
+                          onChangeText={setEditMaxRetries}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Retry Delay (s)</Text>
+                        <TextInput
+                          style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                          value={editRetryDelay}
+                          onChangeText={setEditRetryDelay}
+                          keyboardType="numeric"
+                        />
+                      </View>
+                    </View>
                   </>
                 )}
                 <View style={styles.modalButtons}>
@@ -691,6 +772,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   multilineInput: { minHeight: 72, textAlignVertical: "top" },
+  toggleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 4,
+  },
+  toggleLabel: { fontSize: 15 },
+  retryRow: { flexDirection: "row", gap: 12 },
   modalButtons: { flexDirection: "row", gap: 12, marginTop: 4 },
   cancelButton: {
     flex: 1,

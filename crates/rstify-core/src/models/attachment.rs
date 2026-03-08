@@ -46,7 +46,7 @@ pub struct CreateWebhookConfig {
     pub target_topic_id: Option<i64>,
     #[serde(alias = "target_application_id")]
     pub target_application_id: Option<i64>,
-    pub template: serde_json::Value,
+    pub template: Option<serde_json::Value>,
     pub enabled: Option<bool>,
     // Outgoing webhook fields
     pub direction: Option<String>,
