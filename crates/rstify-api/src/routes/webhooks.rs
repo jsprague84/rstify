@@ -430,6 +430,7 @@ pub struct DeliveryLogParams {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub success: Option<bool>,
+    pub since: Option<String>,
 }
 
 /// GET /api/webhooks/{id}/deliveries - List recent delivery attempts
@@ -465,27 +466,32 @@ pub async fn list_webhook_deliveries(
     let limit = params.limit.unwrap_or(20).clamp(1, 100);
     let offset = params.offset.unwrap_or(0).max(0);
 
-    let logs = if let Some(success) = params.success {
-        sqlx::query_as::<_, WebhookDeliveryLog>(
-            "SELECT * FROM webhook_delivery_log WHERE webhook_config_id = ? AND success = ? ORDER BY attempted_at DESC LIMIT ? OFFSET ?",
-        )
-        .bind(id)
-        .bind(success)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&state.pool)
-        .await
-    } else {
-        sqlx::query_as::<_, WebhookDeliveryLog>(
-            "SELECT * FROM webhook_delivery_log WHERE webhook_config_id = ? ORDER BY attempted_at DESC LIMIT ? OFFSET ?",
-        )
-        .bind(id)
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&state.pool)
-        .await
+    // Build dynamic WHERE clause
+    let mut where_clauses = vec!["webhook_config_id = ?".to_string()];
+    if params.success.is_some() {
+        where_clauses.push("success = ?".to_string());
     }
-    .map_err(|e| ApiError::from(rstify_core::error::CoreError::Database(e.to_string())))?;
+    if params.since.is_some() {
+        where_clauses.push("attempted_at >= ?".to_string());
+    }
+    let sql = format!(
+        "SELECT * FROM webhook_delivery_log WHERE {} ORDER BY attempted_at DESC LIMIT ? OFFSET ?",
+        where_clauses.join(" AND ")
+    );
+
+    let mut query = sqlx::query_as::<_, WebhookDeliveryLog>(&sql).bind(id);
+    if let Some(success) = params.success {
+        query = query.bind(success);
+    }
+    if let Some(ref since) = params.since {
+        query = query.bind(since);
+    }
+    let logs = query
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| ApiError::from(rstify_core::error::CoreError::Database(e.to_string())))?;
 
     Ok(Json(logs))
 }

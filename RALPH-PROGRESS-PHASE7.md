@@ -43,7 +43,7 @@
 - [x] TASK 24: Bridge connection status indicators — web shows Connected (green)/Disconnected (red)/Disabled (gray) using BridgeStatusInfo from status endpoint, mobile bridge list dots reflect connection status
 
 ### Phase B3: Final Audit
-- [ ] TASK 25: Comprehensive implementation audit (all tasks verified across backend, web, mobile)
+- [x] TASK 25: Comprehensive implementation audit — fixed: migrations 024/025 not registered in pool.rs, delivery log missing `since` filter param, mobile auth picker missing API Key option, mobile webhook list converted from FlatList to SectionList for group section headers. All builds pass: cargo fmt/clippy/test clean, web-ui builds, mobile only pre-existing type errors
 
 ## Blockers
 (none yet)

@@ -136,6 +136,18 @@ impl Database {
                 "022_webhook_timeout",
                 include_str!("../../../migrations/022_webhook_timeout.sql"),
             ),
+            (
+                "023_webhook_redirects",
+                include_str!("../../../migrations/023_webhook_redirects.sql"),
+            ),
+            (
+                "024_webhook_groups",
+                include_str!("../../../migrations/024_webhook_groups.sql"),
+            ),
+            (
+                "025_webhook_variables",
+                include_str!("../../../migrations/025_webhook_variables.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {

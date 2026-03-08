@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   FlatList,
+  SectionList,
   Text,
   StyleSheet,
   RefreshControl,
@@ -45,7 +46,7 @@ export default function WebhooksScreen() {
   const [editFollowRedirects, setEditFollowRedirects] = useState(true);
   const [editGroupName, setEditGroupName] = useState("");
   const [editContentType, setEditContentType] = useState("application/json");
-  const [editAuthType, setEditAuthType] = useState<"none" | "bearer" | "basic">("none");
+  const [editAuthType, setEditAuthType] = useState<"none" | "bearer" | "basic" | "apikey">("none");
   const [editAuthToken, setEditAuthToken] = useState("");
   const [editAuthUser, setEditAuthUser] = useState("");
   const [editAuthPass, setEditAuthPass] = useState("");
@@ -63,7 +64,7 @@ export default function WebhooksScreen() {
   const [httpMethod, setHttpMethod] = useState("POST");
   const [createHeaders, setCreateHeaders] = useState("");
   const [createContentType, setCreateContentType] = useState("application/json");
-  const [createAuthType, setCreateAuthType] = useState<"none" | "bearer" | "basic">("none");
+  const [createAuthType, setCreateAuthType] = useState<"none" | "bearer" | "basic" | "apikey">("none");
   const [createAuthToken, setCreateAuthToken] = useState("");
   const [createAuthUser, setCreateAuthUser] = useState("");
   const [createAuthPass, setCreateAuthPass] = useState("");
@@ -132,20 +133,22 @@ export default function WebhooksScreen() {
 
   const mergeAuthIntoHeaders = (headersText: string, authType: string, authToken: string, authUser: string, authPass: string): Record<string, string> | undefined => {
     const base = parseTextToHeaders(headersText) || {};
-    // Remove existing auth
+    // Remove existing auth headers
     for (const k of Object.keys(base)) {
-      if (k.toLowerCase() === "authorization") delete base[k];
+      if (k.toLowerCase() === "authorization" || k.toLowerCase() === "x-api-key") delete base[k];
     }
     if (authType === "bearer" && authToken) {
       base["Authorization"] = `Bearer ${authToken}`;
     } else if (authType === "basic" && authUser) {
       const encoded = btoa(`${authUser}:${authPass}`);
       base["Authorization"] = `Basic ${encoded}`;
+    } else if (authType === "apikey" && authToken) {
+      base["X-API-Key"] = authToken;
     }
     return Object.keys(base).length > 0 ? base : undefined;
   };
 
-  const detectAuthFromHeaders = (headersJson: string | null): { type: "none" | "bearer" | "basic"; token: string; user: string; pass: string } => {
+  const detectAuthFromHeaders = (headersJson: string | null): { type: "none" | "bearer" | "basic" | "apikey"; token: string; user: string; pass: string } => {
     if (!headersJson) return { type: "none", token: "", user: "", pass: "" };
     try {
       const obj = JSON.parse(headersJson);
@@ -158,6 +161,9 @@ export default function WebhooksScreen() {
           return { type: "basic", token: "", user, pass: rest.join(":") };
         } catch { /* fall through */ }
       }
+      // Detect API Key in common headers
+      const apiKeyEntry = Object.entries(obj).find(([k]) => k.toLowerCase() === "x-api-key");
+      if (apiKeyEntry) return { type: "apikey", token: apiKeyEntry[1] as string, user: "", pass: "" };
     } catch { /* fall through */ }
     return { type: "none", token: "", user: "", pass: "" };
   };
@@ -502,9 +508,30 @@ export default function WebhooksScreen() {
         </Pressable>
       </View>
 
-      <FlatList
-        data={webhooks}
+      <SectionList
+        sections={(() => {
+          const ungrouped: WebhookConfig[] = [];
+          const groups: Record<string, WebhookConfig[]> = {};
+          for (const w of webhooks) {
+            if (w.group_name) {
+              (groups[w.group_name] ??= []).push(w);
+            } else {
+              ungrouped.push(w);
+            }
+          }
+          const sections: { title: string; data: WebhookConfig[] }[] = [];
+          if (ungrouped.length > 0) sections.push({ title: "", data: ungrouped });
+          for (const [title, data] of Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))) {
+            sections.push({ title, data });
+          }
+          return sections;
+        })()}
         keyExtractor={keyExtractor}
+        renderSectionHeader={({ section }) => section.title ? (
+          <View style={[styles.sectionHeader, { backgroundColor: colors.backgroundSecondary }]}>
+            <Text style={[styles.sectionHeaderText, { color: colors.textSecondary }]}>{section.title} ({section.data.length})</Text>
+          </View>
+        ) : null}
         renderItem={({ item }) => (
           <View style={[styles.webhookItem, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <View style={styles.webhookTop}>
@@ -779,10 +806,10 @@ export default function WebhooksScreen() {
                     </ScrollView>
                     <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Authentication</Text>
                     <View style={styles.methodRow}>
-                      {(["none", "bearer", "basic"] as const).map((t) => (
+                      {(["none", "bearer", "basic", "apikey"] as const).map((t) => (
                         <Pressable key={t} onPress={() => setCreateAuthType(t)} style={[styles.methodBtn, createAuthType === t && { backgroundColor: colors.primary }]}>
                           <Text style={[styles.methodBtnText, createAuthType === t && { color: "#fff" }, { color: createAuthType === t ? "#fff" : colors.text }]}>
-                            {t === "none" ? "None" : t === "bearer" ? "Bearer" : "Basic"}
+                            {t === "none" ? "None" : t === "bearer" ? "Bearer" : t === "basic" ? "Basic" : "API Key"}
                           </Text>
                         </Pressable>
                       ))}
@@ -814,6 +841,15 @@ export default function WebhooksScreen() {
                           secureTextEntry
                         />
                       </View>
+                    )}
+                    {createAuthType === "apikey" && (
+                      <TextInput
+                        style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                        placeholder="API Key value"
+                        placeholderTextColor={colors.textTertiary}
+                        value={createAuthToken}
+                        onChangeText={setCreateAuthToken}
+                      />
                     )}
                     <TextInput
                       style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
@@ -1000,10 +1036,10 @@ export default function WebhooksScreen() {
                     </ScrollView>
                     <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Authentication</Text>
                     <View style={styles.methodRow}>
-                      {(["none", "bearer", "basic"] as const).map((t) => (
+                      {(["none", "bearer", "basic", "apikey"] as const).map((t) => (
                         <Pressable key={t} onPress={() => setEditAuthType(t)} style={[styles.methodBtn, editAuthType === t && { backgroundColor: colors.primary }]}>
                           <Text style={[styles.methodBtnText, { color: editAuthType === t ? "#fff" : colors.text }]}>
-                            {t === "none" ? "None" : t === "bearer" ? "Bearer" : "Basic"}
+                            {t === "none" ? "None" : t === "bearer" ? "Bearer" : t === "basic" ? "Basic" : "API Key"}
                           </Text>
                         </Pressable>
                       ))}
@@ -1035,6 +1071,15 @@ export default function WebhooksScreen() {
                           secureTextEntry
                         />
                       </View>
+                    )}
+                    {editAuthType === "apikey" && (
+                      <TextInput
+                        style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                        placeholder="API Key value"
+                        placeholderTextColor={colors.textTertiary}
+                        value={editAuthToken}
+                        onChangeText={setEditAuthToken}
+                      />
                     )}
                     <TextInput
                       style={[styles.input, styles.multilineInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
@@ -1147,6 +1192,16 @@ export default function WebhooksScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  sectionHeaderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
