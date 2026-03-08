@@ -2,6 +2,7 @@ use crate::error::CoreError;
 use crate::models::{Topic, TopicPermission};
 use async_trait::async_trait;
 
+#[allow(clippy::too_many_arguments)]
 #[async_trait]
 pub trait TopicRepository: Send + Sync {
     async fn create(
