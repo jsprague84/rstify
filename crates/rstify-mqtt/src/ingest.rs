@@ -129,6 +129,7 @@ pub fn run_mqtt_ingest(
                             None,
                             None,
                             None,
+                            Some("mqtt"),
                         )
                         .await
                     {

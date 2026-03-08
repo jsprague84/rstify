@@ -94,6 +94,7 @@ pub async fn create_app_message(
             extras_json.as_deref(),
             None,
             None,
+            None, // source: API
         )
         .await
         .map_err(ApiError::from)?;

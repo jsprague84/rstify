@@ -32,11 +32,12 @@ impl MessageRepository for SqliteMessageRepo {
         extras: Option<&str>,
         content_type: Option<&str>,
         scheduled_for: Option<&str>,
+        source: Option<&str>,
     ) -> Result<Message, CoreError> {
         sqlx::query_as::<_, Message>(
             r#"INSERT INTO messages
-                (application_id, topic_id, user_id, title, message, priority, tags, click_url, icon_url, actions, extras, content_type, scheduled_for)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (application_id, topic_id, user_id, title, message, priority, tags, click_url, icon_url, actions, extras, content_type, scheduled_for, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING *"#,
         )
         .bind(application_id)
@@ -52,6 +53,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(extras)
         .bind(content_type)
         .bind(scheduled_for)
+        .bind(source)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| CoreError::Database(e.to_string()))

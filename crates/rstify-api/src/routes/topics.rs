@@ -297,6 +297,7 @@ pub async fn publish_to_topic(
             None,
             None,
             req.scheduled_for.as_deref(),
+            None, // source: API
         )
         .await
         .map_err(ApiError::from)?;

@@ -21,6 +21,7 @@ pub struct Message {
     pub content_type: Option<String>,
     pub scheduled_for: Option<String>,
     pub delivered_at: Option<String>,
+    pub source: Option<String>,
     pub created_at: String,
 }
 
@@ -93,6 +94,8 @@ pub struct MessageResponse {
     pub extras: Option<serde_json::Value>,
     pub content_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<AttachmentInfo>>,
     pub date: String,
 }
@@ -121,6 +124,7 @@ impl Message {
                 .as_ref()
                 .and_then(|e| serde_json::from_str(e).ok()),
             content_type: self.content_type.clone(),
+            source: self.source.clone(),
             attachments: None,
             date: self.created_at.clone(),
         }

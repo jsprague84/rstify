@@ -20,6 +20,7 @@ pub trait MessageRepository: Send + Sync {
         extras: Option<&str>,
         content_type: Option<&str>,
         scheduled_for: Option<&str>,
+        source: Option<&str>,
     ) -> Result<Message, CoreError>;
 
     async fn find_by_id(&self, id: i64) -> Result<Option<Message>, CoreError>;

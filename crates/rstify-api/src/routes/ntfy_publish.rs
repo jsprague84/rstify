@@ -105,6 +105,7 @@ pub async fn ntfy_publish(
             None,
             h.content_type.as_deref(),
             h.scheduled_for.as_deref(),
+            Some("ntfy"),
         )
         .await
         .map_err(ApiError::from)?;

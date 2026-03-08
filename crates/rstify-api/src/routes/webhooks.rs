@@ -274,6 +274,7 @@ pub async fn receive_webhook(
             None,
             None,
             None,
+            Some("webhook"),
         )
         .await
         .map_err(ApiError::from)?;
