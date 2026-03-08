@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "8080:8080"
+      - "1883:1883"    # MQTT TCP
+      # - "8083:8083"  # MQTT WebSocket (uncomment if needed)
     volumes:
       - rstify_data:/data
       - rstify_uploads:/uploads
@@ -11,6 +13,11 @@ services:
       - JWT_SECRET=change-me-in-production
       - UPLOAD_DIR=/uploads
       - RUST_LOG=info
+      # MQTT broker (uncomment to enable)
+      # - MQTT_ENABLED=true
+      # - MQTT_LISTEN_ADDR=0.0.0.0:1883
+      # - MQTT_WS_LISTEN_ADDR=0.0.0.0:8083
+      # - MQTT_REQUIRE_AUTH=true
 
 volumes:
   rstify_data:
