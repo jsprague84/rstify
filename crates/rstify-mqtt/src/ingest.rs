@@ -4,7 +4,9 @@ use rstify_db::repositories::message::SqliteMessageRepo;
 use rstify_db::repositories::topic::SqliteTopicRepo;
 use rumqttd::local::LinkRx;
 use rumqttd::Notification;
+use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::broadcast;
 use tracing::{debug, error, warn};
 
@@ -69,6 +71,9 @@ pub fn run_mqtt_ingest(
         .build()
         .expect("Failed to create ingest tokio runtime");
 
+    // Track last stored time and body per topic for store policy evaluation
+    let mut last_stored: HashMap<i64, (Instant, String)> = HashMap::new();
+
     loop {
         match link_rx.recv() {
             Ok(Some(Notification::Forward(forward))) => {
@@ -113,47 +118,90 @@ pub fn run_mqtt_ingest(
                         }
                     };
 
-                    // Create rstify message
-                    let msg = match message_repo
-                        .create(
-                            None,
-                            Some(topic.id),
-                            None,
-                            title.as_deref(),
-                            &message,
+                    // Check store policy — determine if we should persist to DB
+                    let elapsed_secs = last_stored
+                        .get(&topic.id)
+                        .map(|(instant, _)| instant.elapsed().as_secs() as i64);
+                    let last_body = last_stored
+                        .get(&topic.id)
+                        .map(|(_, body)| body.as_str());
+                    let should_store = rstify_core::policy::should_store(
+                        &topic,
+                        // For on_change: pass last body only if current message differs
+                        if last_body == Some(&message) {
+                            last_body
+                        } else {
+                            None
+                        },
+                        elapsed_secs,
+                    );
+
+                    if should_store {
+                        // Create rstify message in DB
+                        let msg = match message_repo
+                            .create(
+                                None,
+                                Some(topic.id),
+                                None,
+                                title.as_deref(),
+                                &message,
+                                priority,
+                                None,
+                                None,
+                                None,
+                                None,
+                                None,
+                                None,
+                                None,
+                                Some("mqtt"),
+                            )
+                            .await
+                        {
+                            Ok(m) => m,
+                            Err(e) => {
+                                error!(topic = topic_name, error = %e, "Failed to create message from MQTT");
+                                return;
+                            }
+                        };
+
+                        let response = msg.to_response(Some(topic_name.clone()));
+
+                        // Update store tracking
+                        last_stored.insert(topic.id, (Instant::now(), message.clone()));
+
+                        // Broadcast to WebSocket subscribers via the global channel
+                        let _ = topic_broadcast.send(Arc::new(response.clone()));
+
+                        // Fire outgoing webhooks
+                        let pool = pool.clone();
+                        let topic = topic_name.clone();
+                        tokio::spawn(async move {
+                            rstify_jobs::outgoing_webhooks::fire_outgoing_webhooks(
+                                &pool, &topic, &response,
+                            )
+                            .await;
+                        });
+                    } else {
+                        // Still broadcast to WebSocket for live view, but don't store
+                        let response = rstify_core::models::MessageResponse {
+                            id: 0,
+                            appid: None,
+                            topic: Some(topic_name.clone()),
+                            title,
+                            message: message.clone(),
                             priority,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            Some("mqtt"),
-                        )
-                        .await
-                    {
-                        Ok(m) => m,
-                        Err(e) => {
-                            error!(topic = topic_name, error = %e, "Failed to create message from MQTT");
-                            return;
-                        }
-                    };
-
-                    let response = msg.to_response(Some(topic_name.clone()));
-
-                    // Broadcast to WebSocket subscribers via the global channel
-                    let _ = topic_broadcast.send(Arc::new(response.clone()));
-
-                    // Fire outgoing webhooks
-                    let pool = pool.clone();
-                    let topic = topic_name.clone();
-                    tokio::spawn(async move {
-                        rstify_jobs::outgoing_webhooks::fire_outgoing_webhooks(
-                            &pool, &topic, &response,
-                        )
-                        .await;
-                    });
+                            tags: None,
+                            click_url: None,
+                            icon_url: None,
+                            actions: None,
+                            extras: None,
+                            content_type: None,
+                            source: Some("mqtt".to_string()),
+                            attachments: None,
+                            date: chrono::Utc::now().to_rfc3339(),
+                        };
+                        let _ = topic_broadcast.send(Arc::new(response));
+                    }
                 });
             }
             Ok(Some(_)) => {
