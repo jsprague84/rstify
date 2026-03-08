@@ -127,9 +127,16 @@ export const MessageCard = React.memo(function MessageCard({ message, onDelete }
       <MessageActions message={message} />
 
       <View style={styles.footer}>
-        <Text style={[styles.time, isDark && styles.timeDark]}>
-          {timeStr}
-        </Text>
+        <View style={styles.footerLeft}>
+          <Text style={[styles.time, isDark && styles.timeDark]}>
+            {timeStr}
+          </Text>
+          {message.source ? (
+            <Text style={[styles.sourceBadge, isDark && styles.sourceBadgeDark]}>
+              via {message.source}
+            </Text>
+          ) : null}
+        </View>
         {message.tags?.length ? (
           <View style={styles.tags}>
             {message.tags.map((tag) => (
@@ -223,6 +230,24 @@ const styles = StyleSheet.create({
   },
   timeDark: {
     color: "#6B7280",
+  },
+  footerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  sourceBadge: {
+    fontSize: 10,
+    color: "#9ca3af",
+    backgroundColor: "#f3f4f6",
+    borderRadius: 3,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    overflow: "hidden",
+  },
+  sourceBadgeDark: {
+    color: "#6B7280",
+    backgroundColor: "#374151",
   },
   tags: {
     flexDirection: "row",
