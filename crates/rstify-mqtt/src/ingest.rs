@@ -16,7 +16,7 @@ use tracing::{debug, error, warn};
 /// 1. JSON with rstify fields (title, message, priority) -> extract
 /// 2. Plain JSON -> use as message body, derive title from topic
 /// 3. Plain text -> use as message body
-fn parse_mqtt_payload(payload: &[u8], topic_name: &str) -> (Option<String>, String, i32) {
+pub fn parse_mqtt_payload(payload: &[u8], topic_name: &str) -> (Option<String>, String, i32) {
     let text = match std::str::from_utf8(payload) {
         Ok(s) => s.to_string(),
         Err(_) => {

@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod bridge;
 pub mod config;
 pub mod ingest;
 pub mod publish;
