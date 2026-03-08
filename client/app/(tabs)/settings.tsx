@@ -24,6 +24,8 @@ import type {
   StatsResponse,
   UserResponse,
   TopicPermission,
+  MqttBridge,
+  MqttStatus,
 } from "../../src/api";
 import {
   getDevicePushToken,
@@ -68,6 +70,17 @@ export default function SettingsScreen() {
   const [newPermRead, setNewPermRead] = useState(true);
   const [newPermWrite, setNewPermWrite] = useState(false);
 
+  // MQTT
+  const [mqttStatus, setMqttStatus] = useState<MqttStatus | null>(null);
+  const [bridges, setBridges] = useState<MqttBridge[]>([]);
+  const [showBridges, setShowBridges] = useState(false);
+  const [showMqttStatus, setShowMqttStatus] = useState(false);
+  const [showCreateBridge, setShowCreateBridge] = useState(false);
+  const [newBridgeName, setNewBridgeName] = useState("");
+  const [newBridgeUrl, setNewBridgeUrl] = useState("");
+  const [newBridgeUsername, setNewBridgeUsername] = useState("");
+  const [newBridgePassword, setNewBridgePassword] = useState("");
+
   // Push notification status check
   useEffect(() => {
     (async () => {
@@ -89,7 +102,7 @@ export default function SettingsScreen() {
       ];
 
       if (user?.is_admin) {
-        promises.push(api.getStats(), api.listUsers(), api.listPermissions());
+        promises.push(api.getStats(), api.listUsers(), api.listPermissions(), api.getMqttStatus(), api.listBridges());
       }
 
       const results = await Promise.allSettled(promises);
@@ -106,6 +119,10 @@ export default function SettingsScreen() {
           setUsers(results[3].value as UserResponse[]);
         if (results[4]?.status === "fulfilled")
           setPermissions(results[4].value as TopicPermission[]);
+        if (results[5]?.status === "fulfilled")
+          setMqttStatus(results[5].value as MqttStatus);
+        if (results[6]?.status === "fulfilled")
+          setBridges(results[6].value as MqttBridge[]);
       }
     } catch {
       // ignore
@@ -670,6 +687,143 @@ export default function SettingsScreen() {
           </View>
         ) : null}
 
+        {/* MQTT Status (Admin) */}
+        {user?.is_admin && mqttStatus ? (
+          <View style={styles.section}>
+            <Pressable
+              style={styles.sectionHeader}
+              onPress={() => setShowMqttStatus(!showMqttStatus)}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                MQTT Broker
+              </Text>
+              <Ionicons
+                name={showMqttStatus ? "chevron-up" : "chevron-down"}
+                size={18}
+                color={colors.textTertiary}
+              />
+            </Pressable>
+            {showMqttStatus ? (
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                <View style={styles.row}>
+                  <Ionicons name="radio-outline" size={20} color={mqttStatus.enabled ? "#22c55e" : colors.textSecondary} />
+                  <View style={styles.rowContent}>
+                    <Text style={[styles.rowLabel, { color: colors.text }]}>Status</Text>
+                    <Text style={[styles.rowValue, { color: mqttStatus.enabled ? "#22c55e" : colors.textSecondary }]}>
+                      {mqttStatus.enabled ? "Enabled" : "Disabled"}
+                    </Text>
+                  </View>
+                </View>
+                {mqttStatus.listen_addr ? (
+                  <View style={styles.row}>
+                    <Ionicons name="link-outline" size={20} color={colors.textSecondary} />
+                    <View style={styles.rowContent}>
+                      <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>TCP</Text>
+                      <Text style={[styles.rowValue, { color: colors.text }]}>{mqttStatus.listen_addr}</Text>
+                    </View>
+                  </View>
+                ) : null}
+                {mqttStatus.ws_listen_addr ? (
+                  <View style={styles.row}>
+                    <Ionicons name="globe-outline" size={20} color={colors.textSecondary} />
+                    <View style={styles.rowContent}>
+                      <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>WebSocket</Text>
+                      <Text style={[styles.rowValue, { color: colors.text }]}>{mqttStatus.ws_listen_addr}</Text>
+                    </View>
+                  </View>
+                ) : null}
+                <View style={styles.row}>
+                  <Ionicons name="people-outline" size={20} color={colors.textSecondary} />
+                  <View style={styles.rowContent}>
+                    <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Connections</Text>
+                    <Text style={[styles.rowValue, { color: colors.text }]}>{mqttStatus.connections}</Text>
+                  </View>
+                </View>
+                <View style={styles.row}>
+                  <Ionicons name="git-branch-outline" size={20} color={colors.textSecondary} />
+                  <View style={styles.rowContent}>
+                    <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Active Bridges</Text>
+                    <Text style={[styles.rowValue, { color: colors.text }]}>{mqttStatus.bridges_active}</Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
+        {/* MQTT Bridges (Admin) */}
+        {user?.is_admin ? (
+          <View style={styles.section}>
+            <Pressable
+              style={styles.sectionHeader}
+              onPress={() => setShowBridges(!showBridges)}
+            >
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                MQTT Bridges ({bridges.length})
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Pressable
+                  onPress={() => setShowCreateBridge(true)}
+                  hitSlop={8}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                </Pressable>
+                <Ionicons
+                  name={showBridges ? "chevron-up" : "chevron-down"}
+                  size={18}
+                  color={colors.textTertiary}
+                />
+              </View>
+            </Pressable>
+            {showBridges ? (
+              <View style={[styles.card, { backgroundColor: colors.surface }]}>
+                {bridges.map((b) => {
+                  const subCount = (() => { try { return JSON.parse(b.subscribe_topics).length; } catch { return 0; } })();
+                  const pubCount = (() => { try { return (b.publish_topics ? JSON.parse(b.publish_topics).length : 0); } catch { return 0; } })();
+                  return (
+                    <Pressable
+                      key={b.id}
+                      style={styles.userRow}
+                      onLongPress={() => {
+                        Alert.alert(b.name, "Choose an action", [
+                          { text: "Cancel", style: "cancel" },
+                          {
+                            text: "Delete",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                const api = getApiClient();
+                                await api.deleteBridge(b.id);
+                                fetchData();
+                              } catch (e) {
+                                Alert.alert("Error", e instanceof Error ? e.message : "Delete failed");
+                              }
+                            },
+                          },
+                        ]);
+                      }}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                        <View style={[styles.statusDot, { backgroundColor: b.enabled ? "#22c55e" : "#9ca3af" }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.userName, { color: colors.text }]}>{b.name}</Text>
+                          <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{b.remote_url}</Text>
+                          <Text style={[styles.userEmail, { color: colors.textTertiary }]}>
+                            Sub: {subCount} · Pub: {pubCount} · QoS {b.qos ?? 0}
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+                {bridges.length === 0 ? (
+                  <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No MQTT bridges</Text>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+
         {/* Logout */}
         <Pressable style={[styles.logoutButton, { backgroundColor: colors.surface, borderColor: isDark ? colors.error + "40" : "#fecaca" }]} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
@@ -744,6 +898,90 @@ export default function SettingsScreen() {
                 </Pressable>
               </View>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showCreateBridge} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowCreateBridge(false)}>
+          <Pressable style={{ maxHeight: "80%" }} onPress={() => {}}>
+            <KeyboardAwareScrollView
+              bottomOffset={20}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+            >
+              <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+                <Text style={[styles.modalTitle, { color: colors.text }]}>New MQTT Bridge</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Bridge name"
+                  placeholderTextColor={colors.textTertiary}
+                  value={newBridgeName}
+                  onChangeText={setNewBridgeName}
+                />
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Broker URL (host:port)"
+                  placeholderTextColor={colors.textTertiary}
+                  value={newBridgeUrl}
+                  onChangeText={setNewBridgeUrl}
+                  autoCapitalize="none"
+                />
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Username (optional)"
+                  placeholderTextColor={colors.textTertiary}
+                  value={newBridgeUsername}
+                  onChangeText={setNewBridgeUsername}
+                  autoCapitalize="none"
+                />
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Password (optional)"
+                  placeholderTextColor={colors.textTertiary}
+                  value={newBridgePassword}
+                  onChangeText={setNewBridgePassword}
+                  secureTextEntry
+                />
+                <View style={styles.modalButtons}>
+                  <Pressable
+                    style={[styles.modalCancelButton, { backgroundColor: colors.backgroundTertiary }]}
+                    onPress={() => { setShowCreateBridge(false); setNewBridgeName(""); setNewBridgeUrl(""); }}
+                  >
+                    <Text style={[{ fontWeight: "600" }, { color: colors.textSecondary }]}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.modalSubmitButton, { backgroundColor: colors.primary }]}
+                    onPress={async () => {
+                      if (!newBridgeName.trim() || !newBridgeUrl.trim()) {
+                        Alert.alert("Error", "Name and URL are required");
+                        return;
+                      }
+                      try {
+                        const api = getApiClient();
+                        await api.createBridge({
+                          name: newBridgeName.trim(),
+                          remote_url: newBridgeUrl.trim(),
+                          subscribe_topics: ["#"],
+                          username: newBridgeUsername || undefined,
+                          password: newBridgePassword || undefined,
+                        });
+                        setNewBridgeName("");
+                        setNewBridgeUrl("");
+                        setNewBridgeUsername("");
+                        setNewBridgePassword("");
+                        setShowCreateBridge(false);
+                        fetchData();
+                      } catch (e) {
+                        Alert.alert("Error", e instanceof Error ? e.message : "Failed to create");
+                      }
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "600" }}>Create</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </KeyboardAwareScrollView>
           </Pressable>
         </Pressable>
       </Modal>
@@ -975,5 +1213,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 4,
     marginVertical: 4,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });
