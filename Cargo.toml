@@ -8,6 +8,7 @@ members = [
     "crates/rstify-jobs",
     "crates/rstify-server",
     "crates/rstify-cli",
+    "crates/rstify-mqtt",
 ]
 
 [workspace.package]
@@ -22,6 +23,7 @@ rstify-db = { path = "crates/rstify-db" }
 rstify-auth = { path = "crates/rstify-auth" }
 rstify-api = { path = "crates/rstify-api" }
 rstify-jobs = { path = "crates/rstify-jobs" }
+rstify-mqtt = { path = "crates/rstify-mqtt" }
 
 # Web framework
 axum = { version = "0.8", features = ["ws", "multipart"] }

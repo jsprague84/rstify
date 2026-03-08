@@ -1,0 +1,16 @@
+[package]
+name = "rstify-mqtt"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rstify-core = { workspace = true }
+rstify-db = { workspace = true }
+rstify-auth = { workspace = true }
+rumqttd = { version = "0.20", features = ["websocket"] }
+tokio = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sqlx = { workspace = true }
+anyhow = { workspace = true }
