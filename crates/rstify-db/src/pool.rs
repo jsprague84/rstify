@@ -120,6 +120,18 @@ impl Database {
                 "018_webhook_delivery_log",
                 include_str!("../../../migrations/018_webhook_delivery_log.sql"),
             ),
+            (
+                "019_message_source",
+                include_str!("../../../migrations/019_message_source.sql"),
+            ),
+            (
+                "020_topic_notification_policy",
+                include_str!("../../../migrations/020_topic_notification_policy.sql"),
+            ),
+            (
+                "021_mqtt_bridges",
+                include_str!("../../../migrations/021_mqtt_bridges.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {
