@@ -429,9 +429,10 @@ impl MessageRepository for SqliteMessageRepo {
         retry_delay_secs: Option<i32>,
         timeout_secs: Option<i32>,
         follow_redirects: Option<bool>,
+        group_name: Option<&str>,
     ) -> Result<WebhookConfig, CoreError> {
         sqlx::query_as::<_, WebhookConfig>(
-            "INSERT INTO webhook_configs (user_id, name, token, webhook_type, target_topic_id, target_application_id, template, enabled, direction, target_url, http_method, headers, body_template, max_retries, retry_delay_secs, timeout_secs, follow_redirects) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
+            "INSERT INTO webhook_configs (user_id, name, token, webhook_type, target_topic_id, target_application_id, template, enabled, direction, target_url, http_method, headers, body_template, max_retries, retry_delay_secs, timeout_secs, follow_redirects, group_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
         )
         .bind(user_id)
         .bind(name)
@@ -450,6 +451,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(retry_delay_secs.unwrap_or(60))
         .bind(timeout_secs.unwrap_or(15))
         .bind(follow_redirects.unwrap_or(true))
+        .bind(group_name)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| CoreError::Database(e.to_string()))
@@ -501,6 +503,7 @@ impl MessageRepository for SqliteMessageRepo {
         retry_delay_secs: Option<i32>,
         timeout_secs: Option<i32>,
         follow_redirects: Option<bool>,
+        group_name: Option<&str>,
     ) -> Result<WebhookConfig, CoreError> {
         let current = self
             .find_webhook_config_by_id(id)
@@ -515,6 +518,7 @@ impl MessageRepository for SqliteMessageRepo {
         let new_retry_delay_secs = retry_delay_secs.unwrap_or(current.retry_delay_secs);
         let new_timeout_secs = timeout_secs.unwrap_or(current.timeout_secs);
         let new_follow_redirects = follow_redirects.unwrap_or(current.follow_redirects);
+        let new_group_name = group_name.map(|s| s.to_string()).or(current.group_name);
         // For Option<String> fields, use provided value or fall back to current
         let new_target_url = target_url.map(|s| s.to_string()).or(current.target_url);
         let new_headers = headers.map(|s| s.to_string()).or(current.headers);
@@ -523,7 +527,7 @@ impl MessageRepository for SqliteMessageRepo {
             .or(current.body_template);
 
         sqlx::query_as::<_, WebhookConfig>(
-            "UPDATE webhook_configs SET name = ?, template = ?, enabled = ?, target_url = ?, http_method = ?, headers = ?, body_template = ?, max_retries = ?, retry_delay_secs = ?, timeout_secs = ?, follow_redirects = ? WHERE id = ? RETURNING *",
+            "UPDATE webhook_configs SET name = ?, template = ?, enabled = ?, target_url = ?, http_method = ?, headers = ?, body_template = ?, max_retries = ?, retry_delay_secs = ?, timeout_secs = ?, follow_redirects = ?, group_name = ? WHERE id = ? RETURNING *",
         )
         .bind(new_name)
         .bind(new_template)
@@ -536,6 +540,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(new_retry_delay_secs)
         .bind(new_timeout_secs)
         .bind(new_follow_redirects)
+        .bind(&new_group_name)
         .bind(id)
         .fetch_one(&self.pool)
         .await

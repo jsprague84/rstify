@@ -27,7 +27,7 @@
 - [x] TASK 16: Regenerate webhook token — new POST /api/webhooks/{id}/regenerate-token endpoint, regenerate_webhook_token in trait/impl, web UI button in edit form with confirm dialog, mobile button with Alert.alert confirmation
 
 ### Phase A5: Organization & Templates
-- [ ] TASK 17: Webhook groups/folders
+- [x] TASK 17: Webhook groups/folders — migration 024 adds group_name column, model/trait/impl updated, web UI groups webhooks into collapsible sections with count badges and autocomplete group input in create/edit forms, mobile shows group in list subtitle and has group input in create/edit
 - [ ] TASK 18: Content-Type selector for outgoing webhooks
 - [ ] TASK 19: User-defined template variables
 

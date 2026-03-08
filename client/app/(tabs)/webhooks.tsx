@@ -43,6 +43,7 @@ export default function WebhooksScreen() {
   const [editRetryDelay, setEditRetryDelay] = useState("60");
   const [editTimeout, setEditTimeout] = useState("15");
   const [editFollowRedirects, setEditFollowRedirects] = useState(true);
+  const [editGroupName, setEditGroupName] = useState("");
   const [editAuthType, setEditAuthType] = useState<"none" | "bearer" | "basic">("none");
   const [editAuthToken, setEditAuthToken] = useState("");
   const [editAuthUser, setEditAuthUser] = useState("");
@@ -69,6 +70,7 @@ export default function WebhooksScreen() {
   const [createRetryDelay, setCreateRetryDelay] = useState("60");
   const [createTimeout, setCreateTimeout] = useState("15");
   const [createFollowRedirects, setCreateFollowRedirects] = useState(true);
+  const [createGroupName, setCreateGroupName] = useState("");
 
   // Server base URL for webhook URL display
   const [serverBase, setServerBase] = useState("");
@@ -175,6 +177,7 @@ export default function WebhooksScreen() {
     setCreateRetryDelay("60");
     setCreateTimeout("15");
     setCreateFollowRedirects(true);
+    setCreateGroupName("");
   };
 
   const getWebhookUrl = (wh: WebhookConfig) => {
@@ -211,6 +214,7 @@ export default function WebhooksScreen() {
         retry_delay_secs: direction === "outgoing" ? parseInt(createRetryDelay, 10) || 60 : undefined,
         timeout_secs: direction === "outgoing" ? parseInt(createTimeout, 10) || 15 : undefined,
         follow_redirects: direction === "outgoing" ? createFollowRedirects : undefined,
+        group_name: createGroupName.trim() || undefined,
       });
       resetForm();
       setShowCreate(false);
@@ -259,6 +263,7 @@ export default function WebhooksScreen() {
               retry_delay_secs: webhook.retry_delay_secs,
               timeout_secs: webhook.timeout_secs,
               follow_redirects: webhook.follow_redirects,
+              group_name: webhook.group_name ?? undefined,
             });
             fetchData();
           } catch (e) {
@@ -342,6 +347,7 @@ export default function WebhooksScreen() {
     setEditRetryDelay(String(wh.retry_delay_secs ?? 60));
     setEditTimeout(String(wh.timeout_secs ?? 15));
     setEditFollowRedirects(wh.follow_redirects ?? true);
+    setEditGroupName(wh.group_name || "");
   };
 
   const handleEdit = async () => {
@@ -352,6 +358,7 @@ export default function WebhooksScreen() {
       await api.updateWebhook(editWebhook.id, {
         name: editName.trim() || undefined,
         enabled: editEnabled,
+        group_name: editGroupName.trim() || undefined,
         ...(isOutgoing ? {
           target_url: editTargetUrl.trim() || undefined,
           http_method: editHttpMethod,
@@ -490,7 +497,7 @@ export default function WebhooksScreen() {
                   )}
                   {getDirectionBadge(item.direction)}
                 </View>
-                <Text style={[styles.webhookType, { color: colors.textTertiary }]}>{item.webhook_type}</Text>
+                <Text style={[styles.webhookType, { color: colors.textTertiary }]}>{item.webhook_type}{item.group_name ? ` \u2022 ${item.group_name}` : ''}</Text>
                 {item.direction === "outgoing" && item.target_url ? (
                   <Text style={[styles.webhookUrl, { color: colors.textSecondary }]} numberOfLines={1}>
                     {item.http_method} {item.target_url}
@@ -613,6 +620,14 @@ export default function WebhooksScreen() {
                   placeholderTextColor={colors.textTertiary}
                   value={name}
                   onChangeText={setName}
+                />
+
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Group (optional)"
+                  placeholderTextColor={colors.textTertiary}
+                  value={createGroupName}
+                  onChangeText={setCreateGroupName}
                 />
 
                 {/* Webhook type selector */}
@@ -906,6 +921,13 @@ export default function WebhooksScreen() {
                   placeholderTextColor={colors.textTertiary}
                   value={editName}
                   onChangeText={setEditName}
+                />
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder="Group (optional)"
+                  placeholderTextColor={colors.textTertiary}
+                  value={editGroupName}
+                  onChangeText={setEditGroupName}
                 />
                 <View style={styles.toggleRow}>
                   <Text style={[styles.toggleLabel, { color: colors.text }]}>Enabled</Text>

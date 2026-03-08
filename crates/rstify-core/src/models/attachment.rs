@@ -36,6 +36,7 @@ pub struct WebhookConfig {
     pub retry_delay_secs: i32,
     pub timeout_secs: i32,
     pub follow_redirects: bool,
+    pub group_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -67,6 +68,8 @@ pub struct CreateWebhookConfig {
     pub timeout_secs: Option<i32>,
     #[serde(alias = "follow_redirects")]
     pub follow_redirects: Option<bool>,
+    #[serde(alias = "group_name")]
+    pub group_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -91,4 +94,6 @@ pub struct UpdateWebhookConfig {
     pub timeout_secs: Option<i32>,
     #[serde(alias = "follow_redirects")]
     pub follow_redirects: Option<bool>,
+    #[serde(alias = "group_name")]
+    pub group_name: Option<String>,
 }

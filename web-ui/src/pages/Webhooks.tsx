@@ -19,6 +19,7 @@ export default function Webhooks() {
   const [logsWh, setLogsWh] = useState<WebhookConfig | null>(null);
   const [testResult, setTestResult] = useState<{ wh: WebhookConfig; result: WebhookTestResult | null; loading: boolean; error: string; customPayload: string } | null>(null);
   const [codeWh, setCodeWh] = useState<WebhookConfig | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const load = useCallback(() => {
     Promise.all([
@@ -171,22 +172,20 @@ export default function Webhooks() {
         </button>
       </div>
       {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
-      <DataTable
-        data={webhooks}
-        keyField="id"
-        columns={[
-          { key: 'id', header: 'ID' },
-          { key: 'name', header: 'Name' },
-          { key: 'direction', header: 'Direction', render: w => directionBadge(w.direction || 'incoming') },
-          { key: 'webhook_type', header: 'Type' },
-          { key: 'target_url', header: 'Target', render: w =>
+      {(() => {
+        const columns = [
+          { key: 'id' as const, header: 'ID' },
+          { key: 'name' as const, header: 'Name' },
+          { key: 'direction' as const, header: 'Direction', render: (w: WebhookConfig) => directionBadge(w.direction || 'incoming') },
+          { key: 'webhook_type' as const, header: 'Type' },
+          { key: 'target_url' as const, header: 'Target', render: (w: WebhookConfig) =>
             w.direction === 'outgoing' && w.target_url ? (
               <span className="text-xs text-gray-600 dark:text-gray-400">{w.http_method} {w.target_url}</span>
             ) : (
               <WebhookUrlDisplay url={getWebhookUrl(w)} />
             )
           },
-          { key: 'enabled', header: 'Enabled', render: w => (
+          { key: 'enabled' as const, header: 'Enabled', render: (w: WebhookConfig) => (
             <button
               onClick={() => handleToggleEnabled(w)}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${w.enabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'}`}
@@ -195,7 +194,7 @@ export default function Webhooks() {
               <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${w.enabled ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
             </button>
           )},
-          { key: 'health', header: 'Health', render: w => {
+          { key: 'health' as const, header: 'Health', render: (w: WebhookConfig) => {
             if (w.direction !== 'outgoing' || w.recent_success_rate == null) {
               return <span className="inline-flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 inline-block" />No data</span>;
             }
@@ -211,13 +210,13 @@ export default function Webhooks() {
               </span>
             );
           }},
-          { key: 'sparkline', header: '', render: w =>
+          { key: 'sparkline' as const, header: '', render: (w: WebhookConfig) =>
             w.direction === 'outgoing' && w.recent_durations && w.recent_durations.length >= 2
               ? <Sparkline data={w.recent_durations} />
               : null
           },
-        ]}
-        actions={w => (
+        ];
+        const renderActions = (w: WebhookConfig) => (
           <div className="flex gap-2 justify-end">
             <button onClick={() => handleTest(w)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 text-sm">Test</button>
             <button onClick={() => copyCurl(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Curl</button>
@@ -227,11 +226,59 @@ export default function Webhooks() {
             <button onClick={() => setEditWh(w)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
             <button onClick={() => setDeleteWh(w)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
           </div>
-        )}
-      />
+        );
+
+        // Group webhooks by group_name
+        const groups = new Map<string, WebhookConfig[]>();
+        const ungrouped: WebhookConfig[] = [];
+        for (const wh of webhooks) {
+          if (wh.group_name) {
+            const list = groups.get(wh.group_name) || [];
+            list.push(wh);
+            groups.set(wh.group_name, list);
+          } else {
+            ungrouped.push(wh);
+          }
+        }
+
+        const hasGroups = groups.size > 0;
+        const toggleGroup = (name: string) => {
+          setCollapsedGroups(prev => {
+            const next = new Set(prev);
+            if (next.has(name)) next.delete(name); else next.add(name);
+            return next;
+          });
+        };
+
+        if (!hasGroups) {
+          return <DataTable data={webhooks} keyField="id" columns={columns} actions={renderActions} />;
+        }
+
+        return (
+          <div className="space-y-4">
+            {ungrouped.length > 0 && (
+              <DataTable data={ungrouped} keyField="id" columns={columns} actions={renderActions} />
+            )}
+            {[...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([groupName, items]) => (
+              <div key={groupName} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleGroup(groupName)}
+                  className="w-full flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <span>{collapsedGroups.has(groupName) ? '\u25b6' : '\u25bc'} {groupName}</span>
+                  <span className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{items.length}</span>
+                </button>
+                {!collapsedGroups.has(groupName) && (
+                  <DataTable data={items} keyField="id" columns={columns} actions={renderActions} />
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       {showCreate && (
         <Modal open onClose={() => setShowCreate(false)} title="Create Webhook">
-          <WebhookForm topics={topics} apps={apps} onSubmit={handleCreate} onClose={() => setShowCreate(false)} />
+          <WebhookForm topics={topics} apps={apps} onSubmit={handleCreate} onClose={() => setShowCreate(false)} existingGroups={[...new Set(webhooks.map(w => w.group_name).filter((g): g is string => !!g))]} />
         </Modal>
       )}
       {editWh && (
@@ -247,6 +294,7 @@ export default function Webhooks() {
               setEditWh(updated);
               load();
             } : undefined}
+            existingGroups={[...new Set(webhooks.map(w => w.group_name).filter((g): g is string => !!g))]}
           />
         </Modal>
       )}
@@ -541,11 +589,12 @@ function AuthSection({ headers, onHeadersChange }: { headers: string; onHeadersC
   );
 }
 
-function WebhookForm({ topics, apps, onSubmit, onClose }: {
+function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
   topics: Topic[];
   apps: Application[];
   onSubmit: (d: CreateWebhookConfig) => Promise<void>;
   onClose: () => void;
+  existingGroups?: string[];
 }) {
   const [form, setForm] = useState({
     name: '',
@@ -562,6 +611,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
     retry_delay_secs: 60,
     timeout_secs: 15,
     follow_redirects: true,
+    group_name: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -589,6 +639,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
         retry_delay_secs: form.direction === 'outgoing' ? form.retry_delay_secs : undefined,
         timeout_secs: form.direction === 'outgoing' ? form.timeout_secs : undefined,
         follow_redirects: form.direction === 'outgoing' ? form.follow_redirects : undefined,
+        group_name: form.group_name || undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -615,6 +666,22 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
       </div>
 
       <input placeholder="Name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
+
+      <div>
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Group (optional)</label>
+        <input
+          placeholder="e.g. Production, Monitoring"
+          value={form.group_name}
+          onChange={e => setForm(f => ({ ...f, group_name: e.target.value }))}
+          className={inputCls}
+          list="webhook-groups"
+        />
+        {existingGroups.length > 0 && (
+          <datalist id="webhook-groups">
+            {existingGroups.map(g => <option key={g} value={g} />)}
+          </datalist>
+        )}
+      </div>
 
       <div>
         <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Webhook Type</label>
@@ -823,13 +890,14 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
   );
 }
 
-function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerate }: {
+function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerate, existingGroups = [] }: {
   webhook: WebhookConfig;
   topics: Topic[];
   apps: Application[];
   onSubmit: (d: UpdateWebhookConfig) => Promise<void>;
   onClose: () => void;
   onRegenerate?: () => Promise<void>;
+  existingGroups?: string[];
 }) {
   const [form, setForm] = useState({
     name: webhook.name,
@@ -843,6 +911,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
     retry_delay_secs: webhook.retry_delay_secs ?? 60,
     timeout_secs: webhook.timeout_secs ?? 15,
     follow_redirects: webhook.follow_redirects ?? true,
+    group_name: webhook.group_name || '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -856,6 +925,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
         name: form.name,
         template: form.template,
         enabled: form.enabled,
+        group_name: form.group_name || undefined,
         ...(isOutgoing ? {
           target_url: form.target_url,
           http_method: form.http_method,
@@ -910,6 +980,22 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
       </div>
 
       <input placeholder="Name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
+
+      <div>
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Group (optional)</label>
+        <input
+          placeholder="e.g. Production, Monitoring"
+          value={form.group_name}
+          onChange={e => setForm(f => ({ ...f, group_name: e.target.value }))}
+          className={inputCls}
+          list="webhook-edit-groups"
+        />
+        {existingGroups.length > 0 && (
+          <datalist id="webhook-edit-groups">
+            {existingGroups.map(g => <option key={g} value={g} />)}
+          </datalist>
+        )}
+      </div>
 
       {isOutgoing ? (
         <>
