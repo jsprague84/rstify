@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig, WebhookDeliveryLog, Topic, Application } from '../api/types';
+import type { WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig, WebhookDeliveryLog, WebhookTestResult, Topic, Application } from '../api/types';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -15,6 +15,7 @@ export default function Webhooks() {
   const [editWh, setEditWh] = useState<WebhookConfig | null>(null);
   const [deleteWh, setDeleteWh] = useState<WebhookConfig | null>(null);
   const [logsWh, setLogsWh] = useState<WebhookConfig | null>(null);
+  const [testResult, setTestResult] = useState<{ wh: WebhookConfig; result: WebhookTestResult | null; loading: boolean; error: string } | null>(null);
 
   const load = useCallback(() => {
     Promise.all([
@@ -47,6 +48,21 @@ export default function Webhooks() {
     await api.deleteWebhook(deleteWh.id);
     setDeleteWh(null);
     load();
+  };
+
+  const handleTest = async (wh: WebhookConfig) => {
+    setTestResult({ wh, result: null, loading: true, error: '' });
+    try {
+      const result = await api.testWebhook(wh.id);
+      setTestResult({ wh, result, loading: false, error: '' });
+    } catch (err) {
+      setTestResult({ wh, result: null, loading: false, error: err instanceof Error ? err.message : 'Test failed' });
+    }
+  };
+
+  const getWebhookUrl = (wh: WebhookConfig) => {
+    const base = window.location.origin;
+    return `${base}/api/wh/${wh.token}`;
   };
 
   const directionBadge = (dir: string) => {
@@ -83,13 +99,14 @@ export default function Webhooks() {
             w.direction === 'outgoing' && w.target_url ? (
               <span className="text-xs text-gray-600 dark:text-gray-400">{w.http_method} {w.target_url}</span>
             ) : (
-              <TokenDisplay token={w.token} />
+              <WebhookUrlDisplay url={getWebhookUrl(w)} />
             )
           },
           { key: 'enabled', header: 'Enabled', render: w => w.enabled ? 'Yes' : 'No' },
         ]}
         actions={w => (
           <div className="flex gap-2 justify-end">
+            <button onClick={() => handleTest(w)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 text-sm">Test</button>
             <button onClick={() => setLogsWh(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Logs</button>
             <button onClick={() => setEditWh(w)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
             <button onClick={() => setDeleteWh(w)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
@@ -103,12 +120,17 @@ export default function Webhooks() {
       )}
       {editWh && (
         <Modal open onClose={() => setEditWh(null)} title="Edit Webhook">
-          <EditWebhookForm webhook={editWh} onSubmit={d => handleUpdate(editWh.id, d)} onClose={() => setEditWh(null)} />
+          <EditWebhookForm webhook={editWh} topics={topics} apps={apps} onSubmit={d => handleUpdate(editWh.id, d)} onClose={() => setEditWh(null)} />
         </Modal>
       )}
       {logsWh && (
         <Modal open onClose={() => setLogsWh(null)} title={`Delivery Logs \u2014 ${logsWh.name}`}>
           <DeliveryLogViewer webhookId={logsWh.id} />
+        </Modal>
+      )}
+      {testResult && (
+        <Modal open onClose={() => setTestResult(null)} title={`Test \u2014 ${testResult.wh.name}`}>
+          <TestResultDisplay result={testResult.result} loading={testResult.loading} error={testResult.error} webhookUrl={getWebhookUrl(testResult.wh)} direction={testResult.wh.direction} />
         </Modal>
       )}
       <ConfirmDialog
@@ -118,6 +140,87 @@ export default function Webhooks() {
         title="Delete Webhook"
         message={`Delete webhook "${deleteWh?.name}"?`}
       />
+    </div>
+  );
+}
+
+function WebhookUrlDisplay({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+  return (
+    <div className="flex items-center gap-1">
+      <code className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[200px]" title={url}>{url}</code>
+      <button onClick={handleCopy} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap">
+        {copied ? 'Copied!' : 'Copy'}
+      </button>
+    </div>
+  );
+}
+
+function TestResultDisplay({ result, loading, error, webhookUrl, direction }: {
+  result: WebhookTestResult | null;
+  loading: boolean;
+  error: string;
+  webhookUrl: string;
+  direction: string;
+}) {
+  if (loading) return <div className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">Sending test request...</div>;
+  if (error) return <div className="text-sm text-red-600 dark:text-red-400 py-2">{error}</div>;
+  if (!result) return null;
+
+  if (direction === 'incoming') {
+    return (
+      <div className="space-y-3">
+        <div className="text-sm dark:text-gray-300">
+          Send a POST request to this URL to trigger the webhook:
+        </div>
+        <div className="bg-gray-50 dark:bg-gray-700 rounded p-2">
+          <div className="flex items-center gap-2">
+            <code className="text-xs text-gray-800 dark:text-gray-200 break-all flex-1">{result.webhook_url || webhookUrl}</code>
+            <button
+              onClick={() => navigator.clipboard.writeText(result.webhook_url || webhookUrl)}
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap"
+            >Copy</button>
+          </div>
+        </div>
+        {result.curl_example && (
+          <div>
+            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Example curl command:</div>
+            <div className="bg-gray-900 dark:bg-gray-800 rounded p-3 relative">
+              <code className="text-xs text-green-400 break-all whitespace-pre-wrap">{result.curl_example}</code>
+              <button
+                onClick={() => navigator.clipboard.writeText(result.curl_example!)}
+                className="absolute top-2 right-2 text-xs text-gray-400 hover:text-gray-200"
+              >Copy</button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Outgoing result
+  return (
+    <div className="space-y-2">
+      <div className={`flex items-center gap-2 text-sm font-medium ${result.success ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+        <span className={`inline-block w-2 h-2 rounded-full ${result.success ? 'bg-green-500' : 'bg-red-500'}`} />
+        {result.success ? 'Test successful' : 'Test failed'}
+        {result.status_code && <span className="text-gray-500 dark:text-gray-400 font-normal">(HTTP {result.status_code})</span>}
+      </div>
+      {result.error && (
+        <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded p-2">{result.error}</div>
+      )}
+      {result.response_preview && (
+        <div>
+          <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Response:</div>
+          <pre className="bg-gray-50 dark:bg-gray-700 rounded p-2 text-xs text-gray-700 dark:text-gray-300 max-h-40 overflow-auto whitespace-pre-wrap">{result.response_preview}</pre>
+        </div>
+      )}
     </div>
   );
 }
@@ -235,17 +338,20 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
 
       <input placeholder="Name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
 
-      <select value={form.webhook_type} onChange={e => setForm(f => ({ ...f, webhook_type: e.target.value }))} className={inputCls}>
-        <option value="custom">Custom</option>
-        <option value="json">JSON</option>
-        <option value="github">GitHub</option>
-        <option value="grafana">Grafana</option>
-      </select>
+      <div>
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Webhook Type</label>
+        <select value={form.webhook_type} onChange={e => setForm(f => ({ ...f, webhook_type: e.target.value }))} className={inputCls}>
+          <option value="custom">Custom</option>
+          <option value="json">JSON</option>
+          <option value="github">GitHub</option>
+          <option value="grafana">Grafana</option>
+        </select>
+      </div>
 
       {/* Target topic */}
       {topics.length > 0 && (
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Target Topic (optional)</label>
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Target Topic {form.direction === 'incoming' ? '(required for incoming)' : '(triggers outgoing when messages arrive)'}</label>
           <select value={form.target_topic_id ?? ''} onChange={e => setForm(f => ({ ...f, target_topic_id: e.target.value ? Number(e.target.value) : undefined }))} className={inputCls}>
             <option value="">None</option>
             {topics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -253,8 +359,8 @@ function WebhookForm({ topics, apps, onSubmit, onClose }: {
         </div>
       )}
 
-      {/* Target application */}
-      {apps.length > 0 && (
+      {/* Target application (incoming only) */}
+      {form.direction === 'incoming' && apps.length > 0 && (
         <div>
           <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Target Application (optional)</label>
           <select value={form.target_application_id ?? ''} onChange={e => setForm(f => ({ ...f, target_application_id: e.target.value ? Number(e.target.value) : undefined }))} className={inputCls}>
@@ -358,7 +464,13 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
   );
 }
 
-function EditWebhookForm({ webhook, onSubmit, onClose }: { webhook: WebhookConfig; onSubmit: (d: UpdateWebhookConfig) => Promise<void>; onClose: () => void }) {
+function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose }: {
+  webhook: WebhookConfig;
+  topics: Topic[];
+  apps: Application[];
+  onSubmit: (d: UpdateWebhookConfig) => Promise<void>;
+  onClose: () => void;
+}) {
   const [form, setForm] = useState({
     name: webhook.name,
     template: webhook.template,
@@ -398,9 +510,30 @@ function EditWebhookForm({ webhook, onSubmit, onClose }: { webhook: WebhookConfi
     }
   };
 
+  // Show webhook URL for incoming webhooks
+  const webhookUrl = !isOutgoing ? `${window.location.origin}/api/wh/${webhook.token}` : null;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
+
+      {/* Show webhook URL for incoming webhooks */}
+      {webhookUrl && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-3 space-y-1">
+          <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Webhook URL</div>
+          <div className="flex items-center gap-2">
+            <code className="text-xs text-blue-800 dark:text-blue-200 break-all flex-1">{webhookUrl}</code>
+            <button type="button" onClick={() => navigator.clipboard.writeText(webhookUrl)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">Copy</button>
+          </div>
+        </div>
+      )}
+
+      {/* Show type and direction info */}
+      <div className="flex gap-2 text-xs text-gray-500 dark:text-gray-400">
+        <span>Type: <strong>{webhook.webhook_type}</strong></span>
+        <span>Direction: <strong>{webhook.direction}</strong></span>
+      </div>
+
       <input placeholder="Name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
 
       {isOutgoing ? (

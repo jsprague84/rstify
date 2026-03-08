@@ -184,6 +184,105 @@ async fn log_delivery(
     }
 }
 
+/// Fire a single outgoing webhook synchronously (for test endpoint).
+/// Returns (status_code, response_body_preview) on success or error string on failure.
+pub async fn fire_single_outgoing_webhook(
+    pool: &SqlitePool,
+    config: &rstify_core::models::WebhookConfig,
+    message: &MessageResponse,
+) -> Result<(u16, Option<String>), String> {
+    let target_url = config
+        .target_url
+        .as_deref()
+        .ok_or("No target_url configured")?;
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .build()
+        .unwrap_or_default();
+
+    let message_json = serde_json::to_string(message).unwrap_or_default();
+
+    let body = if let Some(ref tmpl) = config.body_template {
+        tmpl.replace("{{message}}", &message.message)
+            .replace("{{title}}", message.title.as_deref().unwrap_or(""))
+            .replace("{{topic}}", message.topic.as_deref().unwrap_or(""))
+            .replace("{{priority}}", &message.priority.to_string())
+            .replace("{{json}}", &message_json)
+    } else {
+        message_json
+    };
+
+    let mut req = match config.http_method.as_str() {
+        "GET" => client.get(target_url),
+        "PUT" => client.put(target_url).body(body.clone()),
+        "PATCH" => client.patch(target_url).body(body.clone()),
+        _ => client.post(target_url).body(body.clone()),
+    };
+
+    if let Some(ref headers_json) = config.headers {
+        if let Ok(headers) = serde_json::from_str::<HashMap<String, String>>(headers_json) {
+            for (key, value) in headers {
+                req = req.header(&key, &value);
+            }
+        }
+    }
+
+    if config.http_method != "GET" {
+        req = req.header("Content-Type", "application/json");
+    }
+
+    let start = std::time::Instant::now();
+    let result = req.send().await;
+    let duration_ms = start.elapsed().as_millis() as i64;
+
+    match result {
+        Ok(resp) => {
+            let status = resp.status().as_u16();
+            let success = resp.status().is_success();
+            let body_preview = resp
+                .text()
+                .await
+                .ok()
+                .map(|t| t.chars().take(512).collect::<String>());
+
+            log_delivery(
+                pool,
+                config.id,
+                None,
+                Some(status as i32),
+                body_preview.as_deref(),
+                duration_ms,
+                success,
+            )
+            .await;
+
+            if success {
+                Ok((status, body_preview))
+            } else {
+                Err(format!(
+                    "HTTP {} - {}",
+                    status,
+                    body_preview.unwrap_or_default()
+                ))
+            }
+        }
+        Err(e) => {
+            log_delivery(
+                pool,
+                config.id,
+                None,
+                None,
+                Some(&e.to_string()),
+                duration_ms,
+                false,
+            )
+            .await;
+            Err(e.to_string())
+        }
+    }
+}
+
 #[derive(sqlx::FromRow)]
 struct OutgoingWebhookRow {
     id: i64,

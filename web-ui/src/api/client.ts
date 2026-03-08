@@ -6,7 +6,7 @@ import type {
   TopicPermission, CreateTopicPermission,
   PagedMessages, MessageResponse, AttachmentInfo,
   WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig,
-  WebhookDeliveryLog,
+  WebhookDeliveryLog, WebhookTestResult,
   MqttBridge, CreateMqttBridge, UpdateMqttBridge, MqttStatus,
   StatsResponse, LoginResponse,
   HealthResponse, VersionResponse,
@@ -160,6 +160,9 @@ export const api = {
   },
   listWebhookDeliveries(id: number, limit = 20): Promise<WebhookDeliveryLog[]> {
     return request(`/api/webhooks/${id}/deliveries?limit=${limit}`);
+  },
+  testWebhook(id: number): Promise<WebhookTestResult> {
+    return request(`/api/webhooks/${id}/test`, { method: 'POST' });
   },
 
   // Permissions

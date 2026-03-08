@@ -106,6 +106,7 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
             "/api/webhooks/{id}/deliveries",
             get(webhooks::list_webhook_deliveries),
         )
+        .route("/api/webhooks/{id}/test", post(webhooks::test_webhook))
         .route("/api/wh/{token}", post(webhooks::receive_webhook))
         // MQTT
         .route("/api/mqtt/status", get(mqtt::mqtt_status))

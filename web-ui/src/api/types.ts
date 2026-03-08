@@ -189,6 +189,16 @@ export interface WebhookDeliveryLog {
   success: boolean;
 }
 
+export interface WebhookTestResult {
+  success: boolean;
+  direction: string;
+  status_code?: number;
+  response_preview?: string;
+  error?: string;
+  webhook_url?: string;
+  curl_example?: string;
+}
+
 export interface StatsResponse {
   users: number;
   topics: number;

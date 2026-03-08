@@ -456,6 +456,10 @@ export class RstifyClient {
     return this.request("GET", `/api/webhooks/${id}/deliveries?limit=${limit}`);
   }
 
+  async testWebhook(id: number): Promise<WebhookTestResult> {
+    return this.request("POST", `/api/webhooks/${id}/test`);
+  }
+
   // MQTT
   async getMqttStatus(): Promise<MqttStatus> {
     return this.request("GET", "/api/mqtt/status");

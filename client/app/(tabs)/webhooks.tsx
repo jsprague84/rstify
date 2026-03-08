@@ -10,13 +10,14 @@ import {
   TextInput,
   Modal,
   Switch,
+  ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
 import { EmptyState } from "../../src/components/EmptyState";
 import { getApiClient } from "../../src/api";
-import type { WebhookConfig, Topic, UpdateWebhookConfig, WebhookDeliveryLog } from "../../src/api";
+import type { WebhookConfig, Topic, UpdateWebhookConfig, WebhookDeliveryLog, WebhookTestResult } from "../../src/api";
 import * as Clipboard from "expo-clipboard";
 import { useTheme } from "../../src/store/theme";
 import { Colors } from "../../src/theme/colors";
@@ -43,16 +44,20 @@ export default function WebhooksScreen() {
   const [deliveriesWebhook, setDeliveriesWebhook] = useState<WebhookConfig | null>(null);
   const [deliveries, setDeliveries] = useState<WebhookDeliveryLog[]>([]);
   const [deliveriesLoading, setDeliveriesLoading] = useState(false);
+  const [testingId, setTestingId] = useState<number | null>(null);
 
   // Create form state
   const [direction, setDirection] = useState<Direction>("incoming");
   const [name, setName] = useState("");
-  const [webhookType, setWebhookType] = useState("json");
+  const [webhookType, setWebhookType] = useState("custom");
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [targetUrl, setTargetUrl] = useState("");
   const [httpMethod, setHttpMethod] = useState("POST");
   const [createHeaders, setCreateHeaders] = useState("");
   const [bodyTemplate, setBodyTemplate] = useState("");
+
+  // Server base URL for webhook URL display
+  const [serverBase, setServerBase] = useState("");
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -64,6 +69,14 @@ export default function WebhooksScreen() {
       ]);
       setWebhooks(wh);
       setTopics(tp);
+      // Derive server base from API client
+      if (!serverBase) {
+        try {
+          setServerBase(api.getBaseUrl() || "");
+        } catch {
+          // ignore
+        }
+      }
     } catch (e) {
       Alert.alert(
         "Error",
@@ -72,7 +85,7 @@ export default function WebhooksScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [serverBase]);
 
   useEffect(() => {
     fetchData();
@@ -102,12 +115,17 @@ export default function WebhooksScreen() {
   const resetForm = () => {
     setDirection("incoming");
     setName("");
-    setWebhookType("json");
+    setWebhookType("custom");
     setSelectedTopicId(null);
     setTargetUrl("");
     setHttpMethod("POST");
     setCreateHeaders("");
     setBodyTemplate("");
+  };
+
+  const getWebhookUrl = (wh: WebhookConfig) => {
+    const base = serverBase || "https://your-server";
+    return `${base}/api/wh/${wh.token}`;
   };
 
   const handleCreate = async () => {
@@ -182,6 +200,37 @@ export default function WebhooksScreen() {
     ]);
   };
 
+  const handleTest = async (webhook: WebhookConfig) => {
+    setTestingId(webhook.id);
+    try {
+      const api = getApiClient();
+      const result: WebhookTestResult = await api.testWebhook(webhook.id);
+      if (webhook.direction === "incoming") {
+        const url = result.webhook_url || getWebhookUrl(webhook);
+        Alert.alert(
+          "Incoming Webhook URL",
+          `Send POST requests to:\n\n${url}`,
+          [
+            { text: "Copy URL", onPress: () => Clipboard.setStringAsync(url) },
+            { text: "Copy curl", onPress: () => Clipboard.setStringAsync(result.curl_example || "") },
+            { text: "OK" },
+          ],
+        );
+      } else {
+        Alert.alert(
+          result.success ? "Test Successful" : "Test Failed",
+          result.success
+            ? `HTTP ${result.status_code}\n${result.response_preview?.slice(0, 200) || ""}`
+            : result.error || "Unknown error",
+        );
+      }
+    } catch (e) {
+      Alert.alert("Test Failed", e instanceof Error ? e.message : "Test failed");
+    } finally {
+      setTestingId(null);
+    }
+  };
+
   const openEdit = (wh: WebhookConfig) => {
     setEditWebhook(wh);
     setEditName(wh.name);
@@ -232,12 +281,13 @@ export default function WebhooksScreen() {
     }
   };
 
-  const handleCopyToken = async (token: string) => {
+  const handleCopyUrl = async (wh: WebhookConfig) => {
+    const url = getWebhookUrl(wh);
     try {
-      await Clipboard.setStringAsync(token);
-      Alert.alert("Copied", "Webhook token copied to clipboard");
+      await Clipboard.setStringAsync(url);
+      Alert.alert("Copied", "Webhook URL copied to clipboard");
     } catch {
-      Alert.alert("Token", token);
+      Alert.alert("Webhook URL", url);
     }
   };
 
@@ -304,20 +354,18 @@ export default function WebhooksScreen() {
                   {getDirectionBadge(item.direction)}
                 </View>
                 <Text style={[styles.webhookType, { color: colors.textTertiary }]}>{item.webhook_type}</Text>
-                {item.target_url ? (
+                {item.direction === "outgoing" && item.target_url ? (
                   <Text style={[styles.webhookUrl, { color: colors.textSecondary }]} numberOfLines={1}>
                     {item.http_method} {item.target_url}
                   </Text>
-                ) : null}
-                <Pressable
-                  style={styles.tokenRow}
-                  onPress={() => handleCopyToken(item.token)}
-                >
-                  <Text style={[styles.tokenText, { color: colors.textTertiary }]} numberOfLines={1}>
-                    {item.token}
-                  </Text>
-                  <Ionicons name="copy-outline" size={14} color={colors.textTertiary} />
-                </Pressable>
+                ) : (
+                  <Pressable style={styles.urlRow} onPress={() => handleCopyUrl(item)}>
+                    <Text style={[styles.urlText, { color: colors.primary }]} numberOfLines={1}>
+                      {getWebhookUrl(item)}
+                    </Text>
+                    <Ionicons name="copy-outline" size={12} color={colors.primary} />
+                  </Pressable>
+                )}
               </View>
               <View style={styles.webhookActions}>
                 <Switch
@@ -327,6 +375,13 @@ export default function WebhooksScreen() {
                   thumbColor={item.enabled ? colors.primary : colors.textTertiary}
                 />
                 <View style={{ flexDirection: "row", gap: 12 }}>
+                  <Pressable onPress={() => handleTest(item)} hitSlop={8}>
+                    <Ionicons
+                      name="play-outline"
+                      size={18}
+                      color={testingId === item.id ? colors.textTertiary : colors.success}
+                    />
+                  </Pressable>
                   <Pressable onPress={() => openDeliveries(item)} hitSlop={8}>
                     <Ionicons name="list-outline" size={18} color={colors.textSecondary} />
                   </Pressable>
@@ -417,52 +472,84 @@ export default function WebhooksScreen() {
                   onChangeText={setName}
                 />
 
-                {/* Topic selector */}
-                {topics.length > 0 ? (
-                  <View>
-                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Target Topic (optional)</Text>
-                    <View style={styles.topicList}>
+                {/* Webhook type selector */}
+                <View>
+                  <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Webhook Type</Text>
+                  <View style={styles.methodRow}>
+                    {["custom", "json", "github", "grafana"].map((t) => (
                       <Pressable
+                        key={t}
                         style={[
-                          styles.topicChip,
+                          styles.typeChip,
                           { backgroundColor: colors.backgroundTertiary },
-                          selectedTopicId === null && [styles.topicChipActive, { backgroundColor: isDark ? "#1e3a8a" : "#dbeafe" }],
+                          webhookType === t && [styles.typeChipActive, { backgroundColor: isDark ? "#1e3a8a" : "#dbeafe" }],
                         ]}
-                        onPress={() => setSelectedTopicId(null)}
+                        onPress={() => setWebhookType(t)}
                       >
                         <Text
                           style={[
-                            styles.topicChipText,
+                            styles.typeChipText,
                             { color: colors.textSecondary },
-                            selectedTopicId === null && [styles.topicChipTextActive, { color: isDark ? "#93c5fd" : "#1e40af" }],
+                            webhookType === t && [styles.typeChipTextActive, { color: isDark ? "#93c5fd" : "#1e40af" }],
                           ]}
                         >
-                          None
+                          {t}
                         </Text>
                       </Pressable>
-                      {topics.map((t) => (
+                    ))}
+                  </View>
+                </View>
+
+                {/* Topic selector */}
+                {topics.length > 0 ? (
+                  <View>
+                    <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
+                      Target Topic {direction === "incoming" ? "(required)" : "(triggers outgoing)"}
+                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={styles.topicList}>
                         <Pressable
-                          key={t.id}
                           style={[
                             styles.topicChip,
                             { backgroundColor: colors.backgroundTertiary },
-                            selectedTopicId === t.id && [styles.topicChipActive, { backgroundColor: isDark ? "#1e3a8a" : "#dbeafe" }],
+                            selectedTopicId === null && [styles.topicChipActive, { backgroundColor: isDark ? "#1e3a8a" : "#dbeafe" }],
                           ]}
-                          onPress={() => setSelectedTopicId(t.id)}
+                          onPress={() => setSelectedTopicId(null)}
                         >
                           <Text
                             style={[
                               styles.topicChipText,
                               { color: colors.textSecondary },
-                              selectedTopicId === t.id &&
-                                [styles.topicChipTextActive, { color: isDark ? "#93c5fd" : "#1e40af" }],
+                              selectedTopicId === null && [styles.topicChipTextActive, { color: isDark ? "#93c5fd" : "#1e40af" }],
                             ]}
                           >
-                            {t.name}
+                            None
                           </Text>
                         </Pressable>
-                      ))}
-                    </View>
+                        {topics.map((t) => (
+                          <Pressable
+                            key={t.id}
+                            style={[
+                              styles.topicChip,
+                              { backgroundColor: colors.backgroundTertiary },
+                              selectedTopicId === t.id && [styles.topicChipActive, { backgroundColor: isDark ? "#1e3a8a" : "#dbeafe" }],
+                            ]}
+                            onPress={() => setSelectedTopicId(t.id)}
+                          >
+                            <Text
+                              style={[
+                                styles.topicChipText,
+                                { color: colors.textSecondary },
+                                selectedTopicId === t.id &&
+                                  [styles.topicChipTextActive, { color: isDark ? "#93c5fd" : "#1e40af" }],
+                              ]}
+                            >
+                              {t.name}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    </ScrollView>
                   </View>
                 ) : null}
 
@@ -543,6 +630,31 @@ export default function WebhooksScreen() {
             <KeyboardAwareScrollView bottomOffset={20} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.modalScrollContent}>
               <View style={[styles.modal, { backgroundColor: colors.surface }]}>
                 <Text style={[styles.modalTitle, { color: colors.text }]}>Edit Webhook</Text>
+
+                {/* Show webhook URL for incoming */}
+                {editWebhook && editWebhook.direction !== "outgoing" && (
+                  <Pressable
+                    style={[styles.urlBox, { backgroundColor: isDark ? "#1e3a5a" : "#eff6ff" }]}
+                    onPress={() => {
+                      const url = getWebhookUrl(editWebhook);
+                      Clipboard.setStringAsync(url);
+                      Alert.alert("Copied", "Webhook URL copied");
+                    }}
+                  >
+                    <Text style={[styles.urlBoxLabel, { color: isDark ? "#93c5fd" : "#1e40af" }]}>Webhook URL (tap to copy)</Text>
+                    <Text style={[styles.urlBoxText, { color: isDark ? "#bfdbfe" : "#1e3a8a" }]} numberOfLines={2}>
+                      {getWebhookUrl(editWebhook)}
+                    </Text>
+                  </Pressable>
+                )}
+
+                {/* Type and direction info */}
+                {editWebhook && (
+                  <Text style={[styles.infoText, { color: colors.textTertiary }]}>
+                    Type: {editWebhook.webhook_type} | Direction: {editWebhook.direction}
+                  </Text>
+                )}
+
                 <TextInput
                   style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
                   placeholder="Name"
@@ -708,13 +820,20 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   badgeText: { fontSize: 10, fontWeight: "600" },
-  tokenRow: {
+  urlRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     marginTop: 4,
   },
-  tokenText: { fontSize: 12, fontFamily: "monospace" },
+  urlText: { fontSize: 11, fontFamily: "monospace" },
+  urlBox: {
+    borderRadius: 8,
+    padding: 10,
+  },
+  urlBoxLabel: { fontSize: 11, fontWeight: "600", marginBottom: 4 },
+  urlBoxText: { fontSize: 12, fontFamily: "monospace" },
+  infoText: { fontSize: 12 },
   // Modal
   modalOverlay: {
     flex: 1,
@@ -746,7 +865,7 @@ const styles = StyleSheet.create({
   directionBtnText: { fontWeight: "600" },
   directionBtnTextActive: { color: "#fff" },
   fieldLabel: { fontSize: 12, marginBottom: 4 },
-  topicList: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  topicList: { flexDirection: "row", gap: 6 },
   topicChip: {
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -755,6 +874,14 @@ const styles = StyleSheet.create({
   topicChipActive: {},
   topicChipText: { fontSize: 13 },
   topicChipTextActive: {},
+  typeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  typeChipActive: {},
+  typeChipText: { fontSize: 12, textTransform: "capitalize" },
+  typeChipTextActive: {},
   methodRow: { flexDirection: "row", gap: 8 },
   methodBtn: {
     flex: 1,

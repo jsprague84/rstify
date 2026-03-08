@@ -1,10 +1,12 @@
 use axum::extract::{Path, Query, State};
+use axum::http::HeaderMap;
 use axum::Json;
 use rstify_auth::tokens::generate_webhook_token;
 use rstify_core::models::{
-    CreateWebhookConfig, UpdateWebhookConfig, WebhookConfig, WebhookDeliveryLog,
+    CreateWebhookConfig, MessageResponse, UpdateWebhookConfig, WebhookConfig, WebhookDeliveryLog,
 };
 use rstify_core::repositories::{MessageRepository, TopicRepository};
+use rstify_jobs::outgoing_webhooks::fire_single_outgoing_webhook;
 use serde::Deserialize;
 
 use crate::error::ApiError;
@@ -356,4 +358,84 @@ pub async fn list_webhook_deliveries(
     .map_err(|e| ApiError::from(rstify_core::error::CoreError::Database(e.to_string())))?;
 
     Ok(Json(logs))
+}
+
+/// POST /api/webhooks/{id}/test - Send a test delivery for a webhook
+#[utoipa::path(post, path = "/api/webhooks/{id}/test", responses((status = 200)))]
+pub async fn test_webhook(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    headers: HeaderMap,
+    Path(id): Path<i64>,
+) -> Result<Json<serde_json::Value>, ApiError> {
+    let host = headers
+        .get("host")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("localhost");
+    let existing = state
+        .message_repo
+        .find_webhook_config_by_id(id)
+        .await
+        .map_err(ApiError::from)?
+        .ok_or_else(|| {
+            ApiError::from(rstify_core::error::CoreError::NotFound(
+                "Webhook config not found".to_string(),
+            ))
+        })?;
+
+    if existing.user_id != auth.user.id && !auth.user.is_admin {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Not your webhook config".to_string(),
+        )));
+    }
+
+    if existing.direction == "outgoing" {
+        // Fire a test HTTP request to the target URL
+        let test_message = MessageResponse {
+            id: 0,
+            appid: None,
+            topic: existing.target_topic_id.map(|_| "test-topic".to_string()),
+            title: Some("Test Webhook".to_string()),
+            message: "This is a test message from rstify webhook system.".to_string(),
+            priority: 5,
+            tags: None,
+            click_url: None,
+            icon_url: None,
+            actions: None,
+            content_type: None,
+            extras: None,
+            source: Some("webhook-test".to_string()),
+            attachments: None,
+            date: chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        };
+
+        let result = fire_single_outgoing_webhook(&state.pool, &existing, &test_message).await;
+
+        match result {
+            Ok((status, body_preview)) => Ok(Json(serde_json::json!({
+                "success": true,
+                "direction": "outgoing",
+                "status_code": status,
+                "response_preview": body_preview,
+            }))),
+            Err(err) => Ok(Json(serde_json::json!({
+                "success": false,
+                "direction": "outgoing",
+                "error": err,
+            }))),
+        }
+    } else {
+        // For incoming webhooks, return the URL and a sample curl command
+        let webhook_url = format!("https://{}/api/wh/{}", host, existing.token);
+        let curl_cmd = format!(
+            r#"curl -X POST {} -H "Content-Type: application/json" -d '{{"title":"Test","message":"Hello from webhook test"}}'"#,
+            webhook_url
+        );
+        Ok(Json(serde_json::json!({
+            "success": true,
+            "direction": "incoming",
+            "webhook_url": webhook_url,
+            "curl_example": curl_cmd,
+        })))
+    }
 }
