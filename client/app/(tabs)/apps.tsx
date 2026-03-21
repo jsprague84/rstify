@@ -9,8 +9,8 @@ import {
   Alert,
   TextInput,
   Modal,
-  Image,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { Ionicons } from "@expo/vector-icons";
@@ -39,7 +39,7 @@ function AppIconView({ app }: { app: Application }) {
     <Image
       source={{ uri: `${api.applicationIconUrl(app.id)}?v=${app.updated_at}` }}
       style={styles.appIcon}
-      resizeMode="contain"
+      contentFit="contain"
     />
   );
 }
