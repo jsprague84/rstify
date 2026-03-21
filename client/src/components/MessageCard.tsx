@@ -8,6 +8,7 @@ import { MessageActions } from "./MessageActions";
 import { MessageAttachments } from "./MessageAttachments";
 import { MessageIcon } from "./MessageIcon";
 import { useTheme } from "../store/theme";
+import { useApplicationsStore } from "../store/applications";
 import { Colors } from "../theme/colors";
 
 interface MessageCardProps {
@@ -31,10 +32,16 @@ const priorityColors: Record<number, string> = {
 export const MessageCard = React.memo(function MessageCard({ message, onDelete }: MessageCardProps) {
   const { isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
+  const getApp = useApplicationsStore((s) => s.getApp);
+  const getIconUrl = useApplicationsStore((s) => s.getIconUrl);
 
   const borderColor = priorityColors[message.priority] ?? "#10b981";
   const timeStr = new Date(message.date).toLocaleString();
-  const source = message.topic ?? (message.appid ? `App #${message.appid}` : "Unknown");
+
+  // Resolve app name and icon from the cached application list
+  const app = message.appid ? getApp(message.appid) : undefined;
+  const source = message.topic ?? (app?.name ? app.name : message.appid ? `App #${message.appid}` : "Unknown");
+  const iconUrl = message.icon_url ?? (message.appid ? getIconUrl(message.appid) : null);
 
   // Determine click URL from message or extras
   const clickUrl = message.click_url || message.extras?.["client::notification"]?.click?.url;
@@ -79,7 +86,7 @@ export const MessageCard = React.memo(function MessageCard({ message, onDelete }
         <View style={styles.headerLeft}>
           <View style={styles.sourceRow}>
             {/* Show custom icon or default */}
-            <MessageIcon iconUrl={message.icon_url} size={32} />
+            <MessageIcon iconUrl={iconUrl} size={32} />
 
             <View style={styles.headerText}>
               {message.title ? (

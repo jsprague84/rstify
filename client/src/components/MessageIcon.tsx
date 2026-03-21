@@ -23,7 +23,7 @@ export const MessageIcon = React.memo(function MessageIcon({ iconUrl, size = 40 
     <Image
       source={{ uri: iconUrl }}
       style={[styles.icon, { width: size, height: size }]}
-      contentFit="cover"
+      contentFit="contain"
       transition={200}
       onError={() => setError(true)}
       cachePolicy="memory-disk"

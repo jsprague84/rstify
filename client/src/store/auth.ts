@@ -2,6 +2,7 @@ import { create } from "zustand";
 import * as SecureStore from "expo-secure-store";
 import { getApiClient, initApiClient } from "../api";
 import type { UserResponse } from "../api";
+import { useApplicationsStore } from "./applications";
 
 const TOKEN_KEY = "rstify_token";
 const SERVER_URL_KEY = "rstify_server_url";
@@ -46,6 +47,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isLoading: false,
             isAuthenticated: true,
           });
+          // Fetch application list for icon display
+          useApplicationsStore.getState().fetchApplications();
           return;
         } catch {
           // Token expired or invalid
@@ -73,11 +76,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user,
       isAuthenticated: true,
     });
+    // Fetch application list for icon display
+    useApplicationsStore.getState().fetchApplications();
   },
 
   logout: async () => {
     await SecureStore.deleteItemAsync(TOKEN_KEY);
     getApiClient().setToken(null);
+    useApplicationsStore.getState().clear();
     set({
       token: null,
       user: null,

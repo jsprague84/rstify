@@ -38,6 +38,7 @@ function AppIconView({ app }: { app: Application }) {
     <Image
       source={{ uri: `${api.applicationIconUrl(app.id)}?v=${app.updated_at}` }}
       style={styles.appIcon}
+      resizeMode="contain"
     />
   );
 }
