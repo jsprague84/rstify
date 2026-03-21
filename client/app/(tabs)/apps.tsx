@@ -20,6 +20,7 @@ import type { Application } from "../../src/api";
 import * as Clipboard from "expo-clipboard";
 import { useTheme } from "../../src/store/theme";
 import { Colors } from "../../src/theme/colors";
+import { useApplicationsStore } from "../../src/store/applications";
 
 function AppIconView({ app }: { app: Application }) {
   const { isDark } = useTheme();
@@ -56,18 +57,22 @@ export default function AppsScreen() {
   const [editDesc, setEditDesc] = useState("");
   const [editPriority, setEditPriority] = useState("5");
 
+  const { fetchApplications } = useApplicationsStore();
+
   const fetchApps = useCallback(async () => {
     setIsLoading(true);
     try {
       const api = getApiClient();
       const result = await api.listApplications();
       setApps(result);
+      // Keep the applications store in sync for MessageCard icon resolution
+      fetchApplications();
     } catch (e) {
       Alert.alert("Error", e instanceof Error ? e.message : "Failed to load apps");
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [fetchApplications]);
 
   useEffect(() => {
     fetchApps();

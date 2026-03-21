@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { api } from '../api/client';
-import type { MessageResponse } from '../api/types';
+import type { Application, MessageResponse } from '../api/types';
 import { useMessageStream } from '../hooks/useMessageStream';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
@@ -21,6 +21,12 @@ export default function Messages() {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const fetchLimit = useRef(PAGE_SIZE);
+  const [apps, setApps] = useState<Application[]>([]);
+  const appsMap = useMemo(() => {
+    const m = new Map<number, Application>();
+    for (const a of apps) m.set(a.id, a);
+    return m;
+  }, [apps]);
 
   const load = useCallback((limit: number) => {
     setLoading(true);
@@ -35,6 +41,7 @@ export default function Messages() {
 
   useEffect(() => {
     load(PAGE_SIZE);
+    api.listApplications().then(setApps).catch(() => {});
   }, [load]);
 
   // Real-time: prepend new messages from WebSocket
@@ -167,14 +174,17 @@ export default function Messages() {
           {filtered.map(m => (
             <div key={m.id} className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
               <div className="flex justify-between items-start gap-3">
-                {m.icon_url && (
-                  <img
-                    src={m.icon_url}
-                    alt="Message icon"
-                    className="w-10 h-10 rounded flex-shrink-0 object-contain"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
-                )}
+                {(() => {
+                  const iconUrl = m.icon_url || (m.appid && appsMap.get(m.appid)?.image ? api.getApplicationIconUrl(m.appid) : null);
+                  return iconUrl ? (
+                    <img
+                      src={iconUrl}
+                      alt="Message icon"
+                      className="w-10 h-10 rounded flex-shrink-0 object-contain"
+                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                    />
+                  ) : null;
+                })()}
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     {m.title && (
@@ -196,7 +206,7 @@ export default function Messages() {
                     )}
                     <span className="text-xs text-gray-400">#{m.id}</span>
                     {m.topic && <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded">{m.topic}</span>}
-                    {m.appid && <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">App #{m.appid}</span>}
+                    {m.appid && <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">{appsMap.get(m.appid)?.name || `App #${m.appid}`}</span>}
                     <PriorityBadge priority={m.priority} />
                   </div>
                   <MessageContent message={m.message} extras={m.extras} />
