@@ -111,6 +111,18 @@ export interface AttachmentInfo {
   url: string;
 }
 
+export interface MessageAction {
+  action: 'view' | 'http' | 'broadcast';
+  label: string;
+  url?: string;
+  method?: string;
+  headers?: Record<string, any>;
+  body?: string;
+  intent?: string;
+  extras?: Record<string, any>;
+  clear?: boolean;
+}
+
 export interface MessageResponse {
   id: number;
   appid?: number;
@@ -121,6 +133,7 @@ export interface MessageResponse {
   tags?: string[];
   click_url?: string;
   icon_url?: string;
+  actions?: MessageAction[];
   content_type?: string;
   extras?: Record<string, any>;
   source?: string;

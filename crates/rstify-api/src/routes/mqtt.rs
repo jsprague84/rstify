@@ -71,20 +71,11 @@ pub async fn list_bridges(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<Vec<MqttBridge>>, ApiError> {
-    let bridges = if auth.user.is_admin {
-        // Admins see all bridges
-        state
-            .mqtt_bridge_repo
-            .list_by_user(auth.user.id)
-            .await
-            .map_err(ApiError::from)?
-    } else {
-        state
-            .mqtt_bridge_repo
-            .list_by_user(auth.user.id)
-            .await
-            .map_err(ApiError::from)?
-    };
+    let bridges = state
+        .mqtt_bridge_repo
+        .list_by_user(auth.user.id)
+        .await
+        .map_err(ApiError::from)?;
     Ok(Json(bridges))
 }
 

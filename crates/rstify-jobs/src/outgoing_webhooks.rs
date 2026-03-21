@@ -74,11 +74,18 @@ pub async fn fire_outgoing_webhooks(
         };
 
         let body = if let Some(ref tmpl) = config.body_template {
-            // Simple template substitution
+            // Template substitution with JSON-safe escaping for string values
+            // to prevent message content from breaking JSON structure
             let substituted = tmpl
-                .replace("{{message}}", &message.message)
-                .replace("{{title}}", message.title.as_deref().unwrap_or(""))
-                .replace("{{topic}}", message.topic.as_deref().unwrap_or(""))
+                .replace("{{message}}", &json_escape(&message.message))
+                .replace(
+                    "{{title}}",
+                    &json_escape(message.title.as_deref().unwrap_or("")),
+                )
+                .replace(
+                    "{{topic}}",
+                    &json_escape(message.topic.as_deref().unwrap_or("")),
+                )
                 .replace("{{priority}}", &message.priority.to_string())
                 .replace("{{json}}", &message_json);
             apply_env_vars(pool, config.user_id, &substituted).await
@@ -256,9 +263,15 @@ pub async fn fire_single_outgoing_webhook(
 
     let body = if let Some(ref tmpl) = config.body_template {
         let substituted = tmpl
-            .replace("{{message}}", &message.message)
-            .replace("{{title}}", message.title.as_deref().unwrap_or(""))
-            .replace("{{topic}}", message.topic.as_deref().unwrap_or(""))
+            .replace("{{message}}", &json_escape(&message.message))
+            .replace(
+                "{{title}}",
+                &json_escape(message.title.as_deref().unwrap_or("")),
+            )
+            .replace(
+                "{{topic}}",
+                &json_escape(message.topic.as_deref().unwrap_or("")),
+            )
             .replace("{{priority}}", &message.priority.to_string())
             .replace("{{json}}", &message_json);
         apply_env_vars(pool, config.user_id, &substituted).await
@@ -340,6 +353,15 @@ pub async fn fire_single_outgoing_webhook(
             Err(e.to_string())
         }
     }
+}
+
+/// Escape a string for safe embedding inside a JSON string value.
+/// Produces the inner content of a JSON string (without surrounding quotes),
+/// so `"{{message}}"` in a template becomes a valid JSON string after substitution.
+fn json_escape(s: &str) -> String {
+    // serde_json::to_string produces `"escaped"` — strip the surrounding quotes
+    let quoted = serde_json::to_string(s).unwrap_or_else(|_| format!("\"{}\"", s));
+    quoted[1..quoted.len() - 1].to_string()
 }
 
 /// Check if a headers JSON string contains a Content-Type header (case-insensitive).

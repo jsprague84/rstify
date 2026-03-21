@@ -10,19 +10,15 @@ rstify-auth = { workspace = true }
 rstify-jobs = { workspace = true }
 rstify-mqtt = { workspace = true }
 axum = { workspace = true }
-axum-extra = { workspace = true }
-tower = { workspace = true }
 tower-http = { workspace = true }
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
 uuid = { workspace = true }
-thiserror = { workspace = true }
 tracing = { workspace = true }
 utoipa = { workspace = true }
 utoipa-swagger-ui = { workspace = true }
-async-trait = { workspace = true }
 reqwest = { workspace = true }
 futures = "0.3"
 tokio-stream = { version = "0.1", features = ["sync"] }

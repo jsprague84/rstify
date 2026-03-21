@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api/client';
-import type { MessageResponse, AttachmentInfo } from '../api/types';
+import type { MessageResponse } from '../api/types';
 import { useMessageStream } from '../hooks/useMessageStream';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
@@ -51,16 +51,26 @@ export default function Messages() {
 
   const handleDelete = async () => {
     if (!deleteMsg) return;
-    await api.deleteMessage(deleteMsg.id);
-    setDeleteMsg(null);
-    setMessages(prev => prev.filter(m => m.id !== deleteMsg.id));
+    try {
+      await api.deleteMessage(deleteMsg.id);
+      setDeleteMsg(null);
+      setMessages(prev => prev.filter(m => m.id !== deleteMsg.id));
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Failed to delete message', 'error');
+      setDeleteMsg(null);
+    }
   };
 
   const handleDeleteAll = async () => {
-    await api.deleteAllMessages();
-    setShowDeleteAll(false);
-    setMessages([]);
-    setLiveCount(0);
+    try {
+      await api.deleteAllMessages();
+      setShowDeleteAll(false);
+      setMessages([]);
+      setLiveCount(0);
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Failed to delete messages', 'error');
+      setShowDeleteAll(false);
+    }
   };
 
   const handleSearch = async (query: string) => {
@@ -197,12 +207,7 @@ export default function Messages() {
                       ))}
                     </div>
                   )}
-                  <MessageAttachments message={m} onUploaded={(att) => {
-                    setMessages(prev => prev.map(msg => msg.id === m.id
-                      ? { ...msg, attachments: [...(msg.attachments || []), att] }
-                      : msg
-                    ));
-                  }} onDeleted={(attId) => {
+                  <MessageAttachments message={m} onDeleted={(attId) => {
                     setMessages(prev => prev.map(msg => msg.id === m.id
                       ? { ...msg, attachments: (msg.attachments || []).filter(a => a.id !== attId) }
                       : msg
@@ -263,10 +268,8 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function MessageAttachments({ message, onUploaded, onDeleted }: { message: MessageResponse; onUploaded: (att: AttachmentInfo) => void; onDeleted: (attId: number) => void }) {
+function MessageAttachments({ message, onDeleted }: { message: MessageResponse; onDeleted: (attId: number) => void }) {
   const { toast } = useToast();
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = useState(false);
 
   const handleDeleteAttachment = async (attId: number) => {
     try {
@@ -278,64 +281,37 @@ function MessageAttachments({ message, onUploaded, onDeleted }: { message: Messa
     }
   };
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const att = await api.uploadAttachment(message.id, file);
-      onUploaded(att);
-      toast('Attachment uploaded', 'success');
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Upload failed', 'error');
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = '';
-    }
-  };
-
   const attachments = message.attachments || [];
+  if (attachments.length === 0) return null;
 
   return (
-    <div className="mt-2">
-      {attachments.length > 0 && (
-        <div className="space-y-2">
-          {attachments.map(att => (
-            <div key={att.id} className="flex items-start gap-2">
-              {isImageType(att.type) ? (
-                <a href={att.url} target="_blank" rel="noopener noreferrer">
-                  <img
-                    src={att.url}
-                    alt={att.name}
-                    className="max-w-xs max-h-48 rounded border dark:border-gray-600 cursor-pointer hover:opacity-90"
-                  />
-                </a>
-              ) : (
-                <a
-                  href={att.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                  </svg>
-                  {att.name} <span className="text-gray-400 text-xs">({formatFileSize(att.size)})</span>
-                </a>
-              )}
-              <button onClick={() => handleDeleteAttachment(att.id)} className="text-red-400 hover:text-red-600 text-xs mt-1">✕</button>
-            </div>
-          ))}
+    <div className="mt-2 space-y-2">
+      {attachments.map(att => (
+        <div key={att.id} className="flex items-start gap-2">
+          {isImageType(att.type) ? (
+            <a href={att.url} target="_blank" rel="noopener noreferrer">
+              <img
+                src={att.url}
+                alt={att.name}
+                className="max-w-xs max-h-48 rounded border dark:border-gray-600 cursor-pointer hover:opacity-90"
+              />
+            </a>
+          ) : (
+            <a
+              href={att.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+              {att.name} <span className="text-gray-400 text-xs">({formatFileSize(att.size)})</span>
+            </a>
+          )}
+          <button onClick={() => handleDeleteAttachment(att.id)} className="text-red-400 hover:text-red-600 text-xs mt-1">✕</button>
         </div>
-      )}
-      <input ref={fileRef} type="file" className="hidden" onChange={handleUpload} />
-      <button
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-        className="mt-1 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 disabled:opacity-50"
-      >
-        {uploading ? 'Uploading...' : '+ Attach file'}
-      </button>
+      ))}
     </div>
   );
 }

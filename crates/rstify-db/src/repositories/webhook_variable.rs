@@ -4,16 +4,9 @@ use rstify_core::models::WebhookVariable;
 use rstify_core::repositories::WebhookVariableRepository;
 use sqlx::SqlitePool;
 
+#[derive(Clone)]
 pub struct SqliteWebhookVariableRepo {
-    pub pool: SqlitePool,
-}
-
-impl Clone for SqliteWebhookVariableRepo {
-    fn clone(&self) -> Self {
-        Self {
-            pool: self.pool.clone(),
-        }
-    }
+    pool: SqlitePool,
 }
 
 impl SqliteWebhookVariableRepo {

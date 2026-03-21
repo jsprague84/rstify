@@ -72,13 +72,16 @@ pub async fn rate_limit_middleware(req: Request<Body>, next: Next) -> Response {
         None => return next.run(req).await,
     };
 
-    // Use X-Forwarded-For (for reverse proxies like Traefik), else peer IP
+    // Use the rightmost (last) X-Forwarded-For value, which is set by the
+    // nearest trusted proxy.  The leftmost value is client-controlled and
+    // trivially spoofable.  Fall back to the peer IP if no header is present.
     let key = req
         .headers()
         .get("x-forwarded-for")
         .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.split(',').next())
+        .and_then(|s| s.rsplit(',').next())
         .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
         .or_else(|| {
             req.extensions()
                 .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()

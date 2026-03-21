@@ -89,10 +89,10 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
         .route("/api/topics/{name}/json", get(topics::topic_json_stream))
         // Stats
         .route("/api/stats", get(stats::get_stats))
-        // Attachments
+        // Attachments (read-only; files are attached at publish time via ntfy headers)
         .route(
             "/api/messages/{id}/attachments",
-            post(attachments::upload_attachment).get(attachments::list_message_attachments),
+            get(attachments::list_message_attachments),
         )
         .route(
             "/api/attachments/{id}",

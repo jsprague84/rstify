@@ -164,49 +164,48 @@ impl MessageRepository for SqliteMessageRepo {
         app_id: Option<i64>,
         limit: i64,
     ) -> Result<Vec<Message>, CoreError> {
-        let mut sql = String::from(
-            "SELECT m.* FROM messages m WHERE (m.application_id IN (SELECT id FROM applications WHERE user_id = ?) OR m.user_id = ?)",
+        let mut qb = sqlx::QueryBuilder::<sqlx::Sqlite>::new(
+            "SELECT m.* FROM messages m WHERE (m.application_id IN (SELECT id FROM applications WHERE user_id = ",
         );
-        let mut binds: Vec<String> = vec![user_id.to_string(), user_id.to_string()];
+        qb.push_bind(user_id);
+        qb.push(") OR m.user_id = ");
+        qb.push_bind(user_id);
+        qb.push(")");
 
         if let Some(q) = query {
-            sql.push_str(
-                " AND m.id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ?)",
-            );
-            binds.push(q.to_string());
+            qb.push(" AND m.id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ");
+            qb.push_bind(q.to_string());
+            qb.push(")");
         }
         if let Some(t) = tag {
-            sql.push_str(" AND m.tags LIKE ?");
-            binds.push(format!("%{}%", t));
+            qb.push(" AND m.tags LIKE ");
+            qb.push_bind(format!("%{t}%"));
         }
         if let Some(pmin) = priority_min {
-            sql.push_str(" AND m.priority >= ?");
-            binds.push(pmin.to_string());
+            qb.push(" AND m.priority >= ");
+            qb.push_bind(pmin);
         }
         if let Some(pmax) = priority_max {
-            sql.push_str(" AND m.priority <= ?");
-            binds.push(pmax.to_string());
+            qb.push(" AND m.priority <= ");
+            qb.push_bind(pmax);
         }
         if let Some(s) = since {
-            sql.push_str(" AND m.created_at >= ?");
-            binds.push(s.to_string());
+            qb.push(" AND m.created_at >= ");
+            qb.push_bind(s.to_string());
         }
         if let Some(u) = until {
-            sql.push_str(" AND m.created_at <= ?");
-            binds.push(u.to_string());
+            qb.push(" AND m.created_at <= ");
+            qb.push_bind(u.to_string());
         }
         if let Some(aid) = app_id {
-            sql.push_str(" AND m.application_id = ?");
-            binds.push(aid.to_string());
+            qb.push(" AND m.application_id = ");
+            qb.push_bind(aid);
         }
-        sql.push_str(" ORDER BY m.created_at DESC LIMIT ?");
-        binds.push(limit.to_string());
+        qb.push(" ORDER BY m.created_at DESC LIMIT ");
+        qb.push_bind(limit);
 
-        let mut q = sqlx::query_as::<_, Message>(&sql);
-        for b in &binds {
-            q = q.bind(b);
-        }
-        q.fetch_all(&self.pool)
+        qb.build_query_as::<Message>()
+            .fetch_all(&self.pool)
             .await
             .map_err(|e| CoreError::Database(e.to_string()))
     }

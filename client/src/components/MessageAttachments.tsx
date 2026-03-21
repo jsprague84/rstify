@@ -1,17 +1,14 @@
 import React from "react";
 import { View, Text, Image, Pressable, StyleSheet, Linking, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import * as DocumentPicker from "expo-document-picker";
 import { useTheme } from "../store/theme";
 import { Colors } from "../theme/colors";
 import type { AttachmentInfo } from "../api";
 import { getApiClient } from "../api";
 
 interface Props {
-  messageId: number;
   attachments?: AttachmentInfo[];
   onDeleteAttachment?: (id: number) => void;
-  onAttachmentAdded?: (att: AttachmentInfo) => void;
 }
 
 function isImage(type?: string): boolean {
@@ -24,35 +21,10 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export const MessageAttachments = React.memo(function MessageAttachments({ messageId, attachments, onDeleteAttachment, onAttachmentAdded }: Props) {
+export const MessageAttachments = React.memo(function MessageAttachments({ attachments, onDeleteAttachment }: Props) {
   const { isDark } = useTheme();
 
-  const handleUpload = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
-      if (result.canceled || !result.assets?.[0]) return;
-      const asset = result.assets[0];
-      const client = getApiClient();
-      const att = await client.uploadAttachment(
-        messageId,
-        asset.uri,
-        asset.name,
-        asset.mimeType || "application/octet-stream",
-      );
-      onAttachmentAdded?.(att);
-    } catch (error) {
-      Alert.alert("Error", error instanceof Error ? error.message : "Upload failed");
-    }
-  };
-
-  if (!attachments || attachments.length === 0) {
-    return (
-      <Pressable onPress={handleUpload} style={styles.attachButton}>
-        <Ionicons name="attach" size={14} color={isDark ? "#60A5FA" : "#4F46E5"} />
-        <Text style={[styles.attachButtonText, isDark && { color: "#60A5FA" }]}>Attach file</Text>
-      </Pressable>
-    );
-  }
+  if (!attachments || attachments.length === 0) return null;
 
   const handleLongPress = (att: AttachmentInfo) => {
     Alert.alert("Delete Attachment", `Delete "${att.name}"?`, [
@@ -120,10 +92,6 @@ export const MessageAttachments = React.memo(function MessageAttachments({ messa
           )}
         </Pressable>
       ))}
-      <Pressable onPress={handleUpload} style={styles.attachButton}>
-        <Ionicons name="attach" size={14} color={isDark ? "#60A5FA" : "#4F46E5"} />
-        <Text style={[styles.attachButtonText, isDark && { color: "#60A5FA" }]}>Attach file</Text>
-      </Pressable>
     </View>
   );
 });
@@ -167,15 +135,5 @@ const styles = StyleSheet.create({
   fileSize: {
     fontSize: 11,
     color: "#9CA3AF",
-  },
-  attachButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingVertical: 4,
-  },
-  attachButtonText: {
-    fontSize: 12,
-    color: "#4F46E5",
   },
 });

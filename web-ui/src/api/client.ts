@@ -200,21 +200,6 @@ export const api = {
   },
 
   // Attachments
-  async uploadAttachment(messageId: number, file: File): Promise<AttachmentInfo> {
-    const form = new FormData();
-    form.append('file', file);
-    const token = getToken();
-    const res = await fetch(`${BASE}/api/messages/${messageId}/attachments`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(body.error || `HTTP ${res.status}`);
-    }
-    return res.json();
-  },
   listAttachments(messageId: number): Promise<AttachmentInfo[]> {
     return request(`/api/messages/${messageId}/attachments`);
   },

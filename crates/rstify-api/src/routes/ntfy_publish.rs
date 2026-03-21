@@ -278,6 +278,13 @@ async fn download_and_attach(
     url: &str,
     filename_override: Option<&str>,
 ) -> Result<AttachmentInfo, ApiError> {
+    // SSRF protection: validate URL does not target internal/private addresses
+    crate::utils::validate_webhook_url(url).map_err(|e| {
+        ApiError::from(rstify_core::error::CoreError::Validation(format!(
+            "Attachment URL blocked: {e}"
+        )))
+    })?;
+
     let response = reqwest::get(url).await.map_err(|e| {
         ApiError::from(rstify_core::error::CoreError::Internal(format!(
             "Failed to download attachment: {e}"

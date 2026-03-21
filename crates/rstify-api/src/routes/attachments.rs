@@ -1,30 +1,26 @@
-use axum::extract::{Multipart, Path, State};
+use axum::extract::{Path, State};
 use axum::http::header;
 use axum::response::IntoResponse;
 use axum::Json;
-use rstify_core::models::{Attachment, AttachmentInfo};
-use rstify_core::repositories::MessageRepository;
+use rstify_core::models::AttachmentInfo;
+use rstify_core::repositories::{ApplicationRepository, MessageRepository};
 use tokio::fs;
-use uuid::Uuid;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
 use crate::utils::sanitize_filename;
 
-#[utoipa::path(
-    post,
-    path = "/api/messages/{id}/attachments",
-    responses((status = 201, body = Attachment))
-)]
-pub async fn upload_attachment(
-    State(state): State<AppState>,
-    _auth: AuthUser,
-    Path(message_id): Path<i64>,
-    mut multipart: Multipart,
-) -> Result<Json<Attachment>, ApiError> {
-    // Verify message exists
-    let _msg = state
+/// Verify the authenticated user owns the message an attachment belongs to.
+async fn verify_attachment_ownership(
+    state: &AppState,
+    auth: &AuthUser,
+    message_id: i64,
+) -> Result<(), ApiError> {
+    if auth.user.is_admin {
+        return Ok(());
+    }
+    let msg = state
         .message_repo
         .find_by_id(message_id)
         .await
@@ -34,81 +30,29 @@ pub async fn upload_attachment(
                 "Message not found".to_string(),
             ))
         })?;
-
-    let upload_dir = &state.upload_dir;
-    fs::create_dir_all(upload_dir).await.map_err(|e| {
-        ApiError::from(rstify_core::error::CoreError::Internal(format!(
-            "Failed to create upload dir: {}",
-            e
-        )))
-    })?;
-
-    let field = multipart
-        .next_field()
-        .await
-        .map_err(|e| {
-            ApiError::from(rstify_core::error::CoreError::Validation(format!(
-                "Multipart error: {}",
-                e
-            )))
-        })?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::Validation(
-                "No file provided".to_string(),
-            ))
-        })?;
-
-    let raw_filename = field.file_name().unwrap_or("attachment").to_string();
-    let filename = sanitize_filename(&raw_filename);
-    let content_type = field.content_type().map(|s| s.to_string());
-    let data = field.bytes().await.map_err(|e| {
-        ApiError::from(rstify_core::error::CoreError::Internal(format!(
-            "Failed to read file: {}",
-            e
-        )))
-    })?;
-
-    if data.len() > state.max_upload_size {
-        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-            format!(
-                "File too large: {} bytes (max {} bytes)",
-                data.len(),
-                state.max_upload_size
-            ),
+    let is_owner = if let Some(app_id) = msg.application_id {
+        state
+            .app_repo
+            .find_by_id(app_id)
+            .await
+            .map_err(ApiError::from)?
+            .map(|app| app.user_id == auth.user.id)
+            .unwrap_or(false)
+    } else {
+        msg.user_id == Some(auth.user.id)
+    };
+    if !is_owner {
+        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+            "Not your message".to_string(),
         )));
     }
-
-    // Use a UUID prefix to avoid collisions and ensure uniqueness
-    let storage_filename = format!("{}_{}", Uuid::new_v4(), filename);
-    let storage_path = format!("{}/{}", upload_dir, storage_filename);
-
-    fs::write(&storage_path, &data).await.map_err(|e| {
-        ApiError::from(rstify_core::error::CoreError::Internal(format!(
-            "Failed to write file: {}",
-            e
-        )))
-    })?;
-
-    let attachment = state
-        .message_repo
-        .create_attachment(
-            message_id,
-            &filename,
-            content_type.as_deref(),
-            data.len() as i64,
-            "local",
-            &storage_path,
-            None,
-        )
-        .await
-        .map_err(ApiError::from)?;
-
-    Ok(Json(attachment))
+    Ok(())
 }
 
 #[utoipa::path(get, path = "/api/attachments/{id}", responses((status = 200)))]
 pub async fn download_attachment(
     State(state): State<AppState>,
+    auth: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, ApiError> {
     let attachment = state
@@ -121,6 +65,8 @@ pub async fn download_attachment(
                 "Attachment not found".to_string(),
             ))
         })?;
+
+    verify_attachment_ownership(&state, &auth, attachment.message_id).await?;
 
     let data = fs::read(&attachment.storage_path).await.map_err(|e| {
         ApiError::from(rstify_core::error::CoreError::Internal(format!(
@@ -152,7 +98,7 @@ pub async fn download_attachment(
 #[utoipa::path(delete, path = "/api/attachments/{id}", responses((status = 204)))]
 pub async fn delete_attachment(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, ApiError> {
     let attachment = state
@@ -165,6 +111,8 @@ pub async fn delete_attachment(
                 "Attachment not found".to_string(),
             ))
         })?;
+
+    verify_attachment_ownership(&state, &auth, attachment.message_id).await?;
 
     // Delete file from disk (ignore errors if file already gone)
     let _ = fs::remove_file(&attachment.storage_path).await;
@@ -186,9 +134,11 @@ pub async fn delete_attachment(
 )]
 pub async fn list_message_attachments(
     State(state): State<AppState>,
-    _auth: AuthUser,
+    auth: AuthUser,
     Path(message_id): Path<i64>,
 ) -> Result<Json<Vec<AttachmentInfo>>, ApiError> {
+    verify_attachment_ownership(&state, &auth, message_id).await?;
+
     let attachments = state
         .message_repo
         .list_attachments_by_message(message_id)
