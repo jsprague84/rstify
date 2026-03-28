@@ -69,7 +69,7 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        className="flex-1 bg-slate-50 dark:bg-surface-dark"
+        className="flex-1 bg-slate-50 dark:bg-surface-bg"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         {/* Header */}

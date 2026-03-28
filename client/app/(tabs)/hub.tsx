@@ -99,8 +99,7 @@ export default function HubScreen() {
         <View className="gap-2">
           <SectionLabel>Account</SectionLabel>
           <View className="gap-1.5">
-            <SettingsRow title="Change Password" href="/hub/settings" />
-            <SettingsRow title="Notifications" href="/hub/settings" />
+            <SettingsRow title="Account & Security" href="/hub/settings" />
             <SettingsRow title="Appearance" value={themeLabel} onPress={cycleTheme} />
           </View>
         </View>
@@ -111,7 +110,6 @@ export default function HubScreen() {
             <SectionLabel>Admin</SectionLabel>
             <View className="gap-1.5">
               <SettingsRow title="User Management" href="/hub/users" />
-              <SettingsRow title="Server Info" href="/hub/settings" />
             </View>
           </View>
         ) : null}

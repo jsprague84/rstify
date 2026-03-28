@@ -51,7 +51,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-surface-dark">
+    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-surface-bg">
       <KeyboardAwareScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }}
         bottomOffset={20}

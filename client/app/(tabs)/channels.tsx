@@ -62,7 +62,7 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        className="flex-1 bg-slate-50 dark:bg-surface-dark"
+        className="flex-1 bg-slate-50 dark:bg-surface-bg"
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View className="flex-row items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-slate-700">
@@ -163,7 +163,7 @@ function CreateFolderModal({ visible, onClose }: CreateFolderModalProps) {
             New Folder
           </Text>
           <TextInput
-            className="bg-slate-50 dark:bg-surface-dark rounded-lg px-3 py-2.5 text-body text-gray-900 dark:text-white border border-slate-200 dark:border-slate-700 mb-4"
+            className="bg-slate-50 dark:bg-surface-bg rounded-lg px-3 py-2.5 text-body text-gray-900 dark:text-white border border-slate-200 dark:border-slate-700 mb-4"
             placeholder="Folder name..."
             placeholderTextColor="#94a3b8"
             value={folderName}
@@ -256,7 +256,7 @@ export default function ChannelsScreen() {
     filteredFolders.reduce((sum, f) => sum + f.filteredTopics.length, 0);
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-surface-dark" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-slate-50 dark:bg-surface-bg" edges={["top"]}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
         <Text className="text-display font-bold text-gray-900 dark:text-white">

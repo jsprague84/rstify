@@ -143,7 +143,7 @@ export default function InboxScreen() {
   if (isLoading && groupedSources.length === 0) {
     return (
       <SafeAreaView
-        className="flex-1 bg-slate-50 dark:bg-surface-dark"
+        className="flex-1 bg-slate-50 dark:bg-surface-bg"
         edges={["top"]}
       >
         {/* Header */}
@@ -167,7 +167,7 @@ export default function InboxScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-slate-50 dark:bg-surface-dark"
+      className="flex-1 bg-slate-50 dark:bg-surface-bg"
       edges={["top"]}
     >
       {/* Header */}
