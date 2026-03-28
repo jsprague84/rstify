@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api/client';
 import type { Application, CreateApplication, UpdateApplication, MessageResponse } from '../api/types';
 import MessageContent from '../components/MessageContent';
+import DataTable from '../components/DataTable';
+import Modal from '../components/Modal';
+import ConfirmDialog from '../components/ConfirmDialog';
+import TokenDisplay from '../components/TokenDisplay';
+import PriorityBadge from '../components/PriorityBadge';
 
 function AppIcon({ app, size = 32 }: { app: Application; size?: number }) {
   const [v] = useState(() => Date.now());
@@ -24,10 +29,6 @@ function AppIcon({ app, size = 32 }: { app: Application; size?: number }) {
     />
   );
 }
-import DataTable from '../components/DataTable';
-import Modal from '../components/Modal';
-import ConfirmDialog from '../components/ConfirmDialog';
-import TokenDisplay from '../components/TokenDisplay';
 
 export default function Applications() {
   const [apps, setApps] = useState<Application[]>([]);
@@ -55,22 +56,34 @@ export default function Applications() {
   useEffect(load, [load]);
 
   const handleCreate = async (data: CreateApplication) => {
-    await api.createApplication(data);
-    setShowCreate(false);
-    load();
+    try {
+      await api.createApplication(data);
+      setShowCreate(false);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create application');
+    }
   };
 
   const handleUpdate = async (id: number, data: UpdateApplication) => {
-    await api.updateApplication(id, data);
-    setEditApp(null);
-    load();
+    try {
+      await api.updateApplication(id, data);
+      setEditApp(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update application');
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteApp) return;
-    await api.deleteApplication(deleteApp.id);
-    setDeleteApp(null);
-    load();
+    try {
+      await api.deleteApplication(deleteApp.id);
+      setDeleteApp(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete application');
+    }
   };
 
   return (
@@ -132,7 +145,7 @@ export default function Applications() {
                   <div className="flex items-center gap-2 mb-1">
                     {m.title && <span className="font-semibold text-gray-900 dark:text-white text-sm">{m.title}</span>}
                     <span className="text-xs text-gray-400">#{m.id}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded ${m.priority >= 8 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : m.priority >= 5 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300'}`}>P{m.priority}</span>
+                    <PriorityBadge priority={m.priority} />
                   </div>
                   <MessageContent message={m.message} extras={m.extras} contentType={m.content_type} />
                   {m.tags && m.tags.length > 0 && (

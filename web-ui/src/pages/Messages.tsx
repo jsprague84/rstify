@@ -5,6 +5,7 @@ import { useMessageStream } from '../hooks/useMessageStream';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
 import { useToast } from '../components/Toast';
+import PriorityBadge from '../components/PriorityBadge';
 
 const PAGE_SIZE = 50;
 
@@ -387,11 +388,3 @@ function getMessageActions(message: MessageResponse): any[] | null {
   return null;
 }
 
-function PriorityBadge({ priority }: { priority: number }) {
-  const colors = priority >= 8
-    ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-    : priority >= 5
-    ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400';
-  return <span className={`text-xs px-2 py-0.5 rounded ${colors}`}>P{priority}</span>;
-}

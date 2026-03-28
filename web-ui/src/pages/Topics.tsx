@@ -6,6 +6,7 @@ import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
 import { useToast } from '../components/Toast';
+import PriorityBadge from '../components/PriorityBadge';
 
 export default function Topics() {
   const { toast } = useToast();
@@ -35,23 +36,35 @@ export default function Topics() {
   useEffect(load, [load]);
 
   const handleCreate = async (data: CreateTopic) => {
-    await api.createTopic(data);
-    setShowCreate(false);
-    load();
+    try {
+      await api.createTopic(data);
+      setShowCreate(false);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create topic');
+    }
   };
 
   const handleUpdate = async (data: Record<string, any>) => {
     if (!editTopic) return;
-    await api.updateTopic(editTopic.name, data);
-    setEditTopic(null);
-    load();
+    try {
+      await api.updateTopic(editTopic.name, data);
+      setEditTopic(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update topic');
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteTopic) return;
-    await api.deleteTopic(deleteTopic.name);
-    setDeleteTopic(null);
-    load();
+    try {
+      await api.deleteTopic(deleteTopic.name);
+      setDeleteTopic(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete topic');
+    }
   };
 
   return (
@@ -309,7 +322,7 @@ function TopicMessagesView({ topic, messages, loading }: {
       <div className="flex items-center gap-2 mb-1">
         {m.title && <span className="font-semibold text-gray-900 dark:text-white text-sm">{m.title}</span>}
         {m.id > 0 && <span className="text-xs text-gray-400">#{m.id}</span>}
-        <span className={`text-xs px-2 py-0.5 rounded ${m.priority >= 8 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : m.priority >= 5 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300'}`}>P{m.priority}</span>
+        <PriorityBadge priority={m.priority} />
         {m.source && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400">via {m.source}</span>}
       </div>
       <MessageContent message={m.message} extras={m.extras} contentType={m.content_type} />
