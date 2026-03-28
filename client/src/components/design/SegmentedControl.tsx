@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import * as Haptics from 'expo-haptics';
 
 interface SegmentedControlProps {
@@ -13,6 +14,9 @@ export function SegmentedControl({
   selectedIndex,
   onChange,
 }: SegmentedControlProps) {
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const handlePress = (index: number) => {
     if (index === selectedIndex) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -24,8 +28,9 @@ export function SegmentedControl({
       {segments.map((label, index) => {
         const isSelected = index === selectedIndex;
         return (
-          <Pressable
+          <TouchableOpacity
             key={label}
+            activeOpacity={0.7}
             onPress={() => handlePress(index)}
             style={{
               flex: 1,
@@ -33,20 +38,23 @@ export function SegmentedControl({
               borderRadius: 6,
               alignItems: 'center',
               justifyContent: 'center',
-              backgroundColor: isSelected ? undefined : 'transparent',
+              backgroundColor: isSelected
+                ? (isDark ? '#1e293b' : '#ffffff')
+                : 'transparent',
             }}
-            className={isSelected ? 'bg-white dark:bg-surface-card shadow-sm' : undefined}
           >
             <Text
-              className={
-                isSelected
-                  ? 'text-body font-medium text-gray-900 dark:text-white'
-                  : 'text-body font-medium text-gray-500 dark:text-gray-400'
-              }
+              style={{
+                fontSize: 14,
+                fontWeight: '500',
+                color: isSelected
+                  ? (isDark ? '#ffffff' : '#111827')
+                  : (isDark ? '#9ca3af' : '#6b7280'),
+              }}
             >
               {label}
             </Text>
-          </Pressable>
+          </TouchableOpacity>
         );
       })}
     </View>
