@@ -28,6 +28,7 @@ export interface Application {
   description: string | null;
   token: string;
   default_priority: number;
+  retention_days: number | null;
   image: string | null;
   created_at: string;
   updated_at: string;
@@ -43,6 +44,7 @@ export interface UpdateApplication {
   name?: string;
   description?: string | null;
   default_priority?: number;
+  retention_days?: number | null;
 }
 
 export interface Client {
@@ -50,12 +52,14 @@ export interface Client {
   user_id: number;
   name: string;
   token: string;
+  scopes: string;
   fcm_token: string | null;
   created_at: string;
 }
 
 export interface CreateClient {
   name: string;
+  scopes?: string[];
 }
 
 export interface Topic {
@@ -199,6 +203,7 @@ export interface WebhookConfig {
   last_delivery_at?: string;
   last_delivery_success?: boolean;
   recent_success_rate?: number;
+  recent_durations?: number[];
 }
 
 export interface CreateWebhookConfig {

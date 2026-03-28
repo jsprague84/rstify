@@ -1,8 +1,11 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import React, { useEffect } from "react";
+import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../store/theme";
-import { Colors } from "../theme/colors";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 
 interface EmptyStateProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -11,33 +14,32 @@ interface EmptyStateProps {
 }
 
 export const EmptyState = React.memo(function EmptyState({ icon, title, subtitle }: EmptyStateProps) {
-  const { isDark } = useTheme();
-  const colors = isDark ? Colors.dark : Colors.light;
+  const scale = useSharedValue(0.8);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 200 });
+    opacity.value = withSpring(1, { damping: 20, stiffness: 200 });
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
 
   return (
-    <View style={styles.container}>
-      <Ionicons name={icon} size={48} color={colors.textTertiary} />
-      <Text style={[styles.title, { color: colors.textTertiary }]}>{title}</Text>
-      {subtitle ? <Text style={[styles.subtitle, { color: colors.textTertiary }]}>{subtitle}</Text> : null}
+    <View className="flex-1 justify-center items-center p-8">
+      <Animated.View style={animatedStyle} className="items-center">
+        <Ionicons name={icon} size={48} color="#94a3b8" />
+        <Text className="text-base font-semibold text-slate-400 dark:text-slate-500 mt-3">
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text className="text-sm text-slate-400 dark:text-slate-500 mt-1 text-center">
+            {subtitle}
+          </Text>
+        ) : null}
+      </Animated.View>
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginTop: 12,
-  },
-  subtitle: {
-    fontSize: 13,
-    marginTop: 4,
-    textAlign: "center",
-  },
 });

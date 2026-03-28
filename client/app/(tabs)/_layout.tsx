@@ -1,67 +1,51 @@
-import React from "react";
-import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../../src/store/theme";
-import { Colors } from "../../src/theme/colors";
+import React from 'react';
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { useColorScheme } from 'nativewind';
 
 export default function TabLayout() {
-  const { isDark } = useTheme();
-  const colors = isDark ? Colors.dark : Colors.light;
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarActiveTintColor: isDark ? '#60a5fa' : '#2563eb',
+        tabBarInactiveTintColor: isDark ? '#64748b' : '#94a3b8',
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          backgroundColor: isDark ? '#0f172a' : '#ffffff',
+          borderTopColor: isDark ? '#1e293b' : '#f3f4f6',
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Messages",
+          title: 'Inbox',
+          tabBarAccessibilityLabel: 'Inbox tab',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles-outline" size={size} color={color} />
+            <Ionicons name="mail" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="topics"
+        name="channels"
         options={{
-          title: "Topics",
+          title: 'Channels',
+          tabBarAccessibilityLabel: 'Channels tab',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="megaphone-outline" size={size} color={color} />
+            <Ionicons name="radio" size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="apps"
+        name="hub"
         options={{
-          title: "Apps",
+          title: 'Hub',
+          tabBarAccessibilityLabel: 'Hub tab',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="apps-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="webhooks"
-        options={{
-          title: "Webhooks",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="link-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Settings",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" size={size} color={color} />
+            <Ionicons name="grid" size={size} color={color} />
           ),
         }}
       />

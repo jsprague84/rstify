@@ -11,6 +11,7 @@ import type {
   CreateTopicMessage,
   CreateTopicPermission,
   CreateAppMessage,
+  CreateUser,
   CreateWebhookConfig,
   HealthResponse,
   LoginRequest,
@@ -31,6 +32,7 @@ import type {
   VersionResponse,
   WebhookConfig,
   WebhookDeliveryLog,
+  WebhookTestResult,
 } from "./types";
 
 export class RstifyApiError extends Error {
@@ -155,6 +157,10 @@ export class RstifyClient {
     await this.request("DELETE", `/user/${id}`);
   }
 
+  async createUser(req: CreateUser): Promise<UserResponse> {
+    return this.request("POST", "/api/user", req);
+  }
+
   // Applications
   async listApplications(): Promise<Application[]> {
     return this.request("GET", "/application");
@@ -246,6 +252,10 @@ export class RstifyClient {
 
   async deleteClient(id: number): Promise<void> {
     await this.request("DELETE", `/client/${id}`);
+  }
+
+  async updateClient(id: number, req: { name?: string; scopes?: string[] }): Promise<Client> {
+    return this.request("PUT", `/api/client/${id}`, req);
   }
 
   async registerFcmToken(clientId: number, fcmToken: string): Promise<Client> {

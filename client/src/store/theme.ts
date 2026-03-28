@@ -1,58 +1,48 @@
 import React from "react";
 import { create } from "zustand";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useColorScheme } from "react-native";
+import { useColorScheme, Appearance } from "react-native";
+import { storage } from "../storage/mmkv";
 
 const THEME_KEY = "rstify_theme_mode";
 
 type ThemeMode = "light" | "dark" | "system";
 
+function resolveActiveTheme(
+  mode: ThemeMode,
+  systemTheme: string | null | undefined,
+): "light" | "dark" {
+  if (mode === "system") {
+    return systemTheme === "dark" ? "dark" : "light";
+  }
+  return mode;
+}
+
 interface ThemeState {
   mode: ThemeMode;
-  isLoading: boolean;
 
   // Derived state - actual theme being used
   activeTheme: "light" | "dark";
 
-  initialize: () => Promise<void>;
-  setMode: (mode: ThemeMode) => Promise<void>;
-  updateActiveTheme: (systemTheme: "light" | "dark" | null) => void;
+  setMode: (mode: ThemeMode) => void;
+  updateActiveTheme: (systemTheme: string | null | undefined) => void;
 }
 
+// Read saved mode synchronously at store creation time
+const savedMode = (storage.getString(THEME_KEY) as ThemeMode | undefined) ?? "system";
+
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  mode: "system",
-  isLoading: true,
-  activeTheme: "light",
+  mode: savedMode,
+  activeTheme: resolveActiveTheme(savedMode, Appearance.getColorScheme()),
 
-  initialize: async () => {
-    try {
-      const savedMode = await AsyncStorage.getItem(THEME_KEY);
-      const mode = (savedMode as ThemeMode) ?? "system";
-      set({ mode, isLoading: false });
-    } catch {
-      set({ mode: "system", isLoading: false });
-    }
+  setMode: (mode: ThemeMode) => {
+    const activeTheme = resolveActiveTheme(mode, Appearance.getColorScheme());
+    storage.set(THEME_KEY, mode);
+    set({ mode, activeTheme });
   },
 
-  setMode: async (mode: ThemeMode) => {
-    try {
-      await AsyncStorage.setItem(THEME_KEY, mode);
-      set({ mode });
-    } catch (error) {
-      console.error("Failed to save theme mode:", error);
-    }
-  },
-
-  updateActiveTheme: (systemTheme: "light" | "dark" | null) => {
+  updateActiveTheme: (systemTheme: string | null | undefined) => {
     const { mode } = get();
-    let activeTheme: "light" | "dark" = "light";
-
-    if (mode === "system") {
-      activeTheme = systemTheme === "dark" ? "dark" : "light";
-    } else {
-      activeTheme = mode;
-    }
-
+    const activeTheme = resolveActiveTheme(mode, systemTheme);
     set({ activeTheme });
   },
 }));
@@ -73,4 +63,3 @@ export function useTheme() {
     activeTheme,
   };
 }
-

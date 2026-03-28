@@ -1,23 +1,25 @@
-import React from "react";
-import { Text, StyleSheet } from "react-native";
+import React, { useMemo } from "react";
+import { Text } from "react-native";
 import Markdown from "react-native-markdown-display";
-import type { MessageResponse } from "../api";
-import { useTheme } from "../store/theme";
+import { useColorScheme } from "nativewind";
+import type { MessageResponse } from "../api/types";
 
 interface MessageContentProps {
   message: MessageResponse;
 }
 
 export const MessageContent = React.memo(function MessageContent({ message }: MessageContentProps) {
-  const { isDark } = useTheme();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === "dark";
 
-  // Check if message should be rendered as markdown
-  const isMarkdown = message.extras?.["client::display"]?.contentType === "text/markdown";
+  // Detect markdown via extras — extras is Record<string, unknown>, cast nested access
+  const display = message.extras?.["client::display"] as { contentType?: string } | undefined;
+  const isMarkdown =
+    display?.contentType === "text/markdown" ||
+    message.content_type === "text/markdown";
 
-  if (isMarkdown) {
-    const markdownStyles = StyleSheet.create({
-      // Text styles
-      body: {
+  const markdownStyles = useMemo(() => ({
+    body: {
         color: isDark ? "#E5E7EB" : "#374151",
         fontSize: 14,
         lineHeight: 20,
@@ -25,54 +27,53 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
       heading1: {
         color: isDark ? "#F9FAFB" : "#111827",
         fontSize: 24,
-        fontWeight: "700",
+        fontWeight: "700" as const,
         marginTop: 8,
         marginBottom: 8,
       },
       heading2: {
         color: isDark ? "#F9FAFB" : "#111827",
         fontSize: 20,
-        fontWeight: "700",
+        fontWeight: "700" as const,
         marginTop: 8,
         marginBottom: 6,
       },
       heading3: {
         color: isDark ? "#F9FAFB" : "#111827",
         fontSize: 18,
-        fontWeight: "600",
+        fontWeight: "600" as const,
         marginTop: 6,
         marginBottom: 6,
       },
       heading4: {
         color: isDark ? "#F3F4F6" : "#1F2937",
         fontSize: 16,
-        fontWeight: "600",
+        fontWeight: "600" as const,
         marginTop: 4,
         marginBottom: 4,
       },
       heading5: {
         color: isDark ? "#F3F4F6" : "#1F2937",
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "600" as const,
         marginTop: 4,
         marginBottom: 4,
       },
       heading6: {
         color: isDark ? "#F3F4F6" : "#1F2937",
         fontSize: 14,
-        fontWeight: "600",
+        fontWeight: "600" as const,
         marginTop: 4,
         marginBottom: 4,
       },
       strong: {
-        fontWeight: "700",
+        fontWeight: "700" as const,
         color: isDark ? "#F9FAFB" : "#111827",
       },
       em: {
-        fontStyle: "italic",
+        fontStyle: "italic" as const,
         color: isDark ? "#E5E7EB" : "#374151",
       },
-      // Code styles
       code_inline: {
         backgroundColor: isDark ? "#1F2937" : "#F3F4F6",
         color: isDark ? "#F472B6" : "#DB2777",
@@ -102,12 +103,10 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
         fontSize: 13,
         color: isDark ? "#E5E7EB" : "#374151",
       },
-      // Link style
       link: {
         color: isDark ? "#60A5FA" : "#2563EB",
-        textDecorationLine: "underline",
+        textDecorationLine: "underline" as const,
       },
-      // Blockquote style
       blockquote: {
         backgroundColor: isDark ? "#1F2937" : "#F9FAFB",
         borderLeftColor: isDark ? "#4B5563" : "#D1D5DB",
@@ -116,16 +115,9 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
         paddingVertical: 8,
         marginVertical: 8,
       },
-      // List styles
-      bullet_list: {
-        marginVertical: 4,
-      },
-      ordered_list: {
-        marginVertical: 4,
-      },
-      list_item: {
-        marginVertical: 2,
-      },
+      bullet_list: { marginVertical: 4 },
+      ordered_list: { marginVertical: 4 },
+      list_item: { marginVertical: 2 },
       bullet_list_icon: {
         color: isDark ? "#9CA3AF" : "#6B7280",
         fontSize: 14,
@@ -136,7 +128,6 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
         fontSize: 14,
         marginRight: 8,
       },
-      // Table styles
       table: {
         borderWidth: 1,
         borderColor: isDark ? "#374151" : "#E5E7EB",
@@ -154,7 +145,7 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
         borderRightWidth: 1,
         borderBottomWidth: 1,
         borderColor: isDark ? "#374151" : "#E5E7EB",
-        fontWeight: "600",
+        fontWeight: "600" as const,
         color: isDark ? "#F9FAFB" : "#111827",
       },
       tr: {
@@ -167,19 +158,18 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
         borderColor: isDark ? "#374151" : "#E5E7EB",
         color: isDark ? "#E5E7EB" : "#374151",
       },
-      // Horizontal rule
       hr: {
         backgroundColor: isDark ? "#374151" : "#E5E7EB",
         height: 1,
         marginVertical: 16,
       },
-      // Paragraph
-      paragraph: {
-        marginTop: 0,
-        marginBottom: 8,
-      },
-    });
+    paragraph: {
+      marginTop: 0,
+      marginBottom: 8,
+    },
+  }), [isDark]);
 
+  if (isMarkdown) {
     return (
       <Markdown style={markdownStyles}>
         {message.message}
@@ -189,20 +179,8 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
 
   // Plain text rendering
   return (
-    <Text style={[styles.body, isDark && styles.bodyDark]}>
+    <Text className="text-body text-slate-700 dark:text-slate-300 my-1">
       {message.message}
     </Text>
   );
-});
-
-const styles = StyleSheet.create({
-  body: {
-    fontSize: 14,
-    color: "#374151",
-    lineHeight: 20,
-    marginVertical: 4,
-  },
-  bodyDark: {
-    color: "#E5E7EB",
-  },
 });
