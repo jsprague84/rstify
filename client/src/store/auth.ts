@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import * as SecureStore from "expo-secure-store";
 import { getApiClient, initApiClient } from "../api";
 import type { UserResponse } from "../api";
+import { secureStorage } from "../storage/mmkv";
 import { useApplicationsStore } from "./applications";
 
 const TOKEN_KEY = "rstify_token";
@@ -17,8 +17,8 @@ interface AuthState {
 
   initialize: () => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  setServerUrl: (url: string) => Promise<void>;
+  logout: () => void;
+  setServerUrl: (url: string) => void;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -31,8 +31,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialize: async () => {
     try {
       const serverUrl =
-        (await SecureStore.getItemAsync(SERVER_URL_KEY)) ?? DEFAULT_SERVER_URL;
-      const token = await SecureStore.getItemAsync(TOKEN_KEY);
+        secureStorage.getString(SERVER_URL_KEY) ?? DEFAULT_SERVER_URL;
+      const token = secureStorage.getString(TOKEN_KEY) ?? null;
 
       const api = initApiClient(serverUrl);
 
@@ -52,7 +52,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           return;
         } catch {
           // Token expired or invalid
-          await SecureStore.deleteItemAsync(TOKEN_KEY);
+          secureStorage.remove(TOKEN_KEY);
         }
       }
 
@@ -67,7 +67,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const res = await api.login({ username, password });
     api.setToken(res.token);
 
-    await SecureStore.setItemAsync(TOKEN_KEY, res.token);
+    secureStorage.set(TOKEN_KEY, res.token);
 
     const user = await api.currentUser();
 
@@ -80,8 +80,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     useApplicationsStore.getState().fetchApplications();
   },
 
-  logout: async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
+  logout: () => {
+    secureStorage.remove(TOKEN_KEY);
     getApiClient().setToken(null);
     useApplicationsStore.getState().clear();
     set({
@@ -91,15 +91,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
-  setServerUrl: async (url: string) => {
+  setServerUrl: (url: string) => {
     const cleaned = url.replace(/\/$/, "");
-    await SecureStore.setItemAsync(SERVER_URL_KEY, cleaned);
+    secureStorage.set(SERVER_URL_KEY, cleaned);
     initApiClient(cleaned);
 
     // If authenticated, need to re-login
     const { token } = get();
     if (token) {
-      await get().logout();
+      get().logout();
     }
 
     set({ serverUrl: cleaned });

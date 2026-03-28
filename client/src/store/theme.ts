@@ -1,7 +1,7 @@
 import React from "react";
 import { create } from "zustand";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColorScheme } from "react-native";
+import { storage } from "../storage/mmkv";
 
 const THEME_KEY = "rstify_theme_mode";
 
@@ -9,41 +9,27 @@ type ThemeMode = "light" | "dark" | "system";
 
 interface ThemeState {
   mode: ThemeMode;
-  isLoading: boolean;
 
   // Derived state - actual theme being used
   activeTheme: "light" | "dark";
 
-  initialize: () => Promise<void>;
-  setMode: (mode: ThemeMode) => Promise<void>;
-  updateActiveTheme: (systemTheme: "light" | "dark" | null) => void;
+  setMode: (mode: ThemeMode) => void;
+  updateActiveTheme: (systemTheme: string | null | undefined) => void;
 }
 
+// Read saved mode synchronously at store creation time
+const savedMode = storage.getString(THEME_KEY) as ThemeMode | undefined;
+
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  mode: "system",
-  isLoading: true,
+  mode: savedMode ?? "system",
   activeTheme: "light",
 
-  initialize: async () => {
-    try {
-      const savedMode = await AsyncStorage.getItem(THEME_KEY);
-      const mode = (savedMode as ThemeMode) ?? "system";
-      set({ mode, isLoading: false });
-    } catch {
-      set({ mode: "system", isLoading: false });
-    }
+  setMode: (mode: ThemeMode) => {
+    storage.set(THEME_KEY, mode);
+    set({ mode });
   },
 
-  setMode: async (mode: ThemeMode) => {
-    try {
-      await AsyncStorage.setItem(THEME_KEY, mode);
-      set({ mode });
-    } catch (error) {
-      console.error("Failed to save theme mode:", error);
-    }
-  },
-
-  updateActiveTheme: (systemTheme: "light" | "dark" | null) => {
+  updateActiveTheme: (systemTheme: string | null | undefined) => {
     const { mode } = get();
     let activeTheme: "light" | "dark" = "light";
 
@@ -73,4 +59,3 @@ export function useTheme() {
     activeTheme,
   };
 }
-
