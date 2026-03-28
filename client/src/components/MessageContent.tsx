@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Text } from "react-native";
 import Markdown from "react-native-markdown-display";
 import { useColorScheme } from "nativewind";
@@ -16,9 +16,8 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
   const display = message.extras?.["client::display"] as { contentType?: string } | undefined;
   const isMarkdown = display?.contentType === "text/markdown";
 
-  if (isMarkdown) {
-    const markdownStyles = {
-      body: {
+  const markdownStyles = useMemo(() => ({
+    body: {
         color: isDark ? "#E5E7EB" : "#374151",
         fontSize: 14,
         lineHeight: 20,
@@ -162,12 +161,13 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
         height: 1,
         marginVertical: 16,
       },
-      paragraph: {
-        marginTop: 0,
-        marginBottom: 8,
-      },
-    };
+    paragraph: {
+      marginTop: 0,
+      marginBottom: 8,
+    },
+  }), [isDark]);
 
+  if (isMarkdown) {
     return (
       <Markdown style={markdownStyles}>
         {message.message}

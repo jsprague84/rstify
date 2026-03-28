@@ -42,6 +42,7 @@ export function SwipeableRow({ onDelete, onArchive, children }: SwipeableRowProp
   };
 
   const slideOut = (direction: 'left' | 'right', callback: () => void) => {
+    'worklet';
     const target = direction === 'left' ? -400 : 400;
     translateX.value = withTiming(target, { duration: 250 });
     rowOpacity.value = withTiming(0, { duration: 200 });
@@ -62,9 +63,9 @@ export function SwipeableRow({ onDelete, onArchive, children }: SwipeableRowProp
     })
     .onEnd((event) => {
       if (event.translationX < -SWIPE_THRESHOLD && onDelete) {
-        runOnJS(slideOut)('left', triggerDelete);
+        slideOut('left', triggerDelete);
       } else if (event.translationX > SWIPE_THRESHOLD && onArchive) {
-        runOnJS(slideOut)('right', triggerArchive);
+        slideOut('right', triggerArchive);
       } else {
         // Spring back
         translateX.value = withSpring(0, { damping: 20, stiffness: 300 });

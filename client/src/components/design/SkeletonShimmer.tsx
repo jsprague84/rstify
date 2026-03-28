@@ -5,6 +5,7 @@ import Animated, {
   useAnimatedStyle,
   withRepeat,
   withTiming,
+  cancelAnimation,
 } from 'react-native-reanimated';
 
 export interface SkeletonShimmerProps {
@@ -28,6 +29,7 @@ export function SkeletonShimmer({
       -1,
       true,
     );
+    return () => cancelAnimation(opacity);
   }, [opacity]);
 
   const animatedStyle = useAnimatedStyle(() => ({
