@@ -138,6 +138,13 @@ impl TopicRepository for SqliteTopicRepo {
     }
 
     async fn delete(&self, id: i64) -> Result<(), CoreError> {
+        // Nullify webhook references before deleting (FK has no ON DELETE SET NULL)
+        sqlx::query("UPDATE webhook_configs SET target_topic_id = NULL WHERE target_topic_id = ?")
+            .bind(id)
+            .execute(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))?;
+
         let result = sqlx::query("DELETE FROM topics WHERE id = ?")
             .bind(id)
             .execute(&self.pool)
