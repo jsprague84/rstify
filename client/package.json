@@ -12,6 +12,7 @@
     "@expo/vector-icons": "^15.0.3",
     "@legendapp/list": "^2.0.19",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-menu/menu": "^2.0.0",
     "expo": "~55.0.0",
     "expo-clipboard": "~55.0.0",
     "expo-constants": "~55.0.0",
