@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -35,6 +36,8 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [everyoneRead, setEveryoneRead] = useState(false);
+  const [everyoneWrite, setEveryoneWrite] = useState(false);
 
   const handleCreate = async () => {
     const trimmedName = name.trim();
@@ -46,9 +49,13 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
       await getApiClient().createTopic({
         name: trimmedName,
         description: description.trim() || undefined,
+        everyone_read: everyoneRead,
+        everyone_write: everyoneWrite,
       });
       setName("");
       setDescription("");
+      setEveryoneRead(false);
+      setEveryoneWrite(false);
       onCreated();
       onClose();
     } catch (e) {
@@ -124,6 +131,17 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
               returnKeyType="done"
               onSubmitEditing={handleCreate}
             />
+          </View>
+          <View className="bg-white dark:bg-surface-card rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <View className="flex-row items-center justify-between p-3">
+              <Text className="text-body text-gray-900 dark:text-white">Everyone can read</Text>
+              <Switch value={everyoneRead} onValueChange={setEveryoneRead} />
+            </View>
+            <View className="h-px bg-slate-100 dark:bg-slate-700" />
+            <View className="flex-row items-center justify-between p-3">
+              <Text className="text-body text-gray-900 dark:text-white">Everyone can write</Text>
+              <Switch value={everyoneWrite} onValueChange={setEveryoneWrite} />
+            </View>
           </View>
           {error ? (
             <Text className="text-sm text-red-500 dark:text-red-400">{error}</Text>
