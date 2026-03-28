@@ -1,7 +1,9 @@
+use axum::body::Bytes;
 use axum::extract::{Path, Query, State};
 use axum::http::HeaderMap;
 use axum::Json;
 use rstify_auth::tokens::generate_webhook_token;
+use rstify_core::error::CoreError;
 use rstify_core::models::{
     CreateWebhookConfig, MessageResponse, UpdateWebhookConfig, WebhookConfig, WebhookDeliveryLog,
 };
@@ -323,11 +325,17 @@ pub async fn delete_webhook(
 }
 
 /// POST /api/wh/{token} - Receive incoming webhook
-#[utoipa::path(post, path = "/api/wh/{token}", responses((status = 200)))]
+#[utoipa::path(
+    post,
+    path = "/api/wh/{token}",
+    request_body(content = inline(String), content_type = "application/json"),
+    responses((status = 200))
+)]
 pub async fn receive_webhook(
     State(state): State<AppState>,
     Path(token): Path<String>,
-    Json(payload): Json<serde_json::Value>,
+    headers: HeaderMap,
+    body: Bytes,
 ) -> Result<Json<serde_json::Value>, ApiError> {
     let config = state
         .message_repo
@@ -335,59 +343,83 @@ pub async fn receive_webhook(
         .await
         .map_err(ApiError::from)?
         .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
+            ApiError::from(CoreError::NotFound(
                 "Webhook not found".to_string(),
             ))
         })?;
 
     if !config.enabled {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
+        return Err(ApiError::from(CoreError::Forbidden(
             "Webhook is disabled".to_string(),
         )));
     }
 
+    let payload: serde_json::Value = serde_json::from_slice(&body)
+        .map_err(|_| ApiError::from(CoreError::Validation("Invalid JSON body".to_string())))?;
+
     // Extract message from payload based on webhook type
-    let (title, message) = match config.webhook_type.as_str() {
-        "github" => {
-            let action = payload
-                .get("action")
-                .and_then(|v| v.as_str())
-                .unwrap_or("event");
-            let repo = payload
-                .get("repository")
-                .and_then(|r| r.get("full_name"))
-                .and_then(|v| v.as_str())
+    let (title, message, priority, click_url, tags_json, extras_json) = match config.webhook_type.as_str() {
+        "forgejo" | "gitea" => {
+            if let Some(ref secret) = config.secret {
+                if !secret.is_empty() {
+                    let sig = headers.get("X-Gitea-Signature")
+                        .or_else(|| headers.get("X-Forgejo-Signature"))
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("");
+                    if sig.is_empty() || !crate::webhooks::signature::verify_gitea_signature(secret, &body, sig) {
+                        return Err(ApiError::from(CoreError::Forbidden("Invalid webhook signature".to_string())));
+                    }
+                }
+            }
+            let event = headers.get("X-Gitea-Event")
+                .or_else(|| headers.get("X-Forgejo-Event"))
+                .and_then(|v| v.to_str().ok())
                 .unwrap_or("unknown");
-            (
-                Some(format!("GitHub: {} on {}", action, repo)),
-                serde_json::to_string_pretty(&payload).unwrap_or_default(),
-            )
+            let output = crate::webhooks::forgejo::parse_forgejo_event(event, &body);
+            let tags = output.tags_json();
+            let extras = output.extras_json();
+            (Some(output.title), output.message, output.priority,
+             output.click_url, tags, extras)
+        }
+        "github" => {
+            if let Some(ref secret) = config.secret {
+                if !secret.is_empty() {
+                    let sig = headers.get("X-Hub-Signature-256")
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("");
+                    if sig.is_empty() || !crate::webhooks::signature::verify_github_signature(secret, &body, sig) {
+                        return Err(ApiError::from(CoreError::Forbidden("Invalid webhook signature".to_string())));
+                    }
+                }
+            }
+            let event = headers.get("X-GitHub-Event")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("unknown");
+            let output = crate::webhooks::github::parse_github_event(event, &body);
+            let tags = output.tags_json();
+            let extras = output.extras_json();
+            (Some(output.title), output.message, output.priority,
+             output.click_url, tags, extras)
         }
         "grafana" => {
-            let title = payload
-                .get("title")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Grafana Alert")
-                .to_string();
-            let message = payload
-                .get("message")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string();
-            (Some(title), message)
+            let title = payload.get("title").and_then(|v| v.as_str()).map(String::from);
+            let message = payload.get("message").and_then(|v| v.as_str()).unwrap_or("Grafana alert").to_string();
+            (title, message, 5i32, None, None, None)
         }
         _ => {
-            let title = payload
-                .get("title")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
-            let message = payload
-                .get("message")
-                .and_then(|v| v.as_str())
-                .unwrap_or(&serde_json::to_string_pretty(&payload).unwrap_or_default())
-                .to_string();
-            (title, message)
+            let title = payload.get("title").and_then(|v| v.as_str()).map(String::from);
+            let message = payload.get("message").and_then(|v| v.as_str())
+                .or_else(|| payload.get("text").and_then(|v| v.as_str()))
+                .unwrap_or("Webhook received").to_string();
+            (title, message, 5i32, None, None, None)
         }
+    };
+
+    // Determine content_type from extras
+    let content_type = if extras_json.is_some() {
+        Some("text/markdown")
+    } else {
+        None
     };
 
     // Create message targeting topic or application
@@ -399,13 +431,13 @@ pub async fn receive_webhook(
             Some(config.user_id),
             title.as_deref(),
             &message,
-            5,
+            priority,
+            tags_json.as_deref(),
+            click_url.as_deref(),
             None,
             None,
-            None,
-            None,
-            None,
-            None,
+            extras_json.as_deref(),
+            content_type,
             None,
             Some("webhook"),
         )
