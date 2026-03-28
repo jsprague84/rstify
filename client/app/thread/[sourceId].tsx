@@ -1,5 +1,5 @@
-import React, { useMemo } from "react";
-import { View, Text, Pressable } from "react-native";
+import React, { useMemo, useState, useEffect } from "react";
+import { View, Text, Pressable, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,7 +7,9 @@ import { LegendList } from "@legendapp/list";
 import { MessageBubble } from "../../src/components/inbox/MessageBubble";
 import { MessageIcon } from "../../src/components/MessageIcon";
 import { EmptyState } from "../../src/components/EmptyState";
+import { SwipeableRow } from "../../src/components/design/SwipeableRow";
 import { useMessagesStore, useApplicationsStore } from "../../src/store";
+import { getApiClient } from "../../src/api";
 import type { MessageResponse } from "../../src/api";
 
 export default function ThreadScreen() {
@@ -18,13 +20,31 @@ export default function ThreadScreen() {
 
   const sourceMeta = useMessagesStore((s) => s.sourceMeta);
   const groupedMessages = useMessagesStore((s) => s.groupedMessages);
-  const messages = useMemo(
-    () => groupedMessages.get(decodedSourceId) ?? [],
-    [groupedMessages, decodedSourceId],
-  );
+  const deleteMessage = useMessagesStore((s) => s.deleteMessage);
   const getApp = useApplicationsStore((s) => s.getApp);
   const getIconUrl = useApplicationsStore((s) => s.getIconUrl);
   const meta = sourceMeta.get(decodedSourceId);
+
+  const [serverMessages, setServerMessages] = useState<MessageResponse[]>([]);
+  const [isFetching, setIsFetching] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    const storeMessages = groupedMessages.get(decodedSourceId);
+    if (storeMessages && storeMessages.length > 0) return;
+    if (decodedSourceId.startsWith("topic:")) {
+      const topicName = decodedSourceId.replace("topic:", "");
+      setIsFetching(true);
+      getApiClient()
+        .getTopicMessages(topicName, 100, 0)
+        .then(setServerMessages)
+        .catch(() => {})
+        .finally(() => setIsFetching(false));
+    }
+  }, [decodedSourceId, groupedMessages]);
+
+  const storeMessages = groupedMessages.get(decodedSourceId);
+  const messages = storeMessages && storeMessages.length > 0 ? storeMessages : serverMessages;
 
   // Resolve source info from meta or by parsing the sourceId
   let sourceName = meta?.name ?? decodedSourceId;
@@ -45,6 +65,17 @@ export default function ThreadScreen() {
       iconUrl = getIconUrl(appId);
     }
   }
+
+  const handleRefresh = async () => {
+    if (!decodedSourceId.startsWith("topic:")) return;
+    const topicName = decodedSourceId.replace("topic:", "");
+    setRefreshing(true);
+    try {
+      const msgs = await getApiClient().getTopicMessages(topicName, 100, 0);
+      setServerMessages(msgs);
+    } catch {}
+    setRefreshing(false);
+  };
 
   return (
     <SafeAreaView
@@ -77,7 +108,9 @@ export default function ThreadScreen() {
         data={messages}
         keyExtractor={(item: MessageResponse) => String(item.id)}
         renderItem={({ item }: { item: MessageResponse }) => (
-          <MessageBubble message={item} />
+          <SwipeableRow onDelete={() => deleteMessage(item.id)}>
+            <MessageBubble message={item} />
+          </SwipeableRow>
         )}
         recycleItems
         contentContainerStyle={{
@@ -85,6 +118,9 @@ export default function ThreadScreen() {
           paddingBottom: 32,
           flexGrow: 1,
         }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
         ListEmptyComponent={
           <EmptyState
             icon="chatbubble-outline"
