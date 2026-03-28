@@ -28,6 +28,13 @@ export default function UsersScreen() {
   const [permissions, setPermissions] = useState<TopicPermission[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Create user
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserAdmin, setNewUserAdmin] = useState(false);
+
   // Permission creation
   const [showCreatePerm, setShowCreatePerm] = useState(false);
   const [newPermUserId, setNewPermUserId] = useState('');
@@ -107,6 +114,31 @@ export default function UsersScreen() {
     ]);
   };
 
+  const handleCreateUser = async () => {
+    if (!newUsername.trim() || !newUserPassword.trim()) {
+      Alert.alert('Error', 'Username and password are required');
+      return;
+    }
+    if (newUserPassword.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
+    try {
+      const api = getApiClient();
+      await api.createUser({
+        username: newUsername.trim(),
+        password: newUserPassword,
+        email: newUserEmail.trim() || undefined,
+        is_admin: newUserAdmin,
+      });
+      setNewUsername(''); setNewUserPassword(''); setNewUserEmail(''); setNewUserAdmin(false);
+      setShowCreateUser(false);
+      fetchData();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create user');
+    }
+  };
+
   const handleCreatePermission = async () => {
     const userId = parseInt(newPermUserId, 10);
     if (isNaN(userId) || !newPermPattern.trim()) {
@@ -130,6 +162,11 @@ export default function UsersScreen() {
     }
   };
 
+  const resolveUsername = (userId: number): string => {
+    const found = users.find((u) => u.id === userId);
+    return found?.username ?? `User #${userId}`;
+  };
+
   // Redirect non-admins
   if (!user?.is_admin) {
     return (
@@ -141,7 +178,7 @@ export default function UsersScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-light-bg dark:bg-surface-bg" edges={['top']}>
-      <HubScreenHeader title="User Management" />
+      <HubScreenHeader title="User Management" onAdd={() => setShowCreateUser(true)} />
 
       <FlatList
         data={[{ key: 'content' }]}
@@ -221,7 +258,7 @@ export default function UsersScreen() {
                   >
                     <View className="flex-1">
                       <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
-                        User #{p.user_id} -- {p.topic_pattern}
+                        {resolveUsername(p.user_id)} -- {p.topic_pattern}
                       </Text>
                       <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         {p.can_read ? 'Read' : ''}{p.can_read && p.can_write ? ' + ' : ''}{p.can_write ? 'Write' : ''}
@@ -241,14 +278,23 @@ export default function UsersScreen() {
 
       {/* Create Permission Modal */}
       <FormModal visible={showCreatePerm} onClose={() => setShowCreatePerm(false)} title="New Permission">
-        <TextInput
-          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-          placeholder="User ID"
-          placeholderTextColor="#9ca3af"
-          value={newPermUserId}
-          onChangeText={setNewPermUserId}
-          keyboardType="numeric"
-        />
+        <View className="gap-1">
+          <Text className="text-sm text-slate-500 dark:text-slate-400">User</Text>
+          <View className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
+            {users.filter((u) => u.id !== user?.id).map((u) => (
+              <Pressable
+                key={u.id}
+                className={`flex-row items-center justify-between p-3 ${newPermUserId === String(u.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                onPress={() => setNewPermUserId(String(u.id))}
+              >
+                <Text className="text-base text-slate-900 dark:text-slate-100">{u.username}</Text>
+                {newPermUserId === String(u.id) && (
+                  <Ionicons name="checkmark" size={18} color="#3b82f6" />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        </View>
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Topic pattern (e.g. alerts.*)"
@@ -275,6 +321,54 @@ export default function UsersScreen() {
           <AnimatedPressable
             className="flex-1 p-3.5 rounded-lg bg-primary items-center"
             onPress={handleCreatePermission}
+          >
+            <Text className="font-semibold text-white">Create</Text>
+          </AnimatedPressable>
+        </View>
+      </FormModal>
+      {/* Create User Modal */}
+      <FormModal visible={showCreateUser} onClose={() => setShowCreateUser(false)} title="New User">
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Username"
+          placeholderTextColor="#9ca3af"
+          value={newUsername}
+          onChangeText={setNewUsername}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Password (min 8 characters)"
+          placeholderTextColor="#9ca3af"
+          value={newUserPassword}
+          onChangeText={setNewUserPassword}
+          secureTextEntry
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Email (optional)"
+          placeholderTextColor="#9ca3af"
+          value={newUserEmail}
+          onChangeText={setNewUserEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <View className="flex-row justify-between items-center py-1">
+          <Text className="text-base text-slate-900 dark:text-slate-100">Admin</Text>
+          <Switch value={newUserAdmin} onValueChange={setNewUserAdmin} />
+        </View>
+        <View className="flex-row gap-3 mt-1">
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
+            onPress={() => setShowCreateUser(false)}
+          >
+            <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-primary items-center"
+            onPress={handleCreateUser}
           >
             <Text className="font-semibold text-white">Create</Text>
           </AnimatedPressable>
