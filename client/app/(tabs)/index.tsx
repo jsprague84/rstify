@@ -218,6 +218,8 @@ export default function InboxScreen() {
               onRefresh={fetchMessages}
             />
           }
+          onEndReached={fetchOlderMessages}
+          onEndReachedThreshold={0.3}
           ListEmptyComponent={
             <EmptyState
               icon="mail-open-outline"
