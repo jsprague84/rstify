@@ -235,6 +235,7 @@ export default function InboxScreen() {
           renderItem={({ item }: { item: MessageResponse }) => (
             <StreamMessageCard message={item} />
           )}
+          recycleItems
           contentContainerStyle={{
             paddingTop: 8,
             paddingBottom: 32,
