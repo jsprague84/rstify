@@ -43,7 +43,6 @@ export function SkeletonShimmer({
           width: width as number,
           height,
           borderRadius,
-          backgroundColor: undefined, // let NativeWind className handle it
         },
       ]}
     />

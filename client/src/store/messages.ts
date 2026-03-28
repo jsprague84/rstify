@@ -184,18 +184,16 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     set({ isLoadingMore: true });
     try {
       const api = getApiClient();
-      const result = await api.listMessages(PAGE_SIZE, 0);
-      // Filter to only messages older than our oldest
-      const older = result.messages.filter((m) => m.id < oldestId);
+      const result = await api.listMessages(PAGE_SIZE, oldestId);
 
-      if (older.length === 0) {
+      if (result.messages.length === 0) {
         set({ isLoadingMore: false, hasMore: false });
         return;
       }
 
       // Merge older messages into existing groups
       const groups = new Map(get().groupedMessages);
-      for (const msg of older) {
+      for (const msg of result.messages) {
         const sourceId = getSourceId(msg);
         const existing = groups.get(sourceId) ?? [];
         // Deduplicate
@@ -221,7 +219,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         groupedMessages: groups,
         sourceMeta: meta,
         isLoadingMore: false,
-        hasMore: older.length >= PAGE_SIZE,
+        hasMore: result.messages.length >= PAGE_SIZE,
       });
       debouncedSaveToCache(get());
     } catch {
@@ -289,10 +287,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
     const messages = state.groupedMessages.get(sourceId);
     if (!messages || messages.length === 0) return;
 
-    const api = getApiClient();
-    // Delete all messages in the group from the server
-    await Promise.all(messages.map((m) => api.deleteMessage(m.id)));
-
+    // Optimistically remove from UI immediately
     set((prev) => {
       const groups = new Map(prev.groupedMessages);
       const meta = new Map(prev.sourceMeta);
@@ -301,6 +296,10 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       return { groupedMessages: groups, sourceMeta: meta };
     });
     debouncedSaveToCache(get());
+
+    // Fire server deletes in the background; failures are ignored
+    const api = getApiClient();
+    await Promise.allSettled(messages.map((m) => api.deleteMessage(m.id)));
   },
 
   deleteAllMessages: async () => {
