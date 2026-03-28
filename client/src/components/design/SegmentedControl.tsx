@@ -27,18 +27,22 @@ export function SegmentedControl({
           <Pressable
             key={label}
             onPress={() => handlePress(index)}
-            className={`flex-1 py-1.5 rounded-md items-center justify-center ${
-              isSelected
-                ? 'bg-white dark:bg-surface-card shadow-sm'
-                : 'bg-transparent'
-            }`}
+            style={{
+              flex: 1,
+              paddingVertical: 6,
+              borderRadius: 6,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: isSelected ? undefined : 'transparent',
+            }}
+            className={isSelected ? 'bg-white dark:bg-surface-card shadow-sm' : undefined}
           >
             <Text
-              className={`text-body font-medium ${
+              className={
                 isSelected
-                  ? 'text-gray-900 dark:text-white'
-                  : 'text-gray-500 dark:text-gray-400'
-              }`}
+                  ? 'text-body font-medium text-gray-900 dark:text-white'
+                  : 'text-body font-medium text-gray-500 dark:text-gray-400'
+              }
             >
               {label}
             </Text>
