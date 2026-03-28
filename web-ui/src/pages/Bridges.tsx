@@ -4,6 +4,7 @@ import type { MqttBridge, MqttStatus, CreateMqttBridge, UpdateMqttBridge } from 
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { parseJsonArray } from '../utils/webhookHelpers';
 
 export default function Bridges() {
   const [bridges, setBridges] = useState<MqttBridge[]>([]);
@@ -37,11 +38,6 @@ export default function Bridges() {
     await api.deleteBridge(deleteBridge.id);
     setDeleteBridge(null);
     load();
-  };
-
-  const parseTopics = (json: string | undefined): string[] => {
-    if (!json) return [];
-    try { return JSON.parse(json); } catch { return []; }
   };
 
   return (
@@ -95,7 +91,7 @@ export default function Bridges() {
           }},
           { key: 'subscribe_topics', header: 'Subscribe', render: b => (
             <span className="text-xs text-gray-600 dark:text-gray-400">
-              {parseTopics(b.subscribe_topics).join(', ') || '—'}
+              {parseJsonArray(b.subscribe_topics).join(', ') || '—'}
             </span>
           )},
           { key: 'qos', header: 'QoS', render: b => `${b.qos ?? 0}` },
@@ -146,19 +142,14 @@ function BridgeFormModal({
   onClose: () => void;
   onSubmit: (data: CreateMqttBridge | UpdateMqttBridge) => void;
 }) {
-  const parseTopics = (json: string | undefined): string[] => {
-    if (!json) return [];
-    try { return JSON.parse(json); } catch { return []; }
-  };
-
   const [name, setName] = useState(bridge?.name ?? '');
   const [remoteUrl, setRemoteUrl] = useState(bridge?.remote_url ?? '');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [qos, setQos] = useState(bridge?.qos ?? 0);
   const [topicPrefix, setTopicPrefix] = useState(bridge?.topic_prefix ?? '');
-  const [subTopics, setSubTopics] = useState<string[]>(parseTopics(bridge?.subscribe_topics));
-  const [pubTopics, setPubTopics] = useState<string[]>(parseTopics(bridge?.publish_topics));
+  const [subTopics, setSubTopics] = useState<string[]>(parseJsonArray(bridge?.subscribe_topics));
+  const [pubTopics, setPubTopics] = useState<string[]>(parseJsonArray(bridge?.publish_topics));
   const [autoCreate, setAutoCreate] = useState(bridge?.auto_create_topics ?? true);
   const [enabled, setEnabled] = useState(bridge?.enabled ?? true);
   const [newSubTopic, setNewSubTopic] = useState('');

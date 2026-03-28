@@ -7,6 +7,7 @@ import Sparkline from '../components/Sparkline';
 import CodeGenerator from '../components/CodeGenerator';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
+import { parseWebhookHeaders } from '../utils/webhookHelpers';
 
 export default function Webhooks() {
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
@@ -61,7 +62,7 @@ export default function Webhooks() {
         target_application_id: w.target_application_id ?? undefined,
         target_url: w.target_url ?? undefined,
         http_method: w.http_method,
-        headers: w.headers ? JSON.parse(w.headers) : undefined,
+        headers: Object.keys(parseWebhookHeaders(w.headers)).length > 0 ? parseWebhookHeaders(w.headers) : undefined,
         body_template: w.body_template ?? undefined,
         max_retries: w.max_retries,
         retry_delay_secs: w.retry_delay_secs,
@@ -339,7 +340,7 @@ export default function Webhooks() {
           <CodeGenerator
             url={codeWh.target_url}
             method={codeWh.http_method}
-            headers={codeWh.headers ? (() => { try { return JSON.parse(codeWh.headers!); } catch { return {}; } })() : {}}
+            headers={parseWebhookHeaders(codeWh?.headers)}
             body={codeWh.body_template || '{"title":"Test","message":"Hello"}'}
           />
         </Modal>
