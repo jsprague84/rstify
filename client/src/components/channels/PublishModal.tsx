@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import { getApiClient } from "../../api";
 import { getPriorityColorHex } from "../../utils/priority";
@@ -68,10 +69,11 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
-        className="flex-1 bg-slate-50 dark:bg-surface-bg"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
+      <SafeAreaView className="flex-1 bg-slate-50 dark:bg-surface-bg" edges={["top"]}>
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         {/* Header */}
         <View className="flex-row items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-slate-700">
           <Pressable onPress={onClose} hitSlop={12}>
@@ -178,7 +180,8 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
             </Text>
           </View>
         </ScrollView>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 }

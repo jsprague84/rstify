@@ -14,7 +14,6 @@ import {
 import * as Haptics from 'expo-haptics';
 
 const SWIPE_THRESHOLD = 80;
-const ITEM_HEIGHT = 80; // approximate, animates out on trigger
 
 interface SwipeableRowProps {
   onDelete?: () => void;
@@ -24,7 +23,8 @@ interface SwipeableRowProps {
 
 export function SwipeableRow({ onDelete, onArchive, children }: SwipeableRowProps) {
   const translateX = useSharedValue(0);
-  const rowHeight = useSharedValue(ITEM_HEIGHT);
+  const isCollapsing = useSharedValue(false);
+  const measuredHeight = useSharedValue(0);
   const rowOpacity = useSharedValue(1);
 
   const triggerHaptic = () => {
@@ -43,10 +43,11 @@ export function SwipeableRow({ onDelete, onArchive, children }: SwipeableRowProp
 
   const slideOut = (direction: 'left' | 'right', callback: () => void) => {
     'worklet';
+    isCollapsing.value = true;
     const target = direction === 'left' ? -400 : 400;
     translateX.value = withTiming(target, { duration: 250 });
     rowOpacity.value = withTiming(0, { duration: 200 });
-    rowHeight.value = withTiming(0, { duration: 250 }, () => {
+    measuredHeight.value = withTiming(0, { duration: 250 }, () => {
       runOnJS(callback)();
     });
   };
@@ -77,10 +78,13 @@ export function SwipeableRow({ onDelete, onArchive, children }: SwipeableRowProp
     opacity: rowOpacity.value,
   }));
 
-  const containerStyle = useAnimatedStyle(() => ({
-    height: rowHeight.value,
-    overflow: 'hidden',
-  }));
+  const containerStyle = useAnimatedStyle(() => {
+    if (!isCollapsing.value) return {};
+    return {
+      height: measuredHeight.value,
+      overflow: 'hidden' as const,
+    };
+  });
 
   // Background behind the row — shows delete (red) on left-swipe, read (blue) on right-swipe
   const deleteVisible = useAnimatedStyle(() => ({
@@ -92,7 +96,14 @@ export function SwipeableRow({ onDelete, onArchive, children }: SwipeableRowProp
   }));
 
   return (
-    <Animated.View style={containerStyle}>
+    <Animated.View
+      style={containerStyle}
+      onLayout={(e) => {
+        if (!isCollapsing.value) {
+          measuredHeight.value = e.nativeEvent.layout.height;
+        }
+      }}
+    >
       {/* Background actions */}
       <View style={StyleSheet.absoluteFill} className="flex-row">
         {/* Archive/read background (right-swipe) */}

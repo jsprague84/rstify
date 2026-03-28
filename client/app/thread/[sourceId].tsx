@@ -112,7 +112,6 @@ export default function ThreadScreen() {
             <MessageBubble message={item} />
           </SwipeableRow>
         )}
-        recycleItems
         contentContainerStyle={{
           paddingTop: 12,
           paddingBottom: 32,
