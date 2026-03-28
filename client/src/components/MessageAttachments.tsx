@@ -1,13 +1,14 @@
 import React from "react";
-import { View, Text, Image, Pressable, StyleSheet, Linking, Alert } from "react-native";
+import { View, Text, Alert, Linking } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../store/theme";
-import { Colors } from "../theme/colors";
-import type { AttachmentInfo } from "../api";
+import { AnimatedPressable } from "./design/AnimatedPressable";
+import { useAuthStore } from "../store";
 import { getApiClient } from "../api";
+import type { MessageResponse, AttachmentInfo } from "../api/types";
 
-interface Props {
-  attachments?: AttachmentInfo[];
+interface MessageAttachmentsProps {
+  message: MessageResponse;
   onDeleteAttachment?: (id: number) => void;
 }
 
@@ -21,12 +22,49 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export const MessageAttachments = React.memo(function MessageAttachments({ attachments, onDeleteAttachment }: Props) {
-  const { isDark } = useTheme();
+function resolveAttachments(message: MessageResponse): AttachmentInfo[] {
+  // Check direct attachments array first
+  if (message.attachments && message.attachments.length > 0) {
+    return message.attachments;
+  }
 
-  if (!attachments || attachments.length === 0) return null;
+  // Check extras["client::attachment"] for Gotify compat
+  const attachmentExtra = message.extras?.["client::attachment"] as
+    | { url?: string; name?: string; type?: string; size?: number }
+    | undefined;
+
+  if (attachmentExtra?.url) {
+    return [
+      {
+        id: 0,
+        name: attachmentExtra.name ?? "attachment",
+        type: attachmentExtra.type,
+        size: attachmentExtra.size ?? 0,
+        url: attachmentExtra.url,
+      },
+    ];
+  }
+
+  return [];
+}
+
+export const MessageAttachments = React.memo(function MessageAttachments({
+  message,
+  onDeleteAttachment,
+}: MessageAttachmentsProps) {
+  const serverUrl = useAuthStore((s) => s.serverUrl);
+  const token = useAuthStore((s) => s.token);
+
+  const attachments = resolveAttachments(message);
+  if (attachments.length === 0) return null;
+
+  const getFullUrl = (url: string) => {
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    return `${serverUrl}${url}`;
+  };
 
   const handleLongPress = (att: AttachmentInfo) => {
+    if (!onDeleteAttachment) return;
     Alert.alert("Delete Attachment", `Delete "${att.name}"?`, [
       { text: "Cancel", style: "cancel" },
       {
@@ -36,7 +74,7 @@ export const MessageAttachments = React.memo(function MessageAttachments({ attac
           try {
             const client = getApiClient();
             await client.deleteAttachment(att.id);
-            onDeleteAttachment?.(att.id);
+            onDeleteAttachment(att.id);
           } catch (error) {
             Alert.alert("Error", error instanceof Error ? error.message : "Delete failed");
           }
@@ -45,95 +83,51 @@ export const MessageAttachments = React.memo(function MessageAttachments({ attac
     ]);
   };
 
-  const handleDownload = async (att: AttachmentInfo) => {
+  const handlePress = async (att: AttachmentInfo) => {
     try {
-      const client = getApiClient();
-      const fullUrl = `${client.getBaseUrl()}${att.url}`;
-      await Linking.openURL(fullUrl);
+      await Linking.openURL(getFullUrl(att.url));
     } catch (error) {
       console.error("Failed to open attachment:", error);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View className="mt-2 gap-1.5">
       {attachments.map((att) => (
-        <Pressable
+        <AnimatedPressable
           key={att.id}
-          onPress={() => handleDownload(att)}
+          className="rounded-md overflow-hidden bg-surface-light-card dark:bg-surface-card"
+          onPress={() => handlePress(att)}
           onLongPress={() => handleLongPress(att)}
-          style={({ pressed }) => [
-            styles.attachment,
-            isDark && styles.attachmentDark,
-            pressed && styles.pressed,
-          ]}
+          haptic={false}
         >
           {isImage(att.type) ? (
             <Image
-              source={{ uri: `${getApiClient().getBaseUrl()}${att.url}` }}
-              style={styles.imagePreview}
-              resizeMode="cover"
+              source={{
+                uri: getFullUrl(att.url),
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+              }}
+              style={{ width: "100%", height: 160 }}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={200}
             />
           ) : (
-            <View style={styles.fileRow}>
-              <Ionicons
-                name="attach"
-                size={16}
-                color={isDark ? "#60A5FA" : "#4F46E5"}
-              />
+            <View className="flex-row items-center gap-1.5 px-2.5 py-2">
+              <Ionicons name="attach" size={16} color="#3b82f6" />
               <Text
-                style={[styles.fileName, isDark && styles.fileNameDark]}
+                className="text-primary text-sm flex-1"
                 numberOfLines={1}
               >
                 {att.name}
               </Text>
-              <Text style={styles.fileSize}>({formatSize(att.size)})</Text>
+              <Text className="text-slate-400 text-xs">
+                ({formatSize(att.size)})
+              </Text>
             </View>
           )}
-        </Pressable>
+        </AnimatedPressable>
       ))}
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: 8,
-    gap: 6,
-  },
-  attachment: {
-    borderRadius: 6,
-    overflow: "hidden",
-    backgroundColor: Colors.light.background,
-  },
-  attachmentDark: {
-    backgroundColor: Colors.dark.background,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  imagePreview: {
-    width: "100%",
-    height: 160,
-    borderRadius: 6,
-  },
-  fileRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  fileName: {
-    fontSize: 13,
-    color: "#4F46E5",
-    flex: 1,
-  },
-  fileNameDark: {
-    color: "#60A5FA",
-  },
-  fileSize: {
-    fontSize: 11,
-    color: "#9CA3AF",
-  },
 });

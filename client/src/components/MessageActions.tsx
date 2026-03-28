@@ -1,48 +1,82 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Alert, Platform, Linking } from "react-native";
-import * as Haptics from "expo-haptics";
+import { View, Text, ActivityIndicator, Platform, Linking } from "react-native";
+import * as IntentLauncher from "expo-intent-launcher";
+// IntentLauncherParams type for extras
+type IntentExtras = Record<string, string | number | boolean>;
 import Toast from "react-native-toast-message";
-import type { MessageResponse, MessageAction } from "../api";
+import { AnimatedPressable } from "./design/AnimatedPressable";
+import type { MessageResponse, MessageAction } from "../api/types";
 
 interface MessageActionsProps {
   message: MessageResponse;
 }
 
+function parseActions(message: MessageResponse): MessageAction[] | null {
+  // First try direct actions field
+  if (message.actions && Array.isArray(message.actions)) {
+    return message.actions;
+  }
+
+  // Gotify compat: extras["android::action"].actions
+  const androidAction = message.extras?.["android::action"] as
+    | { actions?: unknown[] }
+    | undefined;
+  if (androidAction?.actions && Array.isArray(androidAction.actions)) {
+    return androidAction.actions.map((a: unknown) => {
+      const raw = a as Record<string, unknown>;
+      return {
+        action: (raw.type ?? raw.action) as "view" | "http" | "broadcast",
+        label: (raw.label ?? raw.name ?? "Action") as string,
+        url: raw.url as string | undefined,
+        method: raw.method as string | undefined,
+        headers: raw.headers as Record<string, string> | undefined,
+        body: raw.body as string | undefined,
+        intent: raw.intent as string | undefined,
+        extras: raw.extras as Record<string, unknown> | undefined,
+        clear: raw.clear as boolean | undefined,
+      };
+    });
+  }
+
+  return null;
+}
+
+function getActionClasses(type: "view" | "http" | "broadcast"): {
+  button: string;
+  text: string;
+} {
+  switch (type) {
+    case "view":
+      return { button: "bg-primary/10 border border-primary/30 rounded-md px-4 py-2 min-w-[80px] items-center justify-center", text: "text-primary text-sm font-semibold" };
+    case "http":
+      return { button: "bg-success/10 border border-success/30 rounded-md px-4 py-2 min-w-[80px] items-center justify-center", text: "text-success text-sm font-semibold" };
+    case "broadcast":
+      return { button: "bg-accent/10 border border-accent/30 rounded-md px-4 py-2 min-w-[80px] items-center justify-center", text: "text-accent text-sm font-semibold" };
+  }
+}
+
 export const MessageActions = React.memo(function MessageActions({ message }: MessageActionsProps) {
   const [executing, setExecuting] = useState<string | null>(null);
 
-  // Parse actions from message
   const actions = parseActions(message);
   if (!actions || actions.length === 0) return null;
 
   const handleAction = async (action: MessageAction, index: number) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setExecuting(`${index}`);
 
     try {
       if (action.action === "view") {
-        // View action: open URL
-        if (!action.url) {
-          throw new Error("No URL provided for view action");
-        }
+        if (!action.url) throw new Error("No URL provided for view action");
 
         const supported = await Linking.canOpenURL(action.url);
         if (supported) {
           await Linking.openURL(action.url);
-          Toast.show({
-            type: "success",
-            text1: "Opened",
-            text2: action.label,
-            position: "bottom",
-          });
+          Toast.show({ type: "success", text1: "Opened", text2: action.label, position: "bottom" });
         } else {
           throw new Error("Cannot open this URL");
         }
       } else if (action.action === "http") {
-        // HTTP action: make API request
-        if (!action.url) {
-          throw new Error("No URL provided for HTTP action");
-        }
+        if (!action.url) throw new Error("No URL provided for HTTP action");
 
         const response = await fetch(action.url, {
           method: action.method || "POST",
@@ -54,41 +88,28 @@ export const MessageActions = React.memo(function MessageActions({ message }: Me
         });
 
         if (response.ok) {
-          Toast.show({
-            type: "success",
-            text1: "Success",
-            text2: `${action.label} completed`,
-            position: "bottom",
-          });
+          Toast.show({ type: "success", text1: "Success", text2: `${action.label} completed`, position: "bottom" });
         } else {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
       } else if (action.action === "broadcast") {
-        // Broadcast action: Android only
         if (Platform.OS === "android") {
-          // Note: This requires react-native-send-intent or similar
-          // For now, we'll show a success message
-          Toast.show({
-            type: "success",
-            text1: "Broadcast Sent",
-            text2: action.label,
-            position: "bottom",
+          // Use the intent field as the Android action string, falling back to a generic main action
+          const intentAction = action.intent ?? "android.intent.action.MAIN";
+          await IntentLauncher.startActivityAsync(intentAction, {
+            extra: action.extras as IntentExtras | undefined,
           });
+          Toast.show({ type: "success", text1: "Broadcast Sent", text2: action.label, position: "bottom" });
         } else {
-          Toast.show({
-            type: "info",
-            text1: "iOS Not Supported",
-            text2: "Broadcast actions are Android only",
-            position: "bottom",
-          });
+          Toast.show({ type: "info", text1: "iOS Not Supported", text2: "Broadcast actions are Android only", position: "bottom" });
         }
       }
-    } catch (error) {
-      console.error("Action execution failed:", error);
+    } catch (err) {
+      console.error("Action execution failed:", err);
       Toast.show({
         type: "error",
         text1: "Action Failed",
-        text2: error instanceof Error ? error.message : "Unknown error",
+        text2: err instanceof Error ? err.message : "Unknown error",
         position: "bottom",
       });
     } finally {
@@ -97,82 +118,27 @@ export const MessageActions = React.memo(function MessageActions({ message }: Me
   };
 
   return (
-    <View style={styles.actionsContainer}>
-      {actions.slice(0, 3).map((action, index) => (
-        <Pressable
-          key={index}
-          style={({ pressed }) => [
-            styles.actionButton,
-            executing === `${index}` && styles.actionButtonDisabled,
-            pressed && styles.actionButtonPressed,
-          ]}
-          onPress={() => handleAction(action, index)}
-          disabled={executing !== null}
-        >
-          {executing === `${index}` ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.actionText}>{action.label}</Text>
-          )}
-        </Pressable>
-      ))}
+    <View className="flex-row flex-wrap gap-2 mt-3">
+      {actions.slice(0, 3).map((action, index) => {
+        const classes = getActionClasses(action.action);
+        const isExecuting = executing === `${index}`;
+        return (
+          <AnimatedPressable
+            key={index}
+            className={classes.button}
+            onPress={() => handleAction(action, index)}
+            disabled={executing !== null}
+            haptic={false}
+            style={isExecuting ? { opacity: 0.5 } : undefined}
+          >
+            {isExecuting ? (
+              <ActivityIndicator size="small" color="#3b82f6" />
+            ) : (
+              <Text className={classes.text}>{action.label}</Text>
+            )}
+          </AnimatedPressable>
+        );
+      })}
     </View>
   );
-});
-
-function parseActions(message: MessageResponse): MessageAction[] | null {
-  // First try direct actions field
-  if (message.actions && Array.isArray(message.actions)) {
-    return message.actions;
-  }
-
-  // Try Gotify format: extras.android::action.actions
-  if (message.extras?.["android::action"]?.actions) {
-    const gotifyActions = message.extras["android::action"].actions;
-    if (Array.isArray(gotifyActions)) {
-      // Convert Gotify format to our format
-      return gotifyActions.map((a: any) => ({
-        action: a.type || a.action,
-        label: a.label || a.name || "Action",
-        url: a.url,
-        method: a.method,
-        headers: a.headers,
-        body: a.body,
-        intent: a.intent,
-        extras: a.extras,
-        clear: a.clear,
-      }));
-    }
-  }
-
-  return null;
-}
-
-const styles = StyleSheet.create({
-  actionsContainer: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 12,
-    flexWrap: "wrap",
-  },
-  actionButton: {
-    backgroundColor: "#4F46E5",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-    minWidth: 80,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  actionButtonPressed: {
-    backgroundColor: "#4338CA",
-  },
-  actionButtonDisabled: {
-    opacity: 0.5,
-  },
-  actionText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "600",
-  },
 });

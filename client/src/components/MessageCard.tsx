@@ -128,7 +128,7 @@ export const MessageCard = React.memo(function MessageCard({ message, onDelete }
       <MessageContent message={message} />
 
       {/* Attachments */}
-      <MessageAttachments attachments={message.attachments} />
+      <MessageAttachments message={message} />
 
       {/* Action buttons */}
       <MessageActions message={message} />

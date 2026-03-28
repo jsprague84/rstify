@@ -1,45 +1,57 @@
 import React, { useState } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, Text } from "react-native";
 import { Image } from "expo-image";
-import { Ionicons } from "@expo/vector-icons";
+import { useApplicationsStore } from "../store";
 
 interface MessageIconProps {
+  appId?: number;
   iconUrl?: string | null;
   size?: number;
+  name?: string;
 }
 
-export const MessageIcon = React.memo(function MessageIcon({ iconUrl, size = 40 }: MessageIconProps) {
+export const MessageIcon = React.memo(function MessageIcon({
+  appId,
+  iconUrl,
+  size = 40,
+  name,
+}: MessageIconProps) {
   const [error, setError] = useState(false);
+  const getIconUrl = useApplicationsStore((s) => s.getIconUrl);
 
-  if (!iconUrl || error) {
+  // Resolve icon URL: explicit iconUrl takes priority, then derive from appId
+  const resolvedUrl = iconUrl ?? (appId ? getIconUrl(appId) : null);
+
+  if (resolvedUrl && !error) {
     return (
-      <View style={[styles.iconContainer, { width: size, height: size }]}>
-        <Ionicons name="notifications" size={size * 0.6} color="#9CA3AF" />
-      </View>
+      <Image
+        source={{ uri: resolvedUrl }}
+        style={{ width: size, height: size, borderRadius: 8 }}
+        contentFit="contain"
+        transition={200}
+        onError={() => setError(true)}
+        cachePolicy="memory-disk"
+        priority="normal"
+      />
     );
   }
 
-  return (
-    <Image
-      source={{ uri: iconUrl }}
-      style={[styles.icon, { width: size, height: size }]}
-      contentFit="contain"
-      transition={200}
-      onError={() => setError(true)}
-      cachePolicy="memory-disk"
-      priority="normal"
-    />
-  );
-});
+  // Fallback: colored circle with first letter of name
+  const letter = name ? name.charAt(0).toUpperCase() : null;
 
-const styles = StyleSheet.create({
-  icon: {
-    borderRadius: 8,
-  },
-  iconContainer: {
-    borderRadius: 8,
-    backgroundColor: "#F3F4F6",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  return (
+    <View
+      className="rounded-md bg-primary/20 items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      {letter ? (
+        <Text
+          className="text-primary font-bold"
+          style={{ fontSize: size * 0.4 }}
+        >
+          {letter}
+        </Text>
+      ) : null}
+    </View>
+  );
 });
