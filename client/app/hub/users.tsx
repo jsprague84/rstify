@@ -51,7 +51,7 @@ export default function UsersScreen() {
     finally { setIsLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (user?.is_admin) fetchData(); }, [fetchData, user?.is_admin]);
 
   const handleToggleAdmin = async (u: UserResponse) => {
     if (u.id === user?.id) {

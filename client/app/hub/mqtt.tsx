@@ -47,7 +47,7 @@ export default function MqttScreen() {
     finally { setIsLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (user?.is_admin) fetchData(); }, [fetchData, user?.is_admin]);
 
   const handleDeleteBridge = (b: MqttBridge) => {
     Alert.alert(b.name, 'Choose an action', [

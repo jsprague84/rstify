@@ -7,7 +7,6 @@ import {
   RefreshControl,
   Pressable,
   Alert,
-  TextInput,
   Modal,
   Switch,
   ScrollView,
