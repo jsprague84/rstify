@@ -1079,6 +1079,15 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
             <textarea placeholder="Body template" value={form.body_template} onChange={e => setForm(f => ({ ...f, body_template: e.target.value }))} className={inputCls} rows={3} />
             <TemplateHelp />
           </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Template (JSON)</label>
+            <textarea
+              value={form.template || ''}
+              onChange={e => setForm(f => ({ ...f, template: e.target.value }))}
+              className={`${inputCls} min-h-[80px] font-mono text-xs`}
+              placeholder='{"title": "{{.Title}}", "message": "{{.Message}}"}'
+            />
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Max Retries</label>
