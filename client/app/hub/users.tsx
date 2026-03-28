@@ -28,6 +28,11 @@ export default function UsersScreen() {
   const [permissions, setPermissions] = useState<TopicPermission[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Edit user
+  const [editingUser, setEditingUser] = useState<UserResponse | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+
   // Create user
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [newUsername, setNewUsername] = useState('');
@@ -68,6 +73,27 @@ export default function UsersScreen() {
     try {
       const api = getApiClient();
       await api.updateUser(u.id, { is_admin: !u.is_admin });
+      fetchData();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update user');
+    }
+  };
+
+  const openEditUser = (u: UserResponse) => {
+    setEditingUser(u);
+    setEditUsername(u.username);
+    setEditEmail(u.email ?? '');
+  };
+
+  const handleEditUser = async () => {
+    if (!editingUser || !editUsername.trim()) return;
+    try {
+      const api = getApiClient();
+      await api.updateUser(editingUser.id, {
+        username: editUsername.trim(),
+        email: editEmail.trim() || undefined,
+      });
+      setEditingUser(null);
       fetchData();
     } catch (e) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update user');
@@ -227,6 +253,9 @@ export default function UsersScreen() {
                           disabled={u.id === user?.id}
                         />
                       </View>
+                      <Pressable onPress={() => openEditUser(u)} hitSlop={8}>
+                        <Ionicons name="create-outline" size={16} color="#3b82f6" />
+                      </Pressable>
                       {u.id !== user?.id && (
                         <Pressable onPress={() => handleDeleteUser(u)} hitSlop={8}>
                           <Ionicons name="trash-outline" size={16} color="#ef4444" />
@@ -371,6 +400,40 @@ export default function UsersScreen() {
             onPress={handleCreateUser}
           >
             <Text className="font-semibold text-white">Create</Text>
+          </AnimatedPressable>
+        </View>
+      </FormModal>
+      {/* Edit User Modal */}
+      <FormModal visible={!!editingUser} onClose={() => setEditingUser(null)} title="Edit User">
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Username"
+          placeholderTextColor="#9ca3af"
+          value={editUsername}
+          onChangeText={setEditUsername}
+          autoCapitalize="none"
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Email (optional)"
+          placeholderTextColor="#9ca3af"
+          value={editEmail}
+          onChangeText={setEditEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <View className="flex-row gap-3 mt-1">
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
+            onPress={() => setEditingUser(null)}
+          >
+            <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-primary items-center"
+            onPress={handleEditUser}
+          >
+            <Text className="font-semibold text-white">Save</Text>
           </AnimatedPressable>
         </View>
       </FormModal>
