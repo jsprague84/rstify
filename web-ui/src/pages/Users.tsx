@@ -19,22 +19,34 @@ export default function Users() {
   useEffect(load, [load]);
 
   const handleCreate = async (data: CreateUser) => {
-    await api.createUser(data);
-    setShowCreate(false);
-    load();
+    try {
+      await api.createUser(data);
+      setShowCreate(false);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create user');
+    }
   };
 
   const handleUpdate = async (id: number, data: UpdateUser) => {
-    await api.updateUser(id, data);
-    setEditUser(null);
-    load();
+    try {
+      await api.updateUser(id, data);
+      setEditUser(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update user');
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteUser) return;
-    await api.deleteUser(deleteUser.id);
-    setDeleteUser(null);
-    load();
+    try {
+      await api.deleteUser(deleteUser.id);
+      setDeleteUser(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete user');
+    }
   };
 
   return (

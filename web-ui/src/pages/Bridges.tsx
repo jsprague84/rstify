@@ -22,22 +22,34 @@ export default function Bridges() {
   useEffect(load, [load]);
 
   const handleCreate = async (data: CreateMqttBridge) => {
-    await api.createBridge(data);
-    setShowCreate(false);
-    load();
+    try {
+      await api.createBridge(data);
+      setShowCreate(false);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create bridge');
+    }
   };
 
   const handleUpdate = async (id: number, data: UpdateMqttBridge) => {
-    await api.updateBridge(id, data);
-    setEditBridge(null);
-    load();
+    try {
+      await api.updateBridge(id, data);
+      setEditBridge(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update bridge');
+    }
   };
 
   const handleDelete = async () => {
     if (!deleteBridge) return;
-    await api.deleteBridge(deleteBridge.id);
-    setDeleteBridge(null);
-    load();
+    try {
+      await api.deleteBridge(deleteBridge.id);
+      setDeleteBridge(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete bridge');
+    }
   };
 
   return (
