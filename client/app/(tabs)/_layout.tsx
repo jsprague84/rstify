@@ -22,6 +22,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Inbox',
+          tabBarAccessibilityLabel: 'Inbox tab',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="mail" size={size} color={color} />
           ),
@@ -31,6 +32,7 @@ export default function TabLayout() {
         name="channels"
         options={{
           title: 'Channels',
+          tabBarAccessibilityLabel: 'Channels tab',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="radio" size={size} color={color} />
           ),
@@ -40,6 +42,7 @@ export default function TabLayout() {
         name="hub"
         options={{
           title: 'Hub',
+          tabBarAccessibilityLabel: 'Hub tab',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid" size={size} color={color} />
           ),

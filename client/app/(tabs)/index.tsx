@@ -189,8 +189,8 @@ export default function InboxScreen() {
         <LegendList
           data={filteredGrouped}
           keyExtractor={(item: SourceMeta) => item.sourceId}
-          renderItem={({ item }: { item: SourceMeta }) => (
-            <SourceGroupCard source={item} />
+          renderItem={({ item, index }: { item: SourceMeta; index: number }) => (
+            <SourceGroupCard source={item} index={index} />
           )}
           recycleItems
           contentContainerStyle={{

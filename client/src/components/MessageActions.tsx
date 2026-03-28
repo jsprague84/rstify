@@ -130,6 +130,15 @@ export const MessageActions = React.memo(function MessageActions({ message }: Me
             disabled={executing !== null}
             haptic={false}
             style={isExecuting ? { opacity: 0.5 } : undefined}
+            accessibilityLabel={action.label}
+            accessibilityRole="button"
+            accessibilityHint={
+              action.action === "view"
+                ? "Opens URL in browser"
+                : action.action === "http"
+                  ? "Sends HTTP request"
+                  : "Sends Android broadcast"
+            }
           >
             {isExecuting ? (
               <ActivityIndicator size="small" color="#3b82f6" />

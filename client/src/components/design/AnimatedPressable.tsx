@@ -4,6 +4,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  type AnimatedProps,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
@@ -14,6 +15,8 @@ export interface AnimatedPressableProps extends PressableProps {
   haptic?: boolean;
   className?: string;
   children?: React.ReactNode;
+  entering?: AnimatedProps<PressableProps>['entering'];
+  exiting?: AnimatedProps<PressableProps>['exiting'];
 }
 
 export function AnimatedPressable({
@@ -23,6 +26,8 @@ export function AnimatedPressable({
   onPressOut,
   children,
   style,
+  entering,
+  exiting,
   ...rest
 }: AnimatedPressableProps) {
   const scale = useSharedValue(1);
@@ -49,6 +54,8 @@ export function AnimatedPressable({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[animatedStyle, style as object]}
+      entering={entering}
+      exiting={exiting}
       {...rest}
     >
       {children}

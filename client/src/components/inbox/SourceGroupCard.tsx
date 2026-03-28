@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useRef } from "react";
 import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { SwipeableRow } from "../design/SwipeableRow";
 import { AnimatedPressable } from "../design/AnimatedPressable";
 import { MessageIcon } from "../MessageIcon";
@@ -10,6 +11,7 @@ import type { SourceMeta } from "../../store/messages";
 
 interface SourceGroupCardProps {
   source: SourceMeta;
+  index?: number;
 }
 
 const PRIORITY_BORDER_COLORS: Record<string, string> = {
@@ -28,10 +30,18 @@ function getPriorityLevel(priority: number): string {
 
 export const SourceGroupCard = React.memo(function SourceGroupCard({
   source,
+  index = 0,
 }: SourceGroupCardProps) {
   const router = useRouter();
   const deleteGroup = useMessagesStore((s) => s.deleteGroup);
   const markGroupRead = useMessagesStore((s) => s.markGroupRead);
+
+  // Only play entrance animation on the first render, not on recycle
+  const hasAnimated = useRef(false);
+  const entering = hasAnimated.current
+    ? undefined
+    : FadeInDown.delay(Math.min(index, 8) * 50).duration(300);
+  hasAnimated.current = true;
 
   const level = getPriorityLevel(source.priority);
   const borderColor = PRIORITY_BORDER_COLORS[level];
@@ -51,6 +61,9 @@ export const SourceGroupCard = React.memo(function SourceGroupCard({
           router.push(`/thread/${encodeURIComponent(source.sourceId)}`)
         }
         haptic={false}
+        entering={entering}
+        accessibilityRole="button"
+        accessibilityLabel={`${source.name}, ${source.unreadCount > 0 ? `${source.unreadCount} new messages` : "no new messages"}`}
       >
         <View className="flex-row items-center gap-3">
           {/* Icon */}

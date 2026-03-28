@@ -111,7 +111,10 @@ export function SwipeableRow({ onDelete, onArchive, children }: SwipeableRowProp
       </View>
 
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={rowStyle}>
+        <Animated.View
+          style={rowStyle}
+          accessibilityHint="Swipe left to delete, swipe right to mark as read"
+        >
           {children}
         </Animated.View>
       </GestureDetector>
