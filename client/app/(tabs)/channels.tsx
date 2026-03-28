@@ -197,7 +197,7 @@ function CreateFolderModal({ visible, onClose }: CreateFolderModalProps) {
 // --- Main Channels Screen ---
 export default function ChannelsScreen() {
   const fetchTopics = useChannelsStore((s) => s.fetchTopics);
-  const getFolderedTopics = useChannelsStore((s) => s.getFolderedTopics);
+  const folderedTopics = useChannelsStore((s) => s.getFolderedTopics());
   const toggleFolderCollapsed = useChannelsStore((s) => s.toggleFolderCollapsed);
   const isLoading = useChannelsStore((s) => s.isLoading);
   const topics = useChannelsStore((s) => s.topics);
@@ -217,7 +217,7 @@ export default function ChannelsScreen() {
     fetchTopics();
   }, [fetchTopics]);
 
-  const { pinned, folders, mqtt, other } = getFolderedTopics();
+  const { pinned, folders, mqtt, other } = folderedTopics;
 
   // Apply search filter across all topic groups
   const filterTopics = useCallback(

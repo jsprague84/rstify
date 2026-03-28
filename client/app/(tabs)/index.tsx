@@ -31,8 +31,8 @@ export default function InboxScreen() {
   const fetchMessages = useMessagesStore((s) => s.fetchMessages);
   const fetchOlderMessages = useMessagesStore((s) => s.fetchOlderMessages);
   const addMessage = useMessagesStore((s) => s.addMessage);
-  const getGroupedSources = useMessagesStore((s) => s.getGroupedSources);
-  const getStreamMessages = useMessagesStore((s) => s.getStreamMessages);
+  const groupedSources = useMessagesStore((s) => s.getGroupedSources());
+  const streamMessages = useMessagesStore((s) => s.getStreamMessages());
 
   const fetchApplications = useApplicationsStore((s) => s.fetchApplications);
 
@@ -93,8 +93,6 @@ export default function InboxScreen() {
   }, [fetchMessages, fetchApplications]);
 
   // --- Search filtering ---
-  const groupedSources = getGroupedSources();
-  const streamMessages = getStreamMessages();
 
   const filteredGrouped = useMemo(() => {
     if (!searchQuery.trim()) return groupedSources;

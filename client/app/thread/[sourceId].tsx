@@ -17,13 +17,11 @@ export default function ThreadScreen() {
   const decodedSourceId = decodeURIComponent(sourceId ?? "");
 
   const sourceMeta = useMessagesStore((s) => s.sourceMeta);
-  const getMessagesForSource = useMessagesStore(
-    (s) => s.getMessagesForSource,
+  const messages = useMessagesStore(
+    (s) => s.getMessagesForSource(decodedSourceId),
   );
   const getApp = useApplicationsStore((s) => s.getApp);
   const getIconUrl = useApplicationsStore((s) => s.getIconUrl);
-
-  const messages = getMessagesForSource(decodedSourceId);
   const meta = sourceMeta.get(decodedSourceId);
 
   // Resolve source info from meta or by parsing the sourceId
