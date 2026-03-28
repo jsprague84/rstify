@@ -81,6 +81,7 @@ pub async fn create_webhook(
             req.timeout_secs,
             req.follow_redirects,
             req.group_name.as_deref(),
+            req.secret.as_deref(),
         )
         .await
         .map_err(ApiError::from)?;
@@ -283,6 +284,7 @@ pub async fn update_webhook(
             req.timeout_secs,
             req.follow_redirects,
             req.group_name.as_deref(),
+            req.secret.as_deref(),
         )
         .await
         .map_err(ApiError::from)?;

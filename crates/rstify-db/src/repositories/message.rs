@@ -429,9 +429,10 @@ impl MessageRepository for SqliteMessageRepo {
         timeout_secs: Option<i32>,
         follow_redirects: Option<bool>,
         group_name: Option<&str>,
+        secret: Option<&str>,
     ) -> Result<WebhookConfig, CoreError> {
         sqlx::query_as::<_, WebhookConfig>(
-            "INSERT INTO webhook_configs (user_id, name, token, webhook_type, target_topic_id, target_application_id, template, enabled, direction, target_url, http_method, headers, body_template, max_retries, retry_delay_secs, timeout_secs, follow_redirects, group_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
+            "INSERT INTO webhook_configs (user_id, name, token, webhook_type, target_topic_id, target_application_id, template, enabled, direction, target_url, http_method, headers, body_template, max_retries, retry_delay_secs, timeout_secs, follow_redirects, group_name, secret) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *",
         )
         .bind(user_id)
         .bind(name)
@@ -451,6 +452,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(timeout_secs.unwrap_or(15))
         .bind(follow_redirects.unwrap_or(true))
         .bind(group_name)
+        .bind(secret)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| CoreError::Database(e.to_string()))
@@ -503,6 +505,7 @@ impl MessageRepository for SqliteMessageRepo {
         timeout_secs: Option<i32>,
         follow_redirects: Option<bool>,
         group_name: Option<&str>,
+        secret: Option<&str>,
     ) -> Result<WebhookConfig, CoreError> {
         let current = self
             .find_webhook_config_by_id(id)
@@ -524,9 +527,10 @@ impl MessageRepository for SqliteMessageRepo {
         let new_body_template = body_template
             .map(|s| s.to_string())
             .or(current.body_template);
+        let new_secret = secret.map(|s| s.to_string()).or(current.secret);
 
         sqlx::query_as::<_, WebhookConfig>(
-            "UPDATE webhook_configs SET name = ?, template = ?, enabled = ?, target_url = ?, http_method = ?, headers = ?, body_template = ?, max_retries = ?, retry_delay_secs = ?, timeout_secs = ?, follow_redirects = ?, group_name = ? WHERE id = ? RETURNING *",
+            "UPDATE webhook_configs SET name = ?, template = ?, enabled = ?, target_url = ?, http_method = ?, headers = ?, body_template = ?, max_retries = ?, retry_delay_secs = ?, timeout_secs = ?, follow_redirects = ?, group_name = ?, secret = ? WHERE id = ? RETURNING *",
         )
         .bind(new_name)
         .bind(new_template)
@@ -540,6 +544,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(new_timeout_secs)
         .bind(new_follow_redirects)
         .bind(&new_group_name)
+        .bind(&new_secret)
         .bind(id)
         .fetch_one(&self.pool)
         .await

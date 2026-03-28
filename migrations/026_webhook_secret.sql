@@ -1,0 +1,1 @@
+ALTER TABLE webhook_configs ADD COLUMN secret TEXT DEFAULT NULL;

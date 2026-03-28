@@ -37,6 +37,7 @@ pub struct WebhookConfig {
     pub timeout_secs: i32,
     pub follow_redirects: bool,
     pub group_name: Option<String>,
+    pub secret: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -70,6 +71,8 @@ pub struct CreateWebhookConfig {
     pub follow_redirects: Option<bool>,
     #[serde(alias = "group_name")]
     pub group_name: Option<String>,
+    #[serde(alias = "secret")]
+    pub secret: Option<String>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -96,4 +99,6 @@ pub struct UpdateWebhookConfig {
     pub follow_redirects: Option<bool>,
     #[serde(alias = "group_name")]
     pub group_name: Option<String>,
+    #[serde(alias = "secret")]
+    pub secret: Option<String>,
 }
