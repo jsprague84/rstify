@@ -668,6 +668,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
     timeout_secs: 15,
     follow_redirects: true,
     group_name: '',
+    secret: undefined as string | undefined,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -696,6 +697,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
         timeout_secs: form.direction === 'outgoing' ? form.timeout_secs : undefined,
         follow_redirects: form.direction === 'outgoing' ? form.follow_redirects : undefined,
         group_name: form.group_name || undefined,
+        secret: form.secret || undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -746,7 +748,20 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
           <option value="json">JSON</option>
           <option value="github">GitHub</option>
           <option value="grafana">Grafana</option>
+          <option value="forgejo">Forgejo / Gitea</option>
         </select>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Webhook Secret (optional)</label>
+        <input
+          type="password"
+          placeholder="HMAC signing secret for signature verification"
+          value={form.secret || ''}
+          onChange={e => setForm(f => ({ ...f, secret: e.target.value || undefined }))}
+          className={inputCls}
+        />
+        <p className="text-xs text-gray-400 mt-1">Set a secret in Forgejo/GitHub webhook settings to enable signature verification</p>
       </div>
 
       {/* Target topic */}
@@ -970,6 +985,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
     timeout_secs: webhook.timeout_secs ?? 15,
     follow_redirects: webhook.follow_redirects ?? true,
     group_name: webhook.group_name || '',
+    secret: undefined as string | undefined,
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -984,6 +1000,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
         template: form.template,
         enabled: form.enabled,
         group_name: form.group_name || undefined,
+        secret: form.secret || undefined,
         ...(isOutgoing ? {
           target_url: form.target_url,
           http_method: form.http_method,
@@ -1053,6 +1070,18 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
             {existingGroups.map(g => <option key={g} value={g} />)}
           </datalist>
         )}
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Webhook Secret (optional)</label>
+        <input
+          type="password"
+          placeholder="HMAC signing secret for signature verification"
+          value={form.secret || ''}
+          onChange={e => setForm(f => ({ ...f, secret: e.target.value || undefined }))}
+          className={inputCls}
+        />
+        <p className="text-xs text-gray-400 mt-1">Set a secret in Forgejo/GitHub webhook settings to enable signature verification</p>
       </div>
 
       {isOutgoing ? (

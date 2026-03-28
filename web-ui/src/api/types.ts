@@ -166,6 +166,7 @@ export interface WebhookConfig {
   timeout_secs: number;
   follow_redirects: boolean;
   group_name?: string;
+  secret?: string | null;
   created_at: string;
   // Health data (from list endpoint)
   last_delivery_at?: string;
@@ -190,6 +191,7 @@ export interface CreateWebhookConfig {
   timeout_secs?: number;
   follow_redirects?: boolean;
   group_name?: string;
+  secret?: string;
 }
 
 export interface UpdateWebhookConfig {
@@ -205,6 +207,7 @@ export interface UpdateWebhookConfig {
   timeout_secs?: number;
   follow_redirects?: boolean;
   group_name?: string;
+  secret?: string;
 }
 
 export interface WebhookDeliveryLog {
