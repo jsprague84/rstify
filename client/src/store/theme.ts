@@ -1,11 +1,21 @@
 import React from "react";
 import { create } from "zustand";
-import { useColorScheme } from "react-native";
+import { useColorScheme, Appearance } from "react-native";
 import { storage } from "../storage/mmkv";
 
 const THEME_KEY = "rstify_theme_mode";
 
 type ThemeMode = "light" | "dark" | "system";
+
+function resolveActiveTheme(
+  mode: ThemeMode,
+  systemTheme: string | null | undefined,
+): "light" | "dark" {
+  if (mode === "system") {
+    return systemTheme === "dark" ? "dark" : "light";
+  }
+  return mode;
+}
 
 interface ThemeState {
   mode: ThemeMode;
@@ -18,27 +28,21 @@ interface ThemeState {
 }
 
 // Read saved mode synchronously at store creation time
-const savedMode = storage.getString(THEME_KEY) as ThemeMode | undefined;
+const savedMode = (storage.getString(THEME_KEY) as ThemeMode | undefined) ?? "system";
 
 export const useThemeStore = create<ThemeState>((set, get) => ({
-  mode: savedMode ?? "system",
-  activeTheme: "light",
+  mode: savedMode,
+  activeTheme: resolveActiveTheme(savedMode, Appearance.getColorScheme()),
 
   setMode: (mode: ThemeMode) => {
+    const activeTheme = resolveActiveTheme(mode, Appearance.getColorScheme());
     storage.set(THEME_KEY, mode);
-    set({ mode });
+    set({ mode, activeTheme });
   },
 
   updateActiveTheme: (systemTheme: string | null | undefined) => {
     const { mode } = get();
-    let activeTheme: "light" | "dark" = "light";
-
-    if (mode === "system") {
-      activeTheme = systemTheme === "dark" ? "dark" : "light";
-    } else {
-      activeTheme = mode;
-    }
-
+    const activeTheme = resolveActiveTheme(mode, systemTheme);
     set({ activeTheme });
   },
 }));

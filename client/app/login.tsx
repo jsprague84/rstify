@@ -21,9 +21,11 @@ export default function LoginScreen() {
   );
   const [showServer, setShowServer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const passwordRef = useRef<TextInput>(null);
+  const serverRef = useRef<TextInput>(null);
 
   const login = useAuthStore((s) => s.login);
   const setServerUrlStore = useAuthStore((s) => s.setServerUrl);
@@ -38,7 +40,7 @@ export default function LoginScreen() {
     setIsSubmitting(true);
     try {
       if (serverUrl !== useAuthStore.getState().serverUrl) {
-        await setServerUrlStore(serverUrl);
+        setServerUrlStore(serverUrl);
       }
       await login(username.trim(), password);
     } catch (e) {
@@ -53,10 +55,13 @@ export default function LoginScreen() {
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-surface-bg">
       <KeyboardAwareScrollView
-        contentContainerStyle={{ flexGrow: 1, justifyContent: "center", padding: 24 }}
-        bottomOffset={20}
+        bottomOffset={60}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
       >
+        {/* Top spacer to push content toward center */}
+        <View style={{ height: 120 }} />
+
         {/* Logo / branding */}
         <Animated.View
           entering={FadeInDown.delay(0).duration(500)}
@@ -74,7 +79,7 @@ export default function LoginScreen() {
         {/* Form */}
         <Animated.View
           entering={FadeInDown.delay(120).duration(500)}
-          className="gap-3"
+          className="gap-3 px-6"
         >
           {/* Username */}
           <TextInput
@@ -94,20 +99,74 @@ export default function LoginScreen() {
           />
 
           {/* Password */}
-          <TextInput
-            ref={passwordRef}
-            className="bg-white dark:bg-surface-card border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-base text-gray-900 dark:text-white"
-            placeholder="Password"
-            placeholderTextColor="#94a3b8"
-            value={password}
-            onChangeText={(v) => { setPassword(v); setError(null); }}
-            secureTextEntry
-            textContentType="password"
-            returnKeyType="go"
-            onSubmitEditing={handleLogin}
-            accessibilityLabel="Password"
-            accessibilityRole="none"
-          />
+          <View className="relative">
+            <TextInput
+              ref={passwordRef}
+              className="bg-white dark:bg-surface-card border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 pr-12 text-base text-gray-900 dark:text-white"
+              placeholder="Password"
+              placeholderTextColor="#94a3b8"
+              value={password}
+              onChangeText={(v) => { setPassword(v); setError(null); }}
+              secureTextEntry={!showPassword}
+              textContentType="password"
+              returnKeyType={showServer ? "next" : "go"}
+              onSubmitEditing={showServer ? () => serverRef.current?.focus() : handleLogin}
+              accessibilityLabel="Password"
+              accessibilityRole="none"
+            />
+            <AnimatedPressable
+              className="absolute right-3 top-0 bottom-0 justify-center"
+              onPress={() => setShowPassword((v) => !v)}
+              haptic={false}
+              hitSlop={8}
+              accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+            >
+              <Ionicons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color="#94a3b8"
+              />
+            </AnimatedPressable>
+          </View>
+
+          {/* Server settings toggle */}
+          <AnimatedPressable
+            className="flex-row items-center justify-center gap-1.5 py-2"
+            onPress={() => setShowServer((v) => !v)}
+            haptic={false}
+            accessibilityLabel="Toggle server settings"
+            accessibilityRole="button"
+          >
+            <Ionicons
+              name={showServer ? "chevron-up-outline" : "server-outline"}
+              size={14}
+              color="#9ca3af"
+            />
+            <Text className="text-sm text-slate-400 dark:text-slate-500">
+              Server Settings
+            </Text>
+          </AnimatedPressable>
+
+          {/* Server URL input (expandable) */}
+          {showServer ? (
+            <Animated.View entering={FadeInDown.duration(300)}>
+              <TextInput
+                ref={serverRef}
+                className="bg-white dark:bg-surface-card border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-base text-gray-900 dark:text-white"
+                placeholder="https://rstify.example.com"
+                placeholderTextColor="#94a3b8"
+                value={serverUrl}
+                onChangeText={setServerUrl}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                returnKeyType="go"
+                onSubmitEditing={handleLogin}
+                accessibilityLabel="Server URL"
+                accessibilityRole="none"
+              />
+            </Animated.View>
+          ) : null}
 
           {/* Error message */}
           {error ? (
@@ -140,43 +199,10 @@ export default function LoginScreen() {
               </Text>
             )}
           </AnimatedPressable>
-
-          {/* Server settings toggle */}
-          <AnimatedPressable
-            className="flex-row items-center justify-center gap-1.5 py-2"
-            onPress={() => setShowServer((v) => !v)}
-            haptic={false}
-            accessibilityLabel="Toggle server settings"
-            accessibilityRole="button"
-          >
-            <Ionicons
-              name={showServer ? "chevron-up-outline" : "server-outline"}
-              size={14}
-              color="#9ca3af"
-            />
-            <Text className="text-sm text-slate-400 dark:text-slate-500">
-              Server Settings
-            </Text>
-          </AnimatedPressable>
-
-          {/* Server URL input (expandable) */}
-          {showServer ? (
-            <Animated.View entering={FadeInDown.duration(300)}>
-              <TextInput
-                className="bg-white dark:bg-surface-card border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-base text-gray-900 dark:text-white"
-                placeholder="Server URL (e.g. http://192.168.1.100:8080)"
-                placeholderTextColor="#94a3b8"
-                value={serverUrl}
-                onChangeText={setServerUrl}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-                accessibilityLabel="Server URL"
-                accessibilityRole="none"
-              />
-            </Animated.View>
-          ) : null}
         </Animated.View>
+
+        {/* Bottom spacer for keyboard scroll room */}
+        <View style={{ height: 200 }} />
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );

@@ -71,7 +71,9 @@ function savePinned(pinned: string[]) {
 }
 
 function isMqtt(topic: Topic): boolean {
-  return topic.name.includes("/") || topic.name.startsWith("mqtt");
+  const name = topic.name.toLowerCase();
+  // Slash paths (standard MQTT), contains "mqtt", or dot-hierarchical (2+ dots = bridged MQTT)
+  return name.includes("/") || name.includes("mqtt") || (name.split(".").length > 2);
 }
 
 // --- Store ---
