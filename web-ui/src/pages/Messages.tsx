@@ -209,7 +209,7 @@ export default function Messages() {
                     {m.appid && <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded">{appsMap.get(m.appid)?.name || `App #${m.appid}`}</span>}
                     <PriorityBadge priority={m.priority} />
                   </div>
-                  <MessageContent message={m.message} extras={m.extras} />
+                  <MessageContent message={m.message} extras={m.extras} contentType={m.content_type} />
                   {m.tags && m.tags.length > 0 && (
                     <div className="flex gap-1 mt-2">
                       {m.tags.map(t => (
@@ -330,11 +330,7 @@ function MessageActions({ message }: { message: MessageResponse }) {
   const { toast } = useToast();
   const [executing, setExecuting] = useState<string | null>(null);
 
-  if (!message.extras?.['android::action']?.actions && !parseActions(message.extras)) {
-    return null;
-  }
-
-  const actions = parseActions(message.extras);
+  const actions = getMessageActions(message);
   if (!actions || actions.length === 0) return null;
 
   const handleAction = async (action: any, index: number) => {
@@ -382,19 +378,12 @@ function MessageActions({ message }: { message: MessageResponse }) {
   );
 }
 
-function parseActions(extras?: Record<string, any>): any[] | null {
+function getMessageActions(message: MessageResponse): any[] | null {
+  if (message.actions && message.actions.length > 0) return message.actions;
+  const extras = message.extras;
   if (!extras) return null;
-
-  // Try android::action format (Gotify)
-  if (extras['android::action']?.actions) {
-    return extras['android::action'].actions;
-  }
-
-  // Try direct actions array (rstify format)
-  if (Array.isArray(extras.actions)) {
-    return extras.actions;
-  }
-
+  if (extras['android::action']?.actions) return extras['android::action'].actions;
+  if (Array.isArray(extras.actions)) return extras.actions;
   return null;
 }
 
