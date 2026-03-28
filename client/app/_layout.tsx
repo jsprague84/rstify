@@ -4,6 +4,7 @@ import { ActivityIndicator, View, Linking } from 'react-native';
 import { Stack, SplashScreen } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useColorScheme as useNativeWindColorScheme } from 'nativewind';
 import Toast from 'react-native-toast-message';
 import * as Notifications from 'expo-notifications';
 import { useAuthStore } from '../src/store';
@@ -63,7 +64,13 @@ export default function RootLayout() {
   const initializeAuth = useAuthStore((s) => s.initialize);
   const isLoadingAuth = useAuthStore((s) => s.isLoading);
   const loadFromCache = useMessagesStore((s) => s.loadFromCache);
-  const { isDark } = useTheme();
+  const { isDark, activeTheme } = useTheme();
+  const { setColorScheme } = useNativeWindColorScheme();
+
+  // Sync NativeWind's dark mode with our theme store
+  useEffect(() => {
+    setColorScheme(activeTheme);
+  }, [activeTheme, setColorScheme]);
 
   // Step 1: Run MMKV migration, load cache, then init auth
   useEffect(() => {
