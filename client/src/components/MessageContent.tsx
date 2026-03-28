@@ -14,7 +14,9 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
 
   // Detect markdown via extras — extras is Record<string, unknown>, cast nested access
   const display = message.extras?.["client::display"] as { contentType?: string } | undefined;
-  const isMarkdown = display?.contentType === "text/markdown";
+  const isMarkdown =
+    display?.contentType === "text/markdown" ||
+    message.content_type === "text/markdown";
 
   const markdownStyles = useMemo(() => ({
     body: {
