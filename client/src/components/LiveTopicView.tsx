@@ -1,10 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { View, FlatList, Text, StyleSheet } from "react-native";
+import { View, Text, FlatList } from "react-native";
 import { getApiClient } from "../api";
 import type { MessageResponse } from "../api";
-import { MessageCard } from "./MessageCard";
-import { useTheme } from "../store/theme";
-import { Colors } from "../theme/colors";
+import { MessageBubble } from "./inbox/MessageBubble";
 
 const MAX_MESSAGES = 50;
 
@@ -13,8 +11,6 @@ interface LiveTopicViewProps {
 }
 
 export function LiveTopicView({ topicName }: LiveTopicViewProps) {
-  const { isDark } = useTheme();
-  const colors = isDark ? Colors.dark : Colors.light;
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [status, setStatus] = useState<"connecting" | "connected" | "disconnected">("connecting");
   const wsRef = useRef<WebSocket | null>(null);
@@ -50,7 +46,7 @@ export function LiveTopicView({ topicName }: LiveTopicViewProps) {
   }, [topicName, handleMessage]);
 
   const renderItem = useCallback(
-    ({ item }: { item: MessageResponse }) => <MessageCard message={item} />,
+    ({ item }: { item: MessageResponse }) => <MessageBubble message={item} />,
     [],
   );
 
@@ -59,26 +55,22 @@ export function LiveTopicView({ topicName }: LiveTopicViewProps) {
     [],
   );
 
+  const statusColor =
+    status === "connected" ? "#22c55e" : status === "connecting" ? "#f59e0b" : "#ef4444";
+  const statusLabel =
+    status === "connected" ? "Live" : status === "connecting" ? "Connecting..." : "Disconnected";
+
   return (
-    <View style={styles.container}>
-      <View style={[styles.statusBar, { backgroundColor: colors.surface }]}>
+    <View className="flex-1">
+      <View className="flex-row items-center px-4 py-2 gap-1.5 bg-white dark:bg-surface-card">
         <View
-          style={[
-            styles.statusDot,
-            {
-              backgroundColor:
-                status === "connected" ? "#22c55e" : status === "connecting" ? "#f59e0b" : "#ef4444",
-            },
-          ]}
+          className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: statusColor }}
         />
-        <Text style={[styles.statusText, { color: colors.textSecondary }]}>
-          {status === "connected"
-            ? "Live"
-            : status === "connecting"
-              ? "Connecting..."
-              : "Disconnected"}
+        <Text className="text-caption font-semibold text-slate-600 dark:text-slate-300">
+          {statusLabel}
         </Text>
-        <Text style={[styles.countText, { color: colors.textTertiary }]}>
+        <Text className="text-caption text-slate-400 dark:text-slate-500 ml-auto">
           {messages.length} message{messages.length !== 1 ? "s" : ""}
         </Text>
       </View>
@@ -90,10 +82,14 @@ export function LiveTopicView({ topicName }: LiveTopicViewProps) {
         removeClippedSubviews
         maxToRenderPerBatch={10}
         windowSize={11}
-        contentContainerStyle={messages.length === 0 ? styles.emptyList : styles.list}
+        contentContainerStyle={
+          messages.length === 0
+            ? { flex: 1 }
+            : { paddingVertical: 8 }
+        }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.textTertiary }]}>
+          <View className="flex-1 justify-center items-center p-10">
+            <Text className="text-sm text-slate-400 dark:text-slate-500">
               Waiting for messages...
             </Text>
           </View>
@@ -102,38 +98,3 @@ export function LiveTopicView({ topicName }: LiveTopicViewProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-  statusBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 6,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  countText: {
-    fontSize: 12,
-    marginLeft: "auto",
-  },
-  list: { paddingVertical: 8 },
-  emptyList: { flex: 1 },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 14,
-  },
-});
