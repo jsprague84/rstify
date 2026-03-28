@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
+import { ConfirmSheet } from '../../src/components/design/ConfirmSheet';
 import { EmptyState } from '../../src/components/EmptyState';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
@@ -30,6 +31,7 @@ export default function ClientsScreen() {
   // Create token form
   const [showCreate, setShowCreate] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -68,22 +70,17 @@ export default function ClientsScreen() {
     }
   };
 
-  const handleDeleteClient = (client: Client) => {
-    Alert.alert('Delete Token', `Delete "${client.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          try {
-            const api = getApiClient();
-            await api.deleteClient(client.id);
-            fetchData();
-          } catch (e) {
-            Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
-          }
-        },
-      },
-    ]);
+  const handleDeleteClient = (client: Client) => setDeleteTarget(client);
+
+  const confirmDeleteClient = async () => {
+    if (!deleteTarget) return;
+    try {
+      const api = getApiClient();
+      await api.deleteClient(deleteTarget.id);
+      fetchData();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
+    }
   };
 
   const handleRegisterPush = async (clientId: number) => {
@@ -155,6 +152,14 @@ export default function ClientsScreen() {
           )
         }
         contentContainerStyle={clients.length === 0 ? { flex: 1 } : { paddingBottom: 20 }}
+      />
+
+      <ConfirmSheet
+        visible={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteClient}
+        title="Delete Token"
+        message={`Delete "${deleteTarget?.name}"? This cannot be undone.`}
       />
 
       {/* Create Token Modal */}

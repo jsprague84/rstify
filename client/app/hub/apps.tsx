@@ -15,6 +15,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
+import { ConfirmSheet } from '../../src/components/design/ConfirmSheet';
 import { getApiClient } from '../../src/api';
 import type { Application } from '../../src/api';
 import * as Clipboard from 'expo-clipboard';
@@ -50,6 +51,7 @@ export default function AppsScreen() {
   const [editName, setEditName] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editPriority, setEditPriority] = useState('5');
+  const [deleteTarget, setDeleteTarget] = useState<Application | null>(null);
 
   const { fetchApplications } = useApplicationsStore();
 
@@ -120,23 +122,17 @@ export default function AppsScreen() {
     }
   };
 
-  const handleDeleteApp = (app: Application) => {
-    Alert.alert('Delete Application', `Delete "${app.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const api = getApiClient();
-            await api.deleteApplication(app.id);
-            fetchApps();
-          } catch (e) {
-            Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
-          }
-        },
-      },
-    ]);
+  const handleDeleteApp = (app: Application) => setDeleteTarget(app);
+
+  const confirmDeleteApp = async () => {
+    if (!deleteTarget) return;
+    try {
+      const api = getApiClient();
+      await api.deleteApplication(deleteTarget.id);
+      fetchApps();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
+    }
   };
 
   return (
@@ -227,6 +223,14 @@ export default function AppsScreen() {
           </AnimatedPressable>
         </View>
       </FormModal>
+
+      <ConfirmSheet
+        visible={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteApp}
+        title="Delete Application"
+        message={`Delete "${deleteTarget?.name}"? This cannot be undone.`}
+      />
 
       {/* Edit Modal */}
       <FormModal visible={!!editApp} onClose={() => setEditApp(null)} title="Edit Application">

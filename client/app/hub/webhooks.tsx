@@ -16,6 +16,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../src/components/EmptyState';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
+import { ConfirmSheet } from '../../src/components/design/ConfirmSheet';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormInput } from '../../src/components/design/FormInput';
 import { getApiClient } from '../../src/api';
@@ -79,6 +80,7 @@ export default function WebhooksScreen() {
   const [createGroupName, setCreateGroupName] = useState('');
 
   const [serverBase, setServerBase] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<WebhookConfig | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -239,17 +241,17 @@ export default function WebhooksScreen() {
     ]);
   };
 
-  const handleDelete = (webhook: WebhookConfig) => {
-    Alert.alert('Delete Webhook', `Delete "${webhook.name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          try { const api = getApiClient(); await api.deleteWebhook(webhook.id); fetchData(); }
-          catch (e) { Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed'); }
-        },
-      },
-    ]);
+  const handleDelete = (webhook: WebhookConfig) => setDeleteTarget(webhook);
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      const api = getApiClient();
+      await api.deleteWebhook(deleteTarget.id);
+      fetchData();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
+    }
   };
 
   const handleTest = async (webhook: WebhookConfig) => {
@@ -813,6 +815,14 @@ export default function WebhooksScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <ConfirmSheet
+        visible={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDelete}
+        title="Delete Webhook"
+        message={`Delete "${deleteTarget?.name}"? This cannot be undone.`}
+      />
     </SafeAreaView>
   );
 }

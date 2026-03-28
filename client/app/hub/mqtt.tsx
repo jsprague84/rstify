@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
+import { ConfirmSheet } from '../../src/components/design/ConfirmSheet';
 import { EmptyState } from '../../src/components/EmptyState';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
@@ -25,6 +26,8 @@ export default function MqttScreen() {
   const [mqttStatus, setMqttStatus] = useState<MqttStatus | null>(null);
   const [bridges, setBridges] = useState<MqttBridge[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [deleteTarget, setDeleteTarget] = useState<MqttBridge | null>(null);
 
   // Create bridge form
   const [showCreate, setShowCreate] = useState(false);
@@ -49,22 +52,17 @@ export default function MqttScreen() {
 
   useEffect(() => { if (user?.is_admin) fetchData(); }, [fetchData, user?.is_admin]);
 
-  const handleDeleteBridge = (b: MqttBridge) => {
-    Alert.alert(b.name, 'Choose an action', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete', style: 'destructive',
-        onPress: async () => {
-          try {
-            const api = getApiClient();
-            await api.deleteBridge(b.id);
-            fetchData();
-          } catch (e) {
-            Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
-          }
-        },
-      },
-    ]);
+  const handleDeleteBridge = (b: MqttBridge) => setDeleteTarget(b);
+
+  const confirmDeleteBridge = async () => {
+    if (!deleteTarget) return;
+    try {
+      const api = getApiClient();
+      await api.deleteBridge(deleteTarget.id);
+      fetchData();
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
+    }
   };
 
   const handleCreateBridge = async () => {
@@ -196,6 +194,14 @@ export default function MqttScreen() {
           </View>
         )}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchData} />}
+      />
+
+      <ConfirmSheet
+        visible={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={confirmDeleteBridge}
+        title="Delete Bridge"
+        message={`Delete "${deleteTarget?.name}"? This cannot be undone.`}
       />
 
       {/* Create Bridge Modal */}
