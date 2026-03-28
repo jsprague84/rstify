@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Pressable,
   Modal,
+  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
@@ -16,6 +17,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { getApiClient } from "../../src/api";
 import { useChannelsStore } from "../../src/store";
 import { FolderSection } from "../../src/components/channels/FolderSection";
+import { EditTopicModal } from "../../src/components/channels/EditTopicModal";
+import { PublishModal } from "../../src/components/channels/PublishModal";
+import { ConfirmSheet } from "../../src/components/design/ConfirmSheet";
 import { EmptyState } from "../../src/components/EmptyState";
 import type { Topic } from "../../src/api/types";
 
@@ -61,10 +65,14 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <KeyboardAvoidingView
+      <SafeAreaView
         className="flex-1 bg-slate-50 dark:bg-surface-bg"
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        edges={["top"]}
       >
+        <KeyboardAvoidingView
+          className="flex-1"
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
         <View className="flex-row items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-slate-700">
           <Pressable onPress={onClose} hitSlop={12}>
             <Text className="text-body text-slate-500 dark:text-slate-400">Cancel</Text>
@@ -121,7 +129,8 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
             <Text className="text-sm text-red-500 dark:text-red-400">{error}</Text>
           ) : null}
         </View>
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </Modal>
   );
 }
@@ -202,6 +211,7 @@ export default function ChannelsScreen() {
   const storePins = useChannelsStore((s) => s.pinnedTopics);
   const getFolderedTopics = useChannelsStore((s) => s.getFolderedTopics);
   const toggleFolderCollapsed = useChannelsStore((s) => s.toggleFolderCollapsed);
+  const deleteFolder = useChannelsStore((s) => s.deleteFolder);
   const isLoading = useChannelsStore((s) => s.isLoading);
 
   const folderedTopics = useMemo(() => getFolderedTopics(), [storeTopics, storeFolders, storePins]);
@@ -209,6 +219,9 @@ export default function ChannelsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateTopic, setShowCreateTopic] = useState(false);
   const [showCreateFolder, setShowCreateFolder] = useState(false);
+  const [editTopic, setEditTopic] = useState<Topic | null>(null);
+  const [publishTopic, setPublishTopic] = useState<Topic | null>(null);
+  const [deleteTopic, setDeleteTopic] = useState<Topic | null>(null);
 
   // MQTT section collapsed by default
   const [mqttCollapsed, setMqttCollapsed] = useState(true);
@@ -222,6 +235,27 @@ export default function ChannelsScreen() {
   }, [fetchTopics]);
 
   const { pinned, folders, mqtt, other } = folderedTopics;
+
+  const handleDeleteFolder = (folderId: string, folderName: string) => {
+    Alert.alert(
+      "Delete Folder",
+      `Delete "${folderName}"? Topics inside will move back to the main list.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: () => deleteFolder(folderId) },
+      ],
+    );
+  };
+
+  const handleDeleteTopic = async () => {
+    if (!deleteTopic) return;
+    try {
+      await getApiClient().deleteTopic(deleteTopic.name);
+      fetchTopics();
+    } catch (e) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Failed to delete topic");
+    }
+  };
 
   // Apply search filter across all topic groups
   const filterTopics = useCallback(
@@ -323,6 +357,9 @@ export default function ChannelsScreen() {
               icon="📌"
               color="#3b82f6"
               topics={filteredPinned}
+              onEditTopic={setEditTopic}
+              onDeleteTopic={setDeleteTopic}
+              onPublishTopic={setPublishTopic}
             />
 
             {/* User folders */}
@@ -335,6 +372,12 @@ export default function ChannelsScreen() {
                 topics={folder.filteredTopics}
                 collapsed={folder.collapsed}
                 onToggle={() => toggleFolderCollapsed(folder.id)}
+                onDelete={() => handleDeleteFolder(folder.id, folder.name)}
+                showWhenEmpty
+                emptyHint="Long-press a channel to move it here"
+                onEditTopic={setEditTopic}
+                onDeleteTopic={setDeleteTopic}
+                onPublishTopic={setPublishTopic}
               />
             ))}
 
@@ -346,6 +389,9 @@ export default function ChannelsScreen() {
               topics={filteredMqtt}
               collapsed={mqttCollapsed}
               onToggle={() => setMqttCollapsed((c) => !c)}
+              onEditTopic={setEditTopic}
+              onDeleteTopic={setDeleteTopic}
+              onPublishTopic={setPublishTopic}
             />
 
             {/* Other / ungrouped */}
@@ -354,6 +400,9 @@ export default function ChannelsScreen() {
               icon=""
               color="#6b7280"
               topics={filteredOther}
+              onEditTopic={setEditTopic}
+              onDeleteTopic={setDeleteTopic}
+              onPublishTopic={setPublishTopic}
             />
           </>
         )}
@@ -368,6 +417,24 @@ export default function ChannelsScreen() {
       <CreateFolderModal
         visible={showCreateFolder}
         onClose={() => setShowCreateFolder(false)}
+      />
+      <EditTopicModal
+        visible={!!editTopic}
+        topic={editTopic}
+        onClose={() => setEditTopic(null)}
+        onUpdated={fetchTopics}
+      />
+      <PublishModal
+        visible={!!publishTopic}
+        topicName={publishTopic?.name ?? ""}
+        onClose={() => setPublishTopic(null)}
+      />
+      <ConfirmSheet
+        visible={!!deleteTopic}
+        onClose={() => setDeleteTopic(null)}
+        onConfirm={handleDeleteTopic}
+        title="Delete Topic"
+        message={`Delete "${deleteTopic?.name}"? All messages in this topic will be permanently removed.`}
       />
     </SafeAreaView>
   );

@@ -11,7 +11,13 @@ interface FolderSectionProps {
   topics: Topic[];
   collapsed?: boolean;
   onToggle?: () => void;
+  onDelete?: () => void;
   count?: number;
+  showWhenEmpty?: boolean;
+  emptyHint?: string;
+  onEditTopic?: (topic: Topic) => void;
+  onDeleteTopic?: (topic: Topic) => void;
+  onPublishTopic?: (topic: Topic) => void;
 }
 
 export const FolderSection = React.memo(function FolderSection({
@@ -21,9 +27,15 @@ export const FolderSection = React.memo(function FolderSection({
   topics,
   collapsed = false,
   onToggle,
+  onDelete,
   count,
+  showWhenEmpty = false,
+  emptyHint,
+  onEditTopic,
+  onDeleteTopic,
+  onPublishTopic,
 }: FolderSectionProps) {
-  if (topics.length === 0) return null;
+  if (topics.length === 0 && !showWhenEmpty) return null;
 
   const displayCount = count ?? topics.length;
 
@@ -32,11 +44,12 @@ export const FolderSection = React.memo(function FolderSection({
       {/* Section header */}
       <Pressable
         onPress={onToggle}
+        onLongPress={onDelete}
         className="flex-row items-center justify-between px-4 py-2"
         hitSlop={4}
       >
         <View className="flex-row items-center gap-2">
-          <Text style={{ fontSize: 16 }}>{icon}</Text>
+          {icon ? <Text style={{ fontSize: 16 }}>{icon}</Text> : null}
           <Text
             className="text-sm font-semibold uppercase tracking-wide"
             style={{ color }}
@@ -62,12 +75,24 @@ export const FolderSection = React.memo(function FolderSection({
         ) : null}
       </Pressable>
 
-      {/* Topic rows */}
+      {/* Topic rows or empty hint */}
       {!collapsed && (
         <View className="mt-1">
-          {topics.map((topic) => (
-            <ChannelRow key={topic.id} topic={topic} />
-          ))}
+          {topics.length > 0 ? (
+            topics.map((topic) => (
+              <ChannelRow
+                key={topic.id}
+                topic={topic}
+                onEdit={onEditTopic}
+                onDelete={onDeleteTopic}
+                onPublish={onPublishTopic}
+              />
+            ))
+          ) : emptyHint ? (
+            <Text className="px-8 py-3 text-sm text-slate-400 dark:text-slate-500 italic">
+              {emptyHint}
+            </Text>
+          ) : null}
         </View>
       )}
     </View>
