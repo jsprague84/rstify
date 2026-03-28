@@ -43,6 +43,12 @@ function RootNavigator() {
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="thread/[sourceId]" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="hub/apps" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="hub/webhooks" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="hub/settings" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="hub/users" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="hub/mqtt" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="hub/clients" options={{ headerShown: false, animation: 'slide_from_right' }} />
       </Stack.Protected>
 
       <Stack.Protected guard={!isAuthenticated}>
