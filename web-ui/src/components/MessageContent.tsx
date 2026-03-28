@@ -5,11 +5,12 @@ import rehypeSanitize from 'rehype-sanitize';
 interface MessageContentProps {
   message: string;
   extras?: Record<string, any>;
+  contentType?: string | null;
 }
 
-export default function MessageContent({ message, extras }: MessageContentProps) {
+export default function MessageContent({ message, extras, contentType }: MessageContentProps) {
   // Check if message should be rendered as markdown
-  const isMarkdown = extras?.['client::display']?.contentType === 'text/markdown';
+  const isMarkdown = contentType === 'text/markdown' || extras?.['client::display']?.contentType === 'text/markdown';
 
   if (isMarkdown) {
     return (

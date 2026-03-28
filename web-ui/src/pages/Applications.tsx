@@ -134,7 +134,7 @@ export default function Applications() {
                     <span className="text-xs text-gray-400">#{m.id}</span>
                     <span className={`text-xs px-2 py-0.5 rounded ${m.priority >= 8 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : m.priority >= 5 ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300'}`}>P{m.priority}</span>
                   </div>
-                  <MessageContent message={m.message} extras={m.extras} />
+                  <MessageContent message={m.message} extras={m.extras} contentType={m.content_type} />
                   {m.tags && m.tags.length > 0 && (
                     <div className="flex gap-1 mt-1">
                       {m.tags.map(t => <span key={t} className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">{t}</span>)}
