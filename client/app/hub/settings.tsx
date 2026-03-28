@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   Pressable,
   Alert,
   TextInput,
-  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
@@ -16,7 +15,6 @@ import { useAuthStore } from '../../src/store/auth';
 import { useThemeStore, useTheme } from '../../src/store/theme';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 import { getApiClient } from '../../src/api';
-import type { VersionResponse } from '../../src/api';
 import {
   getDevicePushToken,
   requestNotificationPermissions,
@@ -27,16 +25,9 @@ export default function SettingsScreen() {
   const setMode = useThemeStore((s) => s.setMode);
 
   const user = useAuthStore((s) => s.user);
-  const serverUrl = useAuthStore((s) => s.serverUrl);
-  const setServerUrl = useAuthStore((s) => s.setServerUrl);
-  const logout = useAuthStore((s) => s.logout);
 
-  const [version, setVersion] = useState<VersionResponse | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [pushStatus, setPushStatus] = useState<string>('Checking...');
 
-  const [editingUrl, setEditingUrl] = useState(false);
-  const [urlInput, setUrlInput] = useState(serverUrl);
   const [showPassword, setShowPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -52,32 +43,6 @@ export default function SettingsScreen() {
       }
     })();
   }, []);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const api = getApiClient();
-      const v = await api.version();
-      setVersion(v);
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchData();
-    setRefreshing(false);
-  };
-
-  const handleSaveUrl = async () => {
-    try {
-      setServerUrl(urlInput);
-      setEditingUrl(false);
-      logout();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update');
-    }
-  };
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword) {
@@ -122,7 +87,6 @@ export default function SettingsScreen() {
         bottomOffset={20}
         keyboardShouldPersistTaps="handled"
         contentContainerClassName="p-4 pb-10 gap-6"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       >
         {/* Appearance */}
         <View className="gap-2">
@@ -223,47 +187,6 @@ export default function SettingsScreen() {
               </AnimatedPressable>
             </View>
           )}
-        </View>
-
-        {/* Server */}
-        <View className="gap-2">
-          <SectionLabel>Server</SectionLabel>
-          <View className="bg-white dark:bg-surface-card rounded-xl p-1 gap-1">
-            <View className="flex-row items-start gap-3 p-3">
-              <Ionicons name="server-outline" size={20} color="#94a3b8" />
-              <View className="flex-1">
-                <Text className="text-sm text-slate-500 dark:text-slate-400">Server URL</Text>
-                {editingUrl ? (
-                  <View className="flex-row gap-2 mt-1">
-                    <TextInput
-                      className="flex-1 bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-2.5 text-sm text-slate-900 dark:text-slate-100"
-                      value={urlInput}
-                      onChangeText={setUrlInput}
-                      autoCapitalize="none"
-                      keyboardType="url"
-                      placeholderTextColor="#9ca3af"
-                    />
-                    <AnimatedPressable className="bg-primary rounded-lg px-4 justify-center" onPress={handleSaveUrl}>
-                      <Text className="text-white font-semibold text-sm">Save</Text>
-                    </AnimatedPressable>
-                  </View>
-                ) : (
-                  <Pressable onPress={() => setEditingUrl(true)}>
-                    <Text className="text-base text-primary underline mt-0.5">{serverUrl}</Text>
-                  </Pressable>
-                )}
-              </View>
-            </View>
-            {version ? (
-              <View className="flex-row items-start gap-3 p-3">
-                <Ionicons name="information-circle-outline" size={20} color="#94a3b8" />
-                <View className="flex-1">
-                  <Text className="text-sm text-slate-500 dark:text-slate-400">Server Version</Text>
-                  <Text className="text-base text-slate-900 dark:text-slate-100 mt-0.5">{version.version}</Text>
-                </View>
-              </View>
-            ) : null}
-          </View>
         </View>
 
         {/* Push Notifications */}

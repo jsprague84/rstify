@@ -47,6 +47,7 @@ function RootNavigator() {
         <Stack.Screen name="hub/apps" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="hub/webhooks" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="hub/settings" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="hub/server" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="hub/users" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="hub/mqtt" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="hub/clients" options={{ headerShown: false, animation: 'slide_from_right' }} />
@@ -64,13 +65,13 @@ export default function RootLayout() {
   const initializeAuth = useAuthStore((s) => s.initialize);
   const isLoadingAuth = useAuthStore((s) => s.isLoading);
   const loadFromCache = useMessagesStore((s) => s.loadFromCache);
-  const { isDark, activeTheme } = useTheme();
+  const { isDark, mode, activeTheme } = useTheme();
   const { setColorScheme } = useNativeWindColorScheme();
 
   // Sync NativeWind's dark mode with our theme store
   useEffect(() => {
-    setColorScheme(activeTheme);
-  }, [activeTheme, setColorScheme]);
+    setColorScheme(mode === "system" ? "system" : activeTheme);
+  }, [mode, activeTheme, setColorScheme]);
 
   // Step 1: Run MMKV migration, load cache, then init auth
   useEffect(() => {

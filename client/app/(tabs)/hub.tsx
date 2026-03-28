@@ -109,6 +109,7 @@ export default function HubScreen() {
           <View className="gap-2">
             <SectionLabel>Admin</SectionLabel>
             <View className="gap-1.5">
+              <SettingsRow title="Server Info" href="/hub/server" />
               <SettingsRow title="User Management" href="/hub/users" />
             </View>
           </View>

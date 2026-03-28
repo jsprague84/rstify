@@ -18,13 +18,12 @@ import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
 import { SectionLabel } from '../../src/components/design/SectionLabel';
 import { getApiClient } from '../../src/api';
-import type { UserResponse, StatsResponse, TopicPermission } from '../../src/api';
+import type { UserResponse, TopicPermission } from '../../src/api';
 
 export default function UsersScreen() {
   const user = useAuthStore((s) => s.user);
 
   const [users, setUsers] = useState<UserResponse[]>([]);
-  const [stats, setStats] = useState<StatsResponse | null>(null);
   const [permissions, setPermissions] = useState<TopicPermission[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -51,13 +50,11 @@ export default function UsersScreen() {
     setIsLoading(true);
     try {
       const api = getApiClient();
-      const [u, s, p] = await Promise.allSettled([
+      const [u, p] = await Promise.allSettled([
         api.listUsers(),
-        api.getStats(),
         api.listPermissions(),
       ]);
       if (u.status === 'fulfilled') setUsers(u.value);
-      if (s.status === 'fulfilled') setStats(s.value);
       if (p.status === 'fulfilled') setPermissions(p.value);
     } catch { /* ignore */ }
     finally { setIsLoading(false); }
@@ -210,26 +207,6 @@ export default function UsersScreen() {
         data={[{ key: 'content' }]}
         renderItem={() => (
           <View className="p-4 gap-6">
-            {/* Stats */}
-            {stats && (
-              <View className="gap-2">
-                <SectionLabel>Server Stats</SectionLabel>
-                <View className="flex-row flex-wrap gap-2">
-                  {[
-                    { label: 'Users', value: stats.users },
-                    { label: 'Topics', value: stats.topics },
-                    { label: 'Messages', value: stats.messages },
-                    { label: 'Last 24h', value: stats.messages_last_24h },
-                  ].map((s) => (
-                    <View key={s.label} className="flex-1 min-w-[45%] bg-white dark:bg-surface-card rounded-xl p-4 items-center">
-                      <Text className="text-2xl font-bold text-primary">{s.value}</Text>
-                      <Text className="text-xs text-slate-500 dark:text-slate-400 mt-1">{s.label}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
             {/* Users */}
             <View className="gap-2">
               <SectionLabel>Users ({users.length})</SectionLabel>
