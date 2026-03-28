@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { useColorScheme } from 'nativewind';
+import { View, Text } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { ThemedPressable } from './ThemedPressable';
 
 interface SegmentedControlProps {
   segments: string[];
@@ -14,9 +14,6 @@ export function SegmentedControl({
   selectedIndex,
   onChange,
 }: SegmentedControlProps) {
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
-
   const handlePress = (index: number) => {
     if (index === selectedIndex) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
@@ -28,11 +25,10 @@ export function SegmentedControl({
       {segments.map((label, index) => {
         const isSelected = index === selectedIndex;
         return (
-          <TouchableOpacity
+          <ThemedPressable
             key={label}
-            activeOpacity={0.7}
             onPress={() => handlePress(index)}
-            style={{
+            style={(isDark) => ({
               flex: 1,
               paddingVertical: 6,
               borderRadius: 6,
@@ -41,20 +37,18 @@ export function SegmentedControl({
               backgroundColor: isSelected
                 ? (isDark ? '#1e293b' : '#ffffff')
                 : 'transparent',
-            }}
+            })}
           >
             <Text
-              style={{
-                fontSize: 14,
-                fontWeight: '500',
-                color: isSelected
-                  ? (isDark ? '#ffffff' : '#111827')
-                  : (isDark ? '#9ca3af' : '#6b7280'),
-              }}
+              className={
+                isSelected
+                  ? 'text-body font-medium text-gray-900 dark:text-white'
+                  : 'text-body font-medium text-gray-500 dark:text-gray-400'
+              }
             >
               {label}
             </Text>
-          </TouchableOpacity>
+          </ThemedPressable>
         );
       })}
     </View>
