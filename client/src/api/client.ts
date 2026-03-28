@@ -31,6 +31,7 @@ import type {
   VersionResponse,
   WebhookConfig,
   WebhookDeliveryLog,
+  WebhookTestResult,
 } from "./types";
 
 export class RstifyApiError extends Error {
