@@ -29,6 +29,7 @@ export default function SettingsScreen() {
   const user = useAuthStore((s) => s.user);
   const serverUrl = useAuthStore((s) => s.serverUrl);
   const setServerUrl = useAuthStore((s) => s.setServerUrl);
+  const logout = useAuthStore((s) => s.logout);
 
   const [version, setVersion] = useState<VersionResponse | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,6 +40,7 @@ export default function SettingsScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -69,9 +71,9 @@ export default function SettingsScreen() {
 
   const handleSaveUrl = async () => {
     try {
-      await setServerUrl(urlInput);
+      setServerUrl(urlInput);
       setEditingUrl(false);
-      Alert.alert('Server Updated', 'Please log in again.');
+      logout();
     } catch (e) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update');
     }
@@ -86,6 +88,10 @@ export default function SettingsScreen() {
       Alert.alert('Error', 'New password must be at least 8 characters');
       return;
     }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'New passwords do not match');
+      return;
+    }
     try {
       const api = getApiClient();
       await api.changePassword({
@@ -94,6 +100,7 @@ export default function SettingsScreen() {
       });
       setCurrentPassword('');
       setNewPassword('');
+      setConfirmPassword('');
       setShowPassword(false);
       Alert.alert('Success', 'Password changed successfully');
     } catch (e) {
@@ -198,6 +205,14 @@ export default function SettingsScreen() {
                 placeholderTextColor="#9ca3af"
                 value={newPassword}
                 onChangeText={setNewPassword}
+                secureTextEntry
+              />
+              <TextInput
+                className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+                placeholder="Confirm new password"
+                placeholderTextColor="#9ca3af"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
                 secureTextEntry
               />
               <AnimatedPressable
