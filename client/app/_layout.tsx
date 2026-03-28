@@ -42,6 +42,7 @@ function RootNavigator() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Protected guard={isAuthenticated}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="thread/[sourceId]" options={{ headerShown: false, animation: 'slide_from_right' }} />
       </Stack.Protected>
 
       <Stack.Protected guard={!isAuthenticated}>
