@@ -11,3 +11,7 @@ easKey
 *.bak
 # Ralph planning docs (local only)
 /ralph/
+# Git worktrees
+.worktrees/
+# Superpowers brainstorming
+.superpowers/
