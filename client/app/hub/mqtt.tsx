@@ -5,22 +5,21 @@ import {
   Pressable,
   Alert,
   TextInput,
-  Modal,
   FlatList,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 import { EmptyState } from '../../src/components/EmptyState';
+import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
+import { FormModal } from '../../src/components/design/FormModal';
+import { SectionLabel } from '../../src/components/design/SectionLabel';
 import { getApiClient } from '../../src/api';
 import type { MqttBridge, MqttStatus } from '../../src/api';
 
 export default function MqttScreen() {
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
   const [mqttStatus, setMqttStatus] = useState<MqttStatus | null>(null);
@@ -101,18 +100,7 @@ export default function MqttScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-light-bg dark:bg-surface-bg" edges={['top']}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-slate-700">
-        <View className="flex-row items-center gap-3">
-          <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color="#94a3b8" />
-          </Pressable>
-          <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">MQTT</Text>
-        </View>
-        <Pressable onPress={() => setShowCreate(true)} hitSlop={8}>
-          <Ionicons name="add-circle-outline" size={24} color="#3b82f6" />
-        </Pressable>
-      </View>
+      <HubScreenHeader title="MQTT" onAdd={() => setShowCreate(true)} />
 
       <FlatList
         data={[{ key: 'content' }]}
@@ -121,9 +109,7 @@ export default function MqttScreen() {
             {/* Broker Status */}
             {mqttStatus && (
               <View className="gap-2">
-                <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-                  MQTT Broker
-                </Text>
+                <SectionLabel>MQTT Broker</SectionLabel>
                 <View className="bg-white dark:bg-surface-card rounded-xl p-1 gap-1">
                   <View className="flex-row items-start gap-3 p-3">
                     <Ionicons
@@ -177,9 +163,7 @@ export default function MqttScreen() {
 
             {/* Bridges */}
             <View className="gap-2">
-              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-                MQTT Bridges ({bridges.length})
-              </Text>
+              <SectionLabel>MQTT Bridges ({bridges.length})</SectionLabel>
               <View className="bg-white dark:bg-surface-card rounded-xl overflow-hidden">
                 {bridges.map((b) => {
                   const subCount = (() => { try { return JSON.parse(b.subscribe_topics).length; } catch { return 0; } })();
@@ -215,66 +199,53 @@ export default function MqttScreen() {
       />
 
       {/* Create Bridge Modal */}
-      <Modal visible={showCreate} animationType="fade" transparent>
-        <Pressable className="flex-1 bg-black/40 justify-center px-6" onPress={() => setShowCreate(false)}>
-          <Pressable onPress={() => {}}>
-            <KeyboardAwareScrollView
-              bottomOffset={20}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-            >
-              <View className="bg-white dark:bg-surface-card rounded-2xl p-6 gap-3">
-                <Text className="text-lg font-bold text-slate-900 dark:text-slate-100">New MQTT Bridge</Text>
-                <TextInput
-                  className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                  placeholder="Bridge name"
-                  placeholderTextColor="#9ca3af"
-                  value={newBridgeName}
-                  onChangeText={setNewBridgeName}
-                />
-                <TextInput
-                  className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                  placeholder="Broker URL (host:port)"
-                  placeholderTextColor="#9ca3af"
-                  value={newBridgeUrl}
-                  onChangeText={setNewBridgeUrl}
-                  autoCapitalize="none"
-                />
-                <TextInput
-                  className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                  placeholder="Username (optional)"
-                  placeholderTextColor="#9ca3af"
-                  value={newBridgeUsername}
-                  onChangeText={setNewBridgeUsername}
-                  autoCapitalize="none"
-                />
-                <TextInput
-                  className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                  placeholder="Password (optional)"
-                  placeholderTextColor="#9ca3af"
-                  value={newBridgePassword}
-                  onChangeText={setNewBridgePassword}
-                  secureTextEntry
-                />
-                <View className="flex-row gap-3 mt-1">
-                  <AnimatedPressable
-                    className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
-                    onPress={() => { setShowCreate(false); setNewBridgeName(''); setNewBridgeUrl(''); }}
-                  >
-                    <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
-                  </AnimatedPressable>
-                  <AnimatedPressable
-                    className="flex-1 p-3.5 rounded-lg bg-primary items-center"
-                    onPress={handleCreateBridge}
-                  >
-                    <Text className="font-semibold text-white">Create</Text>
-                  </AnimatedPressable>
-                </View>
-              </View>
-            </KeyboardAwareScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <FormModal visible={showCreate} onClose={() => setShowCreate(false)} title="New MQTT Bridge">
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Bridge name"
+          placeholderTextColor="#9ca3af"
+          value={newBridgeName}
+          onChangeText={setNewBridgeName}
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Broker URL (host:port)"
+          placeholderTextColor="#9ca3af"
+          value={newBridgeUrl}
+          onChangeText={setNewBridgeUrl}
+          autoCapitalize="none"
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Username (optional)"
+          placeholderTextColor="#9ca3af"
+          value={newBridgeUsername}
+          onChangeText={setNewBridgeUsername}
+          autoCapitalize="none"
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Password (optional)"
+          placeholderTextColor="#9ca3af"
+          value={newBridgePassword}
+          onChangeText={setNewBridgePassword}
+          secureTextEntry
+        />
+        <View className="flex-row gap-3 mt-1">
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
+            onPress={() => { setShowCreate(false); setNewBridgeName(''); setNewBridgeUrl(''); }}
+          >
+            <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-primary items-center"
+            onPress={handleCreateBridge}
+          >
+            <Text className="font-semibold text-white">Create</Text>
+          </AnimatedPressable>
+        </View>
+      </FormModal>
     </SafeAreaView>
   );
 }

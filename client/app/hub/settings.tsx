@@ -9,8 +9,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
+import { SectionLabel } from '../../src/components/design/SectionLabel';
 import { useAuthStore } from '../../src/store/auth';
 import { useThemeStore, useTheme } from '../../src/store/theme';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
@@ -22,8 +23,7 @@ import {
 } from '../../src/services/notifications';
 
 export default function SettingsScreen() {
-  const router = useRouter();
-  const { isDark, mode } = useTheme();
+  const { mode } = useTheme();
   const setMode = useThemeStore((s) => s.setMode);
 
   const user = useAuthStore((s) => s.user);
@@ -109,13 +109,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-light-bg dark:bg-surface-bg" edges={['top']}>
-      {/* Header */}
-      <View className="flex-row items-center gap-3 px-4 py-3 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-slate-700">
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color="#94a3b8" />
-        </Pressable>
-        <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">Settings</Text>
-      </View>
+      <HubScreenHeader title="Settings" />
 
       <KeyboardAwareScrollView
         bottomOffset={20}
@@ -125,9 +119,7 @@ export default function SettingsScreen() {
       >
         {/* Appearance */}
         <View className="gap-2">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-            Appearance
-          </Text>
+          <SectionLabel>Appearance</SectionLabel>
           <View className="bg-white dark:bg-surface-card rounded-xl overflow-hidden">
             {themeOptions.map((opt) => (
               <Pressable
@@ -154,9 +146,7 @@ export default function SettingsScreen() {
 
         {/* Account Info */}
         <View className="gap-2">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-            Account
-          </Text>
+          <SectionLabel>Account</SectionLabel>
           <View className="bg-white dark:bg-surface-card rounded-xl p-1 gap-1">
             <View className="flex-row items-start gap-3 p-3">
               <Ionicons name="person-outline" size={20} color="#94a3b8" />
@@ -189,9 +179,7 @@ export default function SettingsScreen() {
         {/* Change Password */}
         <View className="gap-2">
           <Pressable className="flex-row justify-between items-center px-1" onPress={() => setShowPassword(!showPassword)}>
-            <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-              Change Password
-            </Text>
+            <SectionLabel>Change Password</SectionLabel>
             <Ionicons name={showPassword ? 'chevron-up' : 'chevron-down'} size={18} color="#94a3b8" />
           </Pressable>
           {showPassword && (
@@ -224,9 +212,7 @@ export default function SettingsScreen() {
 
         {/* Server */}
         <View className="gap-2">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-            Server
-          </Text>
+          <SectionLabel>Server</SectionLabel>
           <View className="bg-white dark:bg-surface-card rounded-xl p-1 gap-1">
             <View className="flex-row items-start gap-3 p-3">
               <Ionicons name="server-outline" size={20} color="#94a3b8" />
@@ -267,9 +253,7 @@ export default function SettingsScreen() {
 
         {/* Push Notifications */}
         <View className="gap-2">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-            Push Notifications
-          </Text>
+          <SectionLabel>Push Notifications</SectionLabel>
           <View className="bg-white dark:bg-surface-card rounded-xl p-1 gap-1">
             <View className="flex-row items-start gap-3 p-3">
               <Ionicons name="notifications-outline" size={20} color="#94a3b8" />

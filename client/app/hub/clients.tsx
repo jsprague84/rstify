@@ -5,15 +5,16 @@ import {
   Pressable,
   Alert,
   TextInput,
-  Modal,
   FlatList,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 import { EmptyState } from '../../src/components/EmptyState';
+import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
+import { FormModal } from '../../src/components/design/FormModal';
+import { SectionLabel } from '../../src/components/design/SectionLabel';
 import { getApiClient } from '../../src/api';
 import type { Client } from '../../src/api';
 import {
@@ -22,7 +23,6 @@ import {
 } from '../../src/services/notifications';
 
 export default function ClientsScreen() {
-  const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [pushStatus, setPushStatus] = useState<string>('Checking...');
@@ -109,18 +109,7 @@ export default function ClientsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-light-bg dark:bg-surface-bg" edges={['top']}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-slate-700">
-        <View className="flex-row items-center gap-3">
-          <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color="#94a3b8" />
-          </Pressable>
-          <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">Client Tokens</Text>
-        </View>
-        <Pressable onPress={() => setShowCreate(true)} hitSlop={8}>
-          <Ionicons name="add-circle-outline" size={24} color="#3b82f6" />
-        </Pressable>
-      </View>
+      <HubScreenHeader title="Client Tokens" onAdd={() => setShowCreate(true)} />
 
       <FlatList
         data={clients}
@@ -137,9 +126,7 @@ export default function ClientsScreen() {
                 </View>
               </View>
             </View>
-            <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1 mt-2">
-              Tokens ({clients.length})
-            </Text>
+            <SectionLabel>Tokens ({clients.length})</SectionLabel>
           </View>
         }
         renderItem={({ item }) => (
@@ -171,37 +158,30 @@ export default function ClientsScreen() {
       />
 
       {/* Create Token Modal */}
-      <Modal visible={showCreate} animationType="fade" transparent>
-        <Pressable className="flex-1 bg-black/40 justify-center px-6" onPress={() => setShowCreate(false)}>
-          <Pressable onPress={() => {}}>
-            <View className="bg-white dark:bg-surface-card rounded-2xl p-6 gap-3">
-              <Text className="text-lg font-bold text-slate-900 dark:text-slate-100">New Client Token</Text>
-              <TextInput
-                className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                placeholder="Token name"
-                placeholderTextColor="#9ca3af"
-                value={newTokenName}
-                onChangeText={setNewTokenName}
-                autoCapitalize="none"
-              />
-              <View className="flex-row gap-3 mt-1">
-                <AnimatedPressable
-                  className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
-                  onPress={() => { setShowCreate(false); setNewTokenName(''); }}
-                >
-                  <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
-                </AnimatedPressable>
-                <AnimatedPressable
-                  className="flex-1 p-3.5 rounded-lg bg-primary items-center"
-                  onPress={handleCreateToken}
-                >
-                  <Text className="font-semibold text-white">Create</Text>
-                </AnimatedPressable>
-              </View>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <FormModal visible={showCreate} onClose={() => setShowCreate(false)} title="New Client Token">
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Token name"
+          placeholderTextColor="#9ca3af"
+          value={newTokenName}
+          onChangeText={setNewTokenName}
+          autoCapitalize="none"
+        />
+        <View className="flex-row gap-3 mt-1">
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
+            onPress={() => { setShowCreate(false); setNewTokenName(''); }}
+          >
+            <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-primary items-center"
+            onPress={handleCreateToken}
+          >
+            <Text className="font-semibold text-white">Create</Text>
+          </AnimatedPressable>
+        </View>
+      </FormModal>
     </SafeAreaView>
   );
 }

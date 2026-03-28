@@ -7,25 +7,12 @@ import { AnimatedPressable } from "../design/AnimatedPressable";
 import { MessageIcon } from "../MessageIcon";
 import { useMessagesStore } from "../../store";
 import { formatTimeAgo } from "../../utils/time";
+import { PRIORITY_BORDER_COLORS, getPriorityLevel } from "../../utils/priority";
 import type { SourceMeta } from "../../store/messages";
 
 interface SourceGroupCardProps {
   source: SourceMeta;
   index?: number;
-}
-
-const PRIORITY_BORDER_COLORS: Record<string, string> = {
-  low: "#94a3b8", // slate-400
-  medium: "#2563eb", // primary
-  high: "#f59e0b", // warning
-  critical: "#ef4444", // error
-};
-
-function getPriorityLevel(priority: number): string {
-  if (priority >= 8) return "critical";
-  if (priority >= 6) return "high";
-  if (priority >= 4) return "medium";
-  return "low";
 }
 
 export const SourceGroupCard = React.memo(function SourceGroupCard({

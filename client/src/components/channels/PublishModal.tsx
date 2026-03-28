@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { getApiClient } from "../../api";
+import { getPriorityColorHex } from "../../utils/priority";
 
 interface PublishModalProps {
   visible: boolean;
@@ -59,13 +60,6 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
   };
 
   const priorityLevels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-
-  const priorityColor = (p: number) => {
-    if (p <= 3) return "#6b7280";
-    if (p <= 5) return "#3b82f6";
-    if (p <= 7) return "#f59e0b";
-    return "#ef4444";
-  };
 
   return (
     <Modal
@@ -162,7 +156,7 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
                   style={{
                     backgroundColor:
                       priority === p
-                        ? priorityColor(p)
+                        ? getPriorityColorHex(p)
                         : "#f1f5f9",
                     borderWidth: priority === p ? 0 : 1,
                     borderColor: "#e2e8f0",

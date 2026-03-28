@@ -3,6 +3,7 @@ import { getApiClient } from "../api";
 import type { MessageResponse } from "../api";
 import { storage } from "../storage/mmkv";
 import { useApplicationsStore } from "./applications";
+import { getSourceId } from "../utils/source";
 
 const CACHE_KEY = "msg_cache_groups";
 const MAX_MESSAGES_PER_SOURCE = 100;
@@ -47,13 +48,6 @@ interface MessagesState {
 }
 
 // --- Helpers ---
-
-function getSourceId(msg: MessageResponse): string {
-  if (msg.topic) {
-    return `topic:${msg.topic}`;
-  }
-  return `app:${msg.appid ?? 0}`;
-}
 
 function buildSourceMeta(
   sourceId: string,

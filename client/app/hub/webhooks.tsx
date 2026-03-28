@@ -14,10 +14,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../src/components/EmptyState';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
+import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
+import { FormInput } from '../../src/components/design/FormInput';
 import { getApiClient } from '../../src/api';
 import type {
   WebhookConfig,
@@ -31,7 +32,6 @@ import * as Clipboard from 'expo-clipboard';
 type Direction = 'incoming' | 'outgoing';
 
 export default function WebhooksScreen() {
-  const router = useRouter();
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -391,21 +391,7 @@ export default function WebhooksScreen() {
     );
   };
 
-  const InputField = ({ value, onChangeText, placeholder, ...props }: {
-    value: string; onChangeText: (t: string) => void; placeholder: string;
-    multiline?: boolean; numberOfLines?: number; secureTextEntry?: boolean;
-    keyboardType?: 'default' | 'numeric' | 'url'; autoCapitalize?: 'none' | 'sentences';
-  }) => (
-    <TextInput
-      className={`bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100 ${props.multiline ? 'min-h-[72px]' : ''}`}
-      placeholder={placeholder}
-      placeholderTextColor="#9ca3af"
-      value={value}
-      onChangeText={onChangeText}
-      textAlignVertical={props.multiline ? 'top' : undefined}
-      {...props}
-    />
-  );
+  const InputField = FormInput;
 
   const ChipRow = ({ items, selected, onSelect }: {
     items: string[]; selected: string; onSelect: (v: string) => void;
@@ -468,18 +454,7 @@ export default function WebhooksScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-light-bg dark:bg-surface-bg" edges={['top']}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-slate-700">
-        <View className="flex-row items-center gap-3">
-          <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color="#94a3b8" />
-          </Pressable>
-          <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">Webhooks</Text>
-        </View>
-        <Pressable onPress={() => setShowCreate(true)} hitSlop={8}>
-          <Ionicons name="add-circle-outline" size={24} color="#3b82f6" />
-        </Pressable>
-      </View>
+      <HubScreenHeader title="Webhooks" onAdd={() => setShowCreate(true)} />
 
       <SectionList
         sections={sections}

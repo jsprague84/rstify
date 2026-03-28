@@ -5,23 +5,22 @@ import {
   Pressable,
   Alert,
   TextInput,
-  Modal,
   Switch,
   FlatList,
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 import { EmptyState } from '../../src/components/EmptyState';
+import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
+import { FormModal } from '../../src/components/design/FormModal';
+import { SectionLabel } from '../../src/components/design/SectionLabel';
 import { getApiClient } from '../../src/api';
 import type { UserResponse, StatsResponse, TopicPermission } from '../../src/api';
 
 export default function UsersScreen() {
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
   const [users, setUsers] = useState<UserResponse[]>([]);
@@ -142,13 +141,7 @@ export default function UsersScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-light-bg dark:bg-surface-bg" edges={['top']}>
-      {/* Header */}
-      <View className="flex-row items-center gap-3 px-4 py-3 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-slate-700">
-        <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Ionicons name="chevron-back" size={24} color="#94a3b8" />
-        </Pressable>
-        <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">User Management</Text>
-      </View>
+      <HubScreenHeader title="User Management" />
 
       <FlatList
         data={[{ key: 'content' }]}
@@ -157,9 +150,7 @@ export default function UsersScreen() {
             {/* Stats */}
             {stats && (
               <View className="gap-2">
-                <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-                  Server Stats
-                </Text>
+                <SectionLabel>Server Stats</SectionLabel>
                 <View className="flex-row flex-wrap gap-2">
                   {[
                     { label: 'Users', value: stats.users },
@@ -178,9 +169,7 @@ export default function UsersScreen() {
 
             {/* Users */}
             <View className="gap-2">
-              <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-                Users ({users.length})
-              </Text>
+              <SectionLabel>Users ({users.length})</SectionLabel>
               <View className="bg-white dark:bg-surface-card rounded-xl overflow-hidden">
                 {users.map((u) => (
                   <View key={u.id} className="flex-row items-center justify-between p-3 gap-3">
@@ -218,9 +207,7 @@ export default function UsersScreen() {
             {/* Permissions */}
             <View className="gap-2">
               <View className="flex-row items-center justify-between px-1">
-                <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  Topic Permissions ({permissions.length})
-                </Text>
+                <SectionLabel>Topic Permissions ({permissions.length})</SectionLabel>
                 <Pressable onPress={() => setShowCreatePerm(true)} hitSlop={8}>
                   <Ionicons name="add-circle-outline" size={18} color="#3b82f6" />
                 </Pressable>
@@ -253,53 +240,46 @@ export default function UsersScreen() {
       />
 
       {/* Create Permission Modal */}
-      <Modal visible={showCreatePerm} animationType="fade" transparent>
-        <Pressable className="flex-1 bg-black/40 justify-center px-6" onPress={() => setShowCreatePerm(false)}>
-          <Pressable onPress={() => {}}>
-            <View className="bg-white dark:bg-surface-card rounded-2xl p-6 gap-3">
-              <Text className="text-lg font-bold text-slate-900 dark:text-slate-100">New Permission</Text>
-              <TextInput
-                className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                placeholder="User ID"
-                placeholderTextColor="#9ca3af"
-                value={newPermUserId}
-                onChangeText={setNewPermUserId}
-                keyboardType="numeric"
-              />
-              <TextInput
-                className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                placeholder="Topic pattern (e.g. alerts.*)"
-                placeholderTextColor="#9ca3af"
-                value={newPermPattern}
-                onChangeText={setNewPermPattern}
-                autoCapitalize="none"
-              />
-              <View className="flex-row justify-between items-center py-1">
-                <Text className="text-base text-slate-900 dark:text-slate-100">Can Read</Text>
-                <Switch value={newPermRead} onValueChange={setNewPermRead} />
-              </View>
-              <View className="flex-row justify-between items-center py-1">
-                <Text className="text-base text-slate-900 dark:text-slate-100">Can Write</Text>
-                <Switch value={newPermWrite} onValueChange={setNewPermWrite} />
-              </View>
-              <View className="flex-row gap-3 mt-1">
-                <AnimatedPressable
-                  className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
-                  onPress={() => setShowCreatePerm(false)}
-                >
-                  <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
-                </AnimatedPressable>
-                <AnimatedPressable
-                  className="flex-1 p-3.5 rounded-lg bg-primary items-center"
-                  onPress={handleCreatePermission}
-                >
-                  <Text className="font-semibold text-white">Create</Text>
-                </AnimatedPressable>
-              </View>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <FormModal visible={showCreatePerm} onClose={() => setShowCreatePerm(false)} title="New Permission">
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="User ID"
+          placeholderTextColor="#9ca3af"
+          value={newPermUserId}
+          onChangeText={setNewPermUserId}
+          keyboardType="numeric"
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Topic pattern (e.g. alerts.*)"
+          placeholderTextColor="#9ca3af"
+          value={newPermPattern}
+          onChangeText={setNewPermPattern}
+          autoCapitalize="none"
+        />
+        <View className="flex-row justify-between items-center py-1">
+          <Text className="text-base text-slate-900 dark:text-slate-100">Can Read</Text>
+          <Switch value={newPermRead} onValueChange={setNewPermRead} />
+        </View>
+        <View className="flex-row justify-between items-center py-1">
+          <Text className="text-base text-slate-900 dark:text-slate-100">Can Write</Text>
+          <Switch value={newPermWrite} onValueChange={setNewPermWrite} />
+        </View>
+        <View className="flex-row gap-3 mt-1">
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
+            onPress={() => setShowCreatePerm(false)}
+          >
+            <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-primary items-center"
+            onPress={handleCreatePermission}
+          >
+            <Text className="font-semibold text-white">Create</Text>
+          </AnimatedPressable>
+        </View>
+      </FormModal>
     </SafeAreaView>
   );
 }

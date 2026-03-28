@@ -6,17 +6,11 @@ import { AnimatedPressable } from "../design/AnimatedPressable";
 import { MessageIcon } from "../MessageIcon";
 import { useMessagesStore, useApplicationsStore } from "../../store";
 import { formatTimeAgo } from "../../utils/time";
+import { getSourceId } from "../../utils/source";
 import type { MessageResponse } from "../../api/types";
 
 interface StreamMessageCardProps {
   message: MessageResponse;
-}
-
-function getSourceId(msg: MessageResponse): string {
-  if (msg.topic) {
-    return `topic:${msg.topic}`;
-  }
-  return `app:${msg.appid ?? 0}`;
 }
 
 export const StreamMessageCard = React.memo(function StreamMessageCard({

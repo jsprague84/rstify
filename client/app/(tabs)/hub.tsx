@@ -8,6 +8,7 @@ import { useThemeStore } from '../../src/store/theme';
 import { useMessagesStore } from '../../src/store';
 import { IntegrationTile } from '../../src/components/hub/IntegrationTile';
 import { SettingsRow } from '../../src/components/hub/SettingsRow';
+import { SectionLabel } from '../../src/components/design/SectionLabel';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 
 const APP_VERSION = '2.0.0';
@@ -66,9 +67,7 @@ export default function HubScreen() {
 
         {/* Integrations */}
         <View className="gap-2">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-            Integrations
-          </Text>
+          <SectionLabel>Integrations</SectionLabel>
           <View className="flex-row gap-3">
             <IntegrationTile
               icon="📱"
@@ -101,9 +100,7 @@ export default function HubScreen() {
 
         {/* Account */}
         <View className="gap-2">
-          <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-            Account
-          </Text>
+          <SectionLabel>Account</SectionLabel>
           <View className="gap-1.5">
             <SettingsRow title="Change Password" href="/hub/settings" />
             <SettingsRow title="Notifications" href="/hub/settings" />
@@ -114,9 +111,7 @@ export default function HubScreen() {
         {/* Admin */}
         {user?.is_admin ? (
           <View className="gap-2">
-            <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 px-1">
-              Admin
-            </Text>
+            <SectionLabel>Admin</SectionLabel>
             <View className="gap-1.5">
               <SettingsRow title="User Management" href="/hub/users" />
               <SettingsRow title="Server Info" href="/hub/settings" />

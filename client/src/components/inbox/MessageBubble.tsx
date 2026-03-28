@@ -6,18 +6,12 @@ import { AnimatedPressable } from "../design/AnimatedPressable";
 import { MessageContent } from "../MessageContent";
 import { MessageActions } from "../MessageActions";
 import { MessageAttachments } from "../MessageAttachments";
+import { PRIORITY_BORDER_COLORS, getPriorityLevel } from "../../utils/priority";
 import type { MessageResponse } from "../../api/types";
 
 interface MessageBubbleProps {
   message: MessageResponse;
 }
-
-const PRIORITY_BORDER_COLORS: Record<string, string> = {
-  low: "#94a3b8", // slate-400
-  medium: "#2563eb", // primary
-  high: "#f59e0b", // warning
-  critical: "#ef4444", // error
-};
 
 const PRIORITY_LABELS: Record<string, { text: string; className: string }> = {
   high: {
@@ -29,13 +23,6 @@ const PRIORITY_LABELS: Record<string, { text: string; className: string }> = {
     className: "text-error",
   },
 };
-
-function getPriorityLevel(priority: number): string {
-  if (priority >= 8) return "critical";
-  if (priority >= 6) return "high";
-  if (priority >= 4) return "medium";
-  return "low";
-}
 
 export const MessageBubble = React.memo(function MessageBubble({
   message,

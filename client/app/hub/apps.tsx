@@ -7,14 +7,13 @@ import {
   Pressable,
   Alert,
   TextInput,
-  Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../src/components/EmptyState';
+import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
+import { FormModal } from '../../src/components/design/FormModal';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 import { getApiClient } from '../../src/api';
 import type { Application } from '../../src/api';
@@ -42,7 +41,6 @@ function AppIconView({ app }: { app: Application }) {
 }
 
 export default function AppsScreen() {
-  const router = useRouter();
   const [apps, setApps] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -143,18 +141,7 @@ export default function AppsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface-light-bg dark:bg-surface-bg" edges={['top']}>
-      {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-slate-700">
-        <View className="flex-row items-center gap-3">
-          <Pressable onPress={() => router.back()} hitSlop={8}>
-            <Ionicons name="chevron-back" size={24} color="#94a3b8" />
-          </Pressable>
-          <Text className="text-xl font-bold text-slate-900 dark:text-slate-100">Applications</Text>
-        </View>
-        <Pressable onPress={() => setShowCreate(true)} hitSlop={8}>
-          <Ionicons name="add-circle-outline" size={24} color="#3b82f6" />
-        </Pressable>
-      </View>
+      <HubScreenHeader title="Applications" onAdd={() => setShowCreate(true)} />
 
       <FlatList
         data={apps}
@@ -207,115 +194,79 @@ export default function AppsScreen() {
       />
 
       {/* Create Modal */}
-      <Modal visible={showCreate} animationType="fade" transparent>
-        <Pressable
-          className="flex-1 bg-black/40 justify-center px-6"
-          onPress={() => setShowCreate(false)}
-        >
-          <Pressable onPress={() => {}}>
-            <KeyboardAwareScrollView
-              bottomOffset={20}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-            >
-              <View className="bg-white dark:bg-surface-card rounded-2xl p-6 gap-3">
-                <Text className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Create Application
-                </Text>
-                <TextInput
-                  className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                  placeholder="Application name"
-                  placeholderTextColor="#9ca3af"
-                  value={newAppName}
-                  onChangeText={setNewAppName}
-                  returnKeyType="next"
-                />
-                <TextInput
-                  className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                  placeholder="Description (optional)"
-                  placeholderTextColor="#9ca3af"
-                  value={newAppDesc}
-                  onChangeText={setNewAppDesc}
-                  returnKeyType="done"
-                  onSubmitEditing={handleCreateApp}
-                />
-                <View className="flex-row gap-3 mt-1">
-                  <AnimatedPressable
-                    className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
-                    onPress={() => setShowCreate(false)}
-                  >
-                    <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
-                  </AnimatedPressable>
-                  <AnimatedPressable
-                    className="flex-1 p-3.5 rounded-lg bg-primary items-center"
-                    onPress={handleCreateApp}
-                  >
-                    <Text className="font-semibold text-white">Create</Text>
-                  </AnimatedPressable>
-                </View>
-              </View>
-            </KeyboardAwareScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <FormModal visible={showCreate} onClose={() => setShowCreate(false)} title="Create Application">
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Application name"
+          placeholderTextColor="#9ca3af"
+          value={newAppName}
+          onChangeText={setNewAppName}
+          returnKeyType="next"
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Description (optional)"
+          placeholderTextColor="#9ca3af"
+          value={newAppDesc}
+          onChangeText={setNewAppDesc}
+          returnKeyType="done"
+          onSubmitEditing={handleCreateApp}
+        />
+        <View className="flex-row gap-3 mt-1">
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
+            onPress={() => setShowCreate(false)}
+          >
+            <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-primary items-center"
+            onPress={handleCreateApp}
+          >
+            <Text className="font-semibold text-white">Create</Text>
+          </AnimatedPressable>
+        </View>
+      </FormModal>
 
       {/* Edit Modal */}
-      <Modal visible={!!editApp} animationType="fade" transparent>
-        <Pressable
-          className="flex-1 bg-black/40 justify-center px-6"
-          onPress={() => setEditApp(null)}
-        >
-          <Pressable onPress={() => {}}>
-            <KeyboardAwareScrollView
-              bottomOffset={20}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-            >
-              <View className="bg-white dark:bg-surface-card rounded-2xl p-6 gap-3">
-                <Text className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Edit Application
-                </Text>
-                <TextInput
-                  className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                  placeholder="Name"
-                  placeholderTextColor="#9ca3af"
-                  value={editName}
-                  onChangeText={setEditName}
-                />
-                <TextInput
-                  className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                  placeholder="Description (optional)"
-                  placeholderTextColor="#9ca3af"
-                  value={editDesc}
-                  onChangeText={setEditDesc}
-                />
-                <TextInput
-                  className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
-                  placeholder="Default Priority (1-10)"
-                  placeholderTextColor="#9ca3af"
-                  value={editPriority}
-                  onChangeText={setEditPriority}
-                  keyboardType="numeric"
-                />
-                <View className="flex-row gap-3 mt-1">
-                  <AnimatedPressable
-                    className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
-                    onPress={() => setEditApp(null)}
-                  >
-                    <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
-                  </AnimatedPressable>
-                  <AnimatedPressable
-                    className="flex-1 p-3.5 rounded-lg bg-primary items-center"
-                    onPress={handleEditApp}
-                  >
-                    <Text className="font-semibold text-white">Save</Text>
-                  </AnimatedPressable>
-                </View>
-              </View>
-            </KeyboardAwareScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <FormModal visible={!!editApp} onClose={() => setEditApp(null)} title="Edit Application">
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Name"
+          placeholderTextColor="#9ca3af"
+          value={editName}
+          onChangeText={setEditName}
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Description (optional)"
+          placeholderTextColor="#9ca3af"
+          value={editDesc}
+          onChangeText={setEditDesc}
+        />
+        <TextInput
+          className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
+          placeholder="Default Priority (1-10)"
+          placeholderTextColor="#9ca3af"
+          value={editPriority}
+          onChangeText={setEditPriority}
+          keyboardType="numeric"
+        />
+        <View className="flex-row gap-3 mt-1">
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
+            onPress={() => setEditApp(null)}
+          >
+            <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            className="flex-1 p-3.5 rounded-lg bg-primary items-center"
+            onPress={handleEditApp}
+          >
+            <Text className="font-semibold text-white">Save</Text>
+          </AnimatedPressable>
+        </View>
+      </FormModal>
     </SafeAreaView>
   );
 }
