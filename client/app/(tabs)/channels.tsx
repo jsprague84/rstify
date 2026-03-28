@@ -197,10 +197,14 @@ function CreateFolderModal({ visible, onClose }: CreateFolderModalProps) {
 // --- Main Channels Screen ---
 export default function ChannelsScreen() {
   const fetchTopics = useChannelsStore((s) => s.fetchTopics);
-  const folderedTopics = useChannelsStore((s) => s.getFolderedTopics());
+  const storeTopics = useChannelsStore((s) => s.topics);
+  const storeFolders = useChannelsStore((s) => s.folders);
+  const storePins = useChannelsStore((s) => s.pinnedTopics);
+  const getFolderedTopics = useChannelsStore((s) => s.getFolderedTopics);
   const toggleFolderCollapsed = useChannelsStore((s) => s.toggleFolderCollapsed);
   const isLoading = useChannelsStore((s) => s.isLoading);
-  const topics = useChannelsStore((s) => s.topics);
+
+  const folderedTopics = useMemo(() => getFolderedTopics(), [storeTopics, storeFolders, storePins]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateTopic, setShowCreateTopic] = useState(false);
@@ -299,7 +303,7 @@ export default function ChannelsScreen() {
         keyboardShouldPersistTaps="handled"
       >
         {/* Empty state */}
-        {topics.length === 0 && !isLoading ? (
+        {storeTopics.length === 0 && !isLoading ? (
           <EmptyState
             icon="git-branch-outline"
             title="No channels yet"

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,8 +17,10 @@ export default function ThreadScreen() {
   const decodedSourceId = decodeURIComponent(sourceId ?? "");
 
   const sourceMeta = useMessagesStore((s) => s.sourceMeta);
-  const messages = useMessagesStore(
-    (s) => s.getMessagesForSource(decodedSourceId),
+  const groupedMessages = useMessagesStore((s) => s.groupedMessages);
+  const messages = useMemo(
+    () => groupedMessages.get(decodedSourceId) ?? [],
+    [groupedMessages, decodedSourceId],
   );
   const getApp = useApplicationsStore((s) => s.getApp);
   const getIconUrl = useApplicationsStore((s) => s.getIconUrl);

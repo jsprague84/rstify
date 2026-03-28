@@ -31,8 +31,24 @@ export default function InboxScreen() {
   const fetchMessages = useMessagesStore((s) => s.fetchMessages);
   const fetchOlderMessages = useMessagesStore((s) => s.fetchOlderMessages);
   const addMessage = useMessagesStore((s) => s.addMessage);
-  const groupedSources = useMessagesStore((s) => s.getGroupedSources());
-  const streamMessages = useMessagesStore((s) => s.getStreamMessages());
+  const sourceMeta = useMessagesStore((s) => s.sourceMeta);
+  const groupedMessages = useMessagesStore((s) => s.groupedMessages);
+  const hasMore = useMessagesStore((s) => s.hasMore);
+  const isLoadingMore = useMessagesStore((s) => s.isLoadingMore);
+
+  const groupedSources = useMemo(() => {
+    return Array.from(sourceMeta.values()).sort(
+      (a, b) => new Date(b.latestTimestamp).getTime() - new Date(a.latestTimestamp).getTime(),
+    );
+  }, [sourceMeta]);
+
+  const streamMessages = useMemo(() => {
+    const all: MessageResponse[] = [];
+    for (const msgs of groupedMessages.values()) {
+      all.push(...msgs);
+    }
+    return all.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [groupedMessages]);
 
   const fetchApplications = useApplicationsStore((s) => s.fetchApplications);
 
