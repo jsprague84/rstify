@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <!-- Notification bell icon -->
+  <!-- Bell handle/top knob -->
+  <circle cx="200" cy="62" r="18" fill="#F5A623"/>
+  <!-- Bell stem -->
+  <rect x="193" y="72" width="14" height="28" rx="4" fill="#F5A623"/>
+  <!-- Bell body - dome shape -->
+  <path d="M 105 250 
+           Q 105 120 200 95 
+           Q 295 120 295 250 
+           L 105 250 Z" 
+        fill="#F5A623"/>
+  <!-- Bell highlight -->
+  <path d="M 155 250 
+           Q 155 145 210 125 
+           Q 200 120 200 120
+           Q 145 140 135 250
+           L 155 250 Z" 
+        fill="#FFD166" opacity="0.5"/>
+  <!-- Bell rim/base -->
+  <rect x="85" y="248" width="230" height="30" rx="8" fill="#E8971E"/>
+  <!-- Clapper -->
+  <circle cx="200" cy="310" r="22" fill="#F5A623"/>
+</svg>

@@ -342,11 +342,7 @@ pub async fn receive_webhook(
         .find_webhook_config_by_token(&token)
         .await
         .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(CoreError::NotFound(
-                "Webhook not found".to_string(),
-            ))
-        })?;
+        .ok_or_else(|| ApiError::from(CoreError::NotFound("Webhook not found".to_string())))?;
 
     if !config.enabled {
         return Err(ApiError::from(CoreError::Forbidden(
@@ -358,59 +354,99 @@ pub async fn receive_webhook(
         .map_err(|_| ApiError::from(CoreError::Validation("Invalid JSON body".to_string())))?;
 
     // Extract message from payload based on webhook type
-    let (title, message, priority, click_url, tags_json, extras_json) = match config.webhook_type.as_str() {
+    let (title, message, priority, click_url, tags_json, extras_json) = match config
+        .webhook_type
+        .as_str()
+    {
         "forgejo" | "gitea" => {
             if let Some(ref secret) = config.secret {
                 if !secret.is_empty() {
-                    let sig = headers.get("X-Gitea-Signature")
+                    let sig = headers
+                        .get("X-Gitea-Signature")
                         .or_else(|| headers.get("X-Forgejo-Signature"))
                         .and_then(|v| v.to_str().ok())
                         .unwrap_or("");
-                    if sig.is_empty() || !crate::webhooks::signature::verify_gitea_signature(secret, &body, sig) {
-                        return Err(ApiError::from(CoreError::Forbidden("Invalid webhook signature".to_string())));
+                    if sig.is_empty()
+                        || !crate::webhooks::signature::verify_gitea_signature(secret, &body, sig)
+                    {
+                        return Err(ApiError::from(CoreError::Forbidden(
+                            "Invalid webhook signature".to_string(),
+                        )));
                     }
                 }
             }
-            let event = headers.get("X-Gitea-Event")
+            let event = headers
+                .get("X-Gitea-Event")
                 .or_else(|| headers.get("X-Forgejo-Event"))
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("unknown");
             let output = crate::webhooks::forgejo::parse_forgejo_event(event, &body);
             let tags = output.tags_json();
             let extras = output.extras_json();
-            (Some(output.title), output.message, output.priority,
-             output.click_url, tags, extras)
+            (
+                Some(output.title),
+                output.message,
+                output.priority,
+                output.click_url,
+                tags,
+                extras,
+            )
         }
         "github" => {
             if let Some(ref secret) = config.secret {
                 if !secret.is_empty() {
-                    let sig = headers.get("X-Hub-Signature-256")
+                    let sig = headers
+                        .get("X-Hub-Signature-256")
                         .and_then(|v| v.to_str().ok())
                         .unwrap_or("");
-                    if sig.is_empty() || !crate::webhooks::signature::verify_github_signature(secret, &body, sig) {
-                        return Err(ApiError::from(CoreError::Forbidden("Invalid webhook signature".to_string())));
+                    if sig.is_empty()
+                        || !crate::webhooks::signature::verify_github_signature(secret, &body, sig)
+                    {
+                        return Err(ApiError::from(CoreError::Forbidden(
+                            "Invalid webhook signature".to_string(),
+                        )));
                     }
                 }
             }
-            let event = headers.get("X-GitHub-Event")
+            let event = headers
+                .get("X-GitHub-Event")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("unknown");
             let output = crate::webhooks::github::parse_github_event(event, &body);
             let tags = output.tags_json();
             let extras = output.extras_json();
-            (Some(output.title), output.message, output.priority,
-             output.click_url, tags, extras)
+            (
+                Some(output.title),
+                output.message,
+                output.priority,
+                output.click_url,
+                tags,
+                extras,
+            )
         }
         "grafana" => {
-            let title = payload.get("title").and_then(|v| v.as_str()).map(String::from);
-            let message = payload.get("message").and_then(|v| v.as_str()).unwrap_or("Grafana alert").to_string();
+            let title = payload
+                .get("title")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let message = payload
+                .get("message")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Grafana alert")
+                .to_string();
             (title, message, 5i32, None, None, None)
         }
         _ => {
-            let title = payload.get("title").and_then(|v| v.as_str()).map(String::from);
-            let message = payload.get("message").and_then(|v| v.as_str())
+            let title = payload
+                .get("title")
+                .and_then(|v| v.as_str())
+                .map(String::from);
+            let message = payload
+                .get("message")
+                .and_then(|v| v.as_str())
                 .or_else(|| payload.get("text").and_then(|v| v.as_str()))
-                .unwrap_or("Webhook received").to_string();
+                .unwrap_or("Webhook received")
+                .to_string();
             (title, message, 5i32, None, None, None)
         }
     };
