@@ -28,3 +28,5 @@ mime_guess = { workspace = true }
 humantime = { workspace = true }
 jsonwebtoken = { workspace = true }
 url = "2.5.8"
+hmac = "0.12"
+sha2 = "0.10"

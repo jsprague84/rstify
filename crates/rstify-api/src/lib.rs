@@ -5,6 +5,7 @@ pub mod middleware;
 pub mod ntfy_headers;
 pub mod openapi;
 pub mod routes;
+pub mod webhooks;
 pub mod sse;
 pub mod state;
 pub mod utils;
