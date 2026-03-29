@@ -49,6 +49,12 @@ jobs:
     runs-on: docker
     container:
       image: docker:27-cli
+      env:
+        DOCKER_HOST: tcp://docker:2376
+        DOCKER_TLS_VERIFY: "1"
+        DOCKER_CERT_PATH: /certs/client
+      volumes:
+        - /certs/client:/certs/client:ro
     steps:
       - name: Install git
         run: apk add --no-cache git
