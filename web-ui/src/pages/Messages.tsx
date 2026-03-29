@@ -178,12 +178,20 @@ export default function Messages() {
               <div className="flex justify-between items-start gap-3">
                 {(() => {
                   const iconUrl = m.icon_url || (m.appid && appsMap.get(m.appid)?.image ? api.getApplicationIconUrl(m.appid) : null);
+                  const appName = m.appid ? appsMap.get(m.appid)?.name : undefined;
                   return iconUrl ? (
                     <img
                       src={iconUrl}
-                      alt="Message icon"
-                      className="w-10 h-10 rounded flex-shrink-0 object-contain"
+                      alt={appName || 'App'}
+                      className="w-10 h-10 rounded flex-shrink-0 object-contain cursor-pointer hover:ring-2 hover:ring-indigo-400 transition-all"
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      onClick={() => {
+                        if (appName) {
+                          handleSearch(appName);
+                          setFilter('app');
+                        }
+                      }}
+                      title={`Filter by ${appName || 'this app'}`}
                     />
                   ) : null;
                 })()}
