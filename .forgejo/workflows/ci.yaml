@@ -1,0 +1,174 @@
+# rstify CI Pipeline
+#
+# Uses the shared rust-ci:latest image with sccache for fast builds.
+# Persistent volumes cache compiled artifacts between runs.
+#
+# Pipeline: lint → test → build-webui → build-backend
+# Cold build: ~10-15 min | Warm (sccache): ~3-5 min
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+    tags: ['v*']
+  pull_request:
+    branches: [main, master]
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Lint: fmt + clippy
+  # ──────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: docker
+    container:
+      image: git.js-node.cc/jsprague/rust-ci:latest
+      volumes:
+        - /ci-cache/sccache:/sccache
+        - /ci-cache/cargo-registry:/usr/local/cargo/registry
+    steps:
+      - name: Checkout
+        run: |
+          git clone --depth=1 --branch=${GITHUB_REF_NAME} ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . 2>/dev/null || \
+          (git clone --depth=50 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . && git checkout ${GITHUB_SHA})
+
+      - name: Format check
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace -- -D warnings
+
+      - name: Cache stats
+        run: sccache --show-stats
+
+  # ──────────────────────────────────────────────
+  # Test: cargo test + web UI build
+  # ──────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: docker
+    needs: lint
+    container:
+      image: git.js-node.cc/jsprague/rust-ci:latest
+      volumes:
+        - /ci-cache/sccache:/sccache
+        - /ci-cache/cargo-registry:/usr/local/cargo/registry
+    steps:
+      - name: Checkout
+        run: |
+          git clone --depth=1 --branch=${GITHUB_REF_NAME} ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . 2>/dev/null || \
+          (git clone --depth=50 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . && git checkout ${GITHUB_SHA})
+
+      - name: Install Node.js
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+
+      - name: Build web UI
+        run: cd web-ui && npm ci && npm run build
+
+      - name: Run tests
+        run: cargo test --workspace
+
+      - name: Cache stats
+        run: sccache --show-stats
+
+  # ──────────────────────────────────────────────
+  # Build: release binary (main/master + tags)
+  # ──────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: docker
+    needs: test
+    if: >-
+      forgejo.ref == 'refs/heads/main' ||
+      forgejo.ref == 'refs/heads/master' ||
+      startsWith(forgejo.ref, 'refs/tags/v')
+    container:
+      image: git.js-node.cc/jsprague/rust-ci:latest
+      volumes:
+        - /ci-cache/sccache:/sccache
+        - /ci-cache/cargo-registry:/usr/local/cargo/registry
+    steps:
+      - name: Checkout
+        run: |
+          git clone --depth=1 --branch=${GITHUB_REF_NAME} ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . 2>/dev/null || \
+          (git clone --depth=50 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . && git checkout ${GITHUB_SHA})
+
+      - name: Install Node.js
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+
+      - name: Build web UI
+        run: cd web-ui && npm ci && npm run build
+
+      - name: Build release binary
+        run: |
+          cargo build --release
+          strip target/release/rstify-server
+          ls -lh target/release/rstify-server
+
+      - name: Cache stats
+        run: sccache --show-stats
+
+  # ──────────────────────────────────────────────
+  # Release: Forgejo release with binary (tags only)
+  # ──────────────────────────────────────────────
+  release:
+    name: Release
+    runs-on: docker
+    needs: build
+    if: startsWith(forgejo.ref, 'refs/tags/v')
+    container:
+      image: git.js-node.cc/jsprague/rust-ci:latest
+      volumes:
+        - /ci-cache/sccache:/sccache
+        - /ci-cache/cargo-registry:/usr/local/cargo/registry
+    steps:
+      - name: Checkout and build
+        run: |
+          git clone --depth=1 --branch=${GITHUB_REF_NAME} ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git .
+          curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+          apt-get install -y nodejs
+          cd web-ui && npm ci && npm run build && cd ..
+          cargo build --release
+          strip target/release/rstify-server
+
+      - name: Create release
+        env:
+          TOKEN: ${{ secrets.RSTIFY_FORGEJO_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          API="${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}"
+
+          BODY="## rstify ${TAG}
+
+          ### Docker
+          \`\`\`bash
+          docker pull git.js-node.cc/jsprague/rstify:latest
+          \`\`\`
+
+          ### Binary
+          \`\`\`bash
+          chmod +x rstify-server-linux-x86_64
+          ./rstify-server-linux-x86_64
+          \`\`\`"
+
+          RELEASE_ID=$(curl -sf -X POST "${API}/releases" \
+            -H "Authorization: token ${TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"tag_name\":\"${TAG}\",\"name\":\"rstify ${TAG}\",\"body\":$(echo "$BODY"|jq -Rs .),\"draft\":false,\"prerelease\":false}" \
+            | jq -r '.id')
+
+          curl -sf -X POST "${API}/releases/${RELEASE_ID}/assets?name=rstify-server-linux-x86_64" \
+            -H "Authorization: token ${TOKEN}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @target/release/rstify-server
+
+          echo "Published ${TAG} (release ${RELEASE_ID})"

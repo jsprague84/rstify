@@ -1,3 +1,21 @@
+# rstify Docker Image Build
+#
+# Builds and pushes Docker image to Forgejo container registry.
+#
+# IMPORTANT: Requires runner config update for Docker access:
+#   In /home/ubuntu/docker/forgejo/runner-data/config.yml, set:
+#     container:
+#       docker_host: "tcp://docker:2376"
+#       valid_volumes:
+#         - /ci-cache/**
+#         - /certs/client
+#       options: "-e DOCKER_TLS_VERIFY=1 -e DOCKER_CERT_PATH=/certs/client -v /certs/client:/certs/client:ro"
+#
+#   Then: docker compose restart forgejo-runner
+#
+# Without this config change, the Docker build job will fail.
+# Alternative: Use GitHub Actions for Docker builds (see .github/workflows/).
+
 name: Docker Image
 
 on:
@@ -11,49 +29,17 @@ env:
   IMAGE_NAME: jsprague/rstify
 
 jobs:
-  test:
-    runs-on: docker
-    container:
-      image: data.forgejo.org/oci/node:20
-    steps:
-      - name: Checkout
-        run: |
-          git clone --depth=1 --branch=${GITHUB_REF_NAME} ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . 2>/dev/null || \
-          (git clone --depth=50 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . && git checkout ${GITHUB_SHA})
-
-      - name: Build web UI
-        run: cd web-ui && npm ci && npm run build
-
-      - name: Install Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --component clippy,rustfmt
-          . "$HOME/.cargo/env"
-
-      - name: Check formatting
-        run: |
-          . "$HOME/.cargo/env"
-          cargo fmt --all -- --check
-
-      - name: Run clippy
-        run: |
-          . "$HOME/.cargo/env"
-          cargo clippy --workspace -- -D warnings
-
-      - name: Run tests
-        run: |
-          . "$HOME/.cargo/env"
-          cargo test --workspace
-
-  build-and-push:
-    needs: test
+  docker:
+    name: Build & Push Docker Image
     runs-on: docker
     container:
       image: docker:27-cli
-      options: >-
-        -e DOCKER_HOST=tcp://docker:2376
-        -e DOCKER_TLS_VERIFY=1
-        -e DOCKER_CERT_PATH=/certs/client
-        -v /certs:/certs:ro
+      env:
+        DOCKER_HOST: tcp://docker:2376
+        DOCKER_TLS_VERIFY: "1"
+        DOCKER_CERT_PATH: /certs/client
+      volumes:
+        - /certs/client:/certs/client:ro
     steps:
       - name: Install git
         run: apk add --no-cache git
@@ -64,11 +50,11 @@ jobs:
           (git clone --depth=50 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . && git checkout ${GITHUB_SHA})
 
       - name: Login to Forgejo registry
-        run: echo "${{ secrets.RSTIFY_FORGEJO_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ secrets.FORGEJO_USER }} --password-stdin
+        run: echo "${{ secrets.RSTIFY_FORGEJO_TOKEN }}" | docker login ${REGISTRY} -u ${{ secrets.FORGEJO_USER }} --password-stdin
 
-      - name: Build and push Docker image
+      - name: Build and push
         run: |
-          IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          IMAGE="${REGISTRY}/${IMAGE_NAME}"
           docker build -t "${IMAGE}:latest" .
           docker push "${IMAGE}:latest"
           if echo "${GITHUB_REF}" | grep -q "^refs/tags/v"; then
