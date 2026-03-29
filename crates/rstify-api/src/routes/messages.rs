@@ -517,6 +517,10 @@ pub async fn websocket_stream(
                 result = rx.recv() => {
                     match result {
                         Ok(msg) => {
+                            // Only send inbox messages on the user stream
+                            if !msg.inbox {
+                                continue;
+                            }
                             let json = serde_json::to_string(msg.as_ref()).unwrap_or_default();
                             if socket.send(axum::extract::ws::Message::Text(json.into())).await.is_err() {
                                 break;
