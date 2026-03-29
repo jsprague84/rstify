@@ -15,5 +15,5 @@ jobs:
 
       - name: Push to GitHub mirror
         run: |
-          git remote add github https://x-access-token:${{ secrets.GITHUB_PAT }}@github.com/jsprague84/rstify.git || true
+          git remote add github https://x-access-token:${{ secrets.GH_PAT }}@github.com/jsprague84/rstify.git || true
           git push github master --tags --force
