@@ -148,6 +148,10 @@ impl Database {
                 "025_webhook_variables",
                 include_str!("../../../migrations/025_webhook_variables.sql"),
             ),
+            (
+                "026_webhook_secret",
+                include_str!("../../../migrations/026_webhook_secret.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {
