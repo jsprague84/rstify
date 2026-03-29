@@ -38,6 +38,20 @@ pub fn should_store(
     }
 }
 
+/// Determine whether a message should appear in the Inbox and trigger push notification.
+/// Topic messages are routed by the topic's inbox_override or the global priority threshold.
+pub fn should_inbox(topic: &Topic, priority: i32, global_threshold: i32) -> bool {
+    match topic.inbox_override.as_deref() {
+        Some("always") => true,
+        Some("never") => false,
+        Some("threshold") => {
+            let min = topic.inbox_priority_min.unwrap_or(global_threshold);
+            priority >= min
+        }
+        _ => priority >= global_threshold,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
