@@ -62,6 +62,8 @@ mod tests {
             notify_digest_interval: None,
             store_policy: store_policy.to_string(),
             store_interval,
+            inbox_override: None,
+            inbox_priority_min: None,
         }
     }
 
@@ -80,6 +82,7 @@ mod tests {
             extras: None,
             content_type: None,
             source: None,
+            inbox: true,
             attachments: None,
             date: "2024-01-01".to_string(),
         }

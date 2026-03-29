@@ -20,6 +20,10 @@ pub struct Topic {
     pub store_policy: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub store_interval: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inbox_override: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inbox_priority_min: Option<i32>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -41,6 +45,8 @@ pub struct UpdateTopic {
     pub notify_digest_interval: Option<i32>,
     pub store_policy: Option<String>,
     pub store_interval: Option<i32>,
+    pub inbox_override: Option<String>,
+    pub inbox_priority_min: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
