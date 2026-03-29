@@ -209,6 +209,8 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
     notify_digest_interval: topic.notify_digest_interval ?? 60,
     store_policy: topic.store_policy || 'all',
     store_interval: topic.store_interval ?? 60,
+    inbox_override: topic.inbox_override ?? null,
+    inbox_priority_min: topic.inbox_priority_min ?? null,
   });
   const [showPolicies, setShowPolicies] = useState(false);
   const [error, setError] = useState('');
@@ -227,6 +229,8 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
         notify_digest_interval: form.notify_policy === 'digest' ? form.notify_digest_interval : undefined,
         store_policy: form.store_policy,
         store_interval: form.store_policy === 'interval' ? form.store_interval : undefined,
+        inbox_override: form.inbox_override || null,
+        inbox_priority_min: form.inbox_override === 'threshold' ? (form.inbox_priority_min ?? 5) : null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -305,6 +309,32 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
               </div>
             )}
           </div>
+          <div>
+            <label className={labelClass}>Inbox Routing</label>
+            <select
+              value={form.inbox_override || ''}
+              onChange={e => setForm(f => ({ ...f, inbox_override: e.target.value || null }))}
+              className={inputClass}
+            >
+              <option value="">Auto (server default)</option>
+              <option value="always">Always — all messages go to inbox</option>
+              <option value="never">Never — channel only</option>
+              <option value="threshold">Custom threshold</option>
+            </select>
+          </div>
+          {form.inbox_override === 'threshold' && (
+            <div>
+              <label className={labelClass}>Minimum Priority for Inbox</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={form.inbox_priority_min ?? 5}
+                onChange={e => setForm(f => ({ ...f, inbox_priority_min: parseInt(e.target.value) || 5 }))}
+                className={inputClass}
+              />
+            </div>
+          )}
         </div>
       )}
 

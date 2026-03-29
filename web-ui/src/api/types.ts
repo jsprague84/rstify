@@ -79,6 +79,8 @@ export interface Topic {
   notify_digest_interval?: number;
   store_policy: string;
   store_interval?: number;
+  inbox_override?: string | null;
+  inbox_priority_min?: number | null;
 }
 
 export interface CreateTopic {
@@ -139,6 +141,7 @@ export interface MessageResponse {
   source?: string;
   attachments?: AttachmentInfo[];
   date: string;
+  inbox: boolean;
 }
 
 export interface PagedMessages {
@@ -325,4 +328,9 @@ export interface CreateWebhookVariable {
 export interface UpdateWebhookVariable {
   key?: string;
   value?: string;
+}
+
+export interface Setting {
+  key: string;
+  value: string;
 }

@@ -32,7 +32,7 @@ export default function Messages() {
 
   const load = useCallback((limit: number) => {
     setLoading(true);
-    api.listMessages(limit)
+    api.listMessages(limit, 0, true)
       .then(res => {
         setMessages(res.messages);
         setHasMore(res.paging.size >= limit);

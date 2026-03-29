@@ -11,6 +11,7 @@ import type {
   MqttBridge, CreateMqttBridge, UpdateMqttBridge, MqttStatus,
   StatsResponse, LoginResponse,
   HealthResponse, VersionResponse,
+  Setting,
 } from './types';
 
 const BASE = '';
@@ -125,7 +126,7 @@ export const api = {
   createTopic(data: CreateTopic): Promise<Topic> {
     return request('/api/topics', { method: 'POST', body: JSON.stringify(data) });
   },
-  updateTopic(name: string, data: { description?: string; everyone_read?: boolean; everyone_write?: boolean; notify_policy?: string; notify_priority_min?: number; notify_condition?: string; notify_digest_interval?: number; store_policy?: string; store_interval?: number }): Promise<Topic> {
+  updateTopic(name: string, data: { description?: string; everyone_read?: boolean; everyone_write?: boolean; notify_policy?: string; notify_priority_min?: number; notify_condition?: string; notify_digest_interval?: number; store_policy?: string; store_interval?: number; inbox_override?: string | null; inbox_priority_min?: number | null }): Promise<Topic> {
     return request(`/api/topics/${encodeURIComponent(name)}`, { method: 'PUT', body: JSON.stringify(data) });
   },
   deleteTopic(name: string): Promise<void> {
@@ -139,8 +140,10 @@ export const api = {
   },
 
   // Messages
-  listMessages(limit = 100, since = 0): Promise<PagedMessages> {
-    return request(`/message?limit=${limit}&since=${since}`);
+  listMessages(limit = 100, since = 0, inbox?: boolean): Promise<PagedMessages> {
+    let url = `/message?limit=${limit}&since=${since}`;
+    if (inbox !== undefined) url += `&inbox=${inbox}`;
+    return request(url);
   },
   deleteMessage(id: number): Promise<void> {
     return request(`/message/${id}`, { method: 'DELETE' });
@@ -255,5 +258,13 @@ export const api = {
   // Stats
   getStats(): Promise<StatsResponse> {
     return request('/api/stats');
+  },
+
+  // Settings
+  listSettings(): Promise<Setting[]> {
+    return request('/api/settings');
+  },
+  updateSetting(key: string, value: string): Promise<Setting> {
+    return request(`/api/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) });
   },
 };
