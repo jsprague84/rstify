@@ -85,6 +85,16 @@ pub fn run_mqtt_ingest(
                     continue;
                 }
 
+                // Anti-loop: skip messages that were published to MQTT by rstify itself
+                // (e.g., webhook-received messages broadcast to MQTT via the publisher)
+                if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&payload) {
+                    if let Some(source) = val.get("source").and_then(|s| s.as_str()) {
+                        if source == "webhook" || source == "api" {
+                            continue;
+                        }
+                    }
+                }
+
                 let topic_name = mqtt_topic.replace('/', ".");
                 let (title, message, priority) = parse_mqtt_payload(&payload, &topic_name);
 

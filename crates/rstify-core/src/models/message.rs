@@ -126,7 +126,11 @@ impl Message {
             content_type: self.content_type.clone(),
             source: self.source.clone(),
             attachments: None,
-            date: self.created_at.clone(),
+            date: if self.created_at.ends_with('Z') || self.created_at.contains('+') {
+                self.created_at.clone()
+            } else {
+                format!("{}Z", self.created_at)
+            },
         }
     }
 
