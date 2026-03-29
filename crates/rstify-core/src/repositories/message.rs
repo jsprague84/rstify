@@ -21,6 +21,7 @@ pub trait MessageRepository: Send + Sync {
         content_type: Option<&str>,
         scheduled_for: Option<&str>,
         source: Option<&str>,
+        inbox: bool,
     ) -> Result<Message, CoreError>;
 
     async fn find_by_id(&self, id: i64) -> Result<Option<Message>, CoreError>;
@@ -35,6 +36,7 @@ pub trait MessageRepository: Send + Sync {
         user_id: i64,
         limit: i64,
         since: i64,
+        inbox: Option<bool>,
     ) -> Result<Vec<Message>, CoreError>;
     async fn list_by_topic(
         &self,

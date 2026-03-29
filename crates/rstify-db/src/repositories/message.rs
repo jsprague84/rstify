@@ -33,11 +33,12 @@ impl MessageRepository for SqliteMessageRepo {
         content_type: Option<&str>,
         scheduled_for: Option<&str>,
         source: Option<&str>,
+        inbox: bool,
     ) -> Result<Message, CoreError> {
         sqlx::query_as::<_, Message>(
             r#"INSERT INTO messages
-                (application_id, topic_id, user_id, title, message, priority, tags, click_url, icon_url, actions, extras, content_type, scheduled_for, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (application_id, topic_id, user_id, title, message, priority, tags, click_url, icon_url, actions, extras, content_type, scheduled_for, source, inbox)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING *"#,
         )
         .bind(application_id)
@@ -54,6 +55,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(content_type)
         .bind(scheduled_for)
         .bind(source)
+        .bind(inbox)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| CoreError::Database(e.to_string()))
@@ -89,19 +91,28 @@ impl MessageRepository for SqliteMessageRepo {
         user_id: i64,
         limit: i64,
         since: i64,
+        inbox: Option<bool>,
     ) -> Result<Vec<Message>, CoreError> {
-        sqlx::query_as::<_, Message>(
+        let mut qb = sqlx::QueryBuilder::<sqlx::Sqlite>::new(
             r#"SELECT m.* FROM messages m
                JOIN applications a ON m.application_id = a.id
-               WHERE a.user_id = ? AND m.id > ?
-               ORDER BY m.id DESC LIMIT ?"#,
-        )
-        .bind(user_id)
-        .bind(since)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+               WHERE a.user_id = "#,
+        );
+        qb.push_bind(user_id);
+        qb.push(" AND m.id > ");
+        qb.push_bind(since);
+        if let Some(true) = inbox {
+            qb.push(" AND m.inbox = 1");
+        } else if let Some(false) = inbox {
+            qb.push(" AND m.inbox = 0");
+        }
+        qb.push(" ORDER BY m.id DESC LIMIT ");
+        qb.push_bind(limit);
+
+        qb.build_query_as::<Message>()
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| CoreError::Database(e.to_string()))
     }
 
     async fn list_by_topic(
