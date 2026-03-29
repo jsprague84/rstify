@@ -42,11 +42,23 @@ async fn main() -> anyhow::Result<()> {
         warn!("Created default admin user (username: admin, password: admin) — change the password immediately!");
     }
 
+    // Load inbox_priority_threshold setting from DB (default 5)
+    let inbox_threshold_value: i32 =
+        sqlx::query_scalar("SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'inbox_priority_threshold'")
+            .fetch_optional(&pool)
+            .await
+            .ok()
+            .flatten()
+            .unwrap_or(5);
+
     let mut state = AppState::new(
         pool.clone(),
         config.jwt_secret.clone(),
         config.upload_dir.clone(),
     );
+    state
+        .inbox_threshold
+        .store(inbox_threshold_value, std::sync::atomic::Ordering::Relaxed);
 
     // Initialize FCM push notifications if configured
     if config.fcm_enabled {

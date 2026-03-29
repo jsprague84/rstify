@@ -50,6 +50,19 @@ impl AuthUser {
             ))
         }
     }
+
+    /// Return a Forbidden error if the user is not an admin
+    pub fn require_admin(&self) -> Result<(), crate::error::ApiError> {
+        if self.user.is_admin {
+            Ok(())
+        } else {
+            Err(crate::error::ApiError::from(
+                rstify_core::error::CoreError::Forbidden(
+                    "Admin privileges required".to_string(),
+                ),
+            ))
+        }
+    }
 }
 
 /// Authenticated app (from app token)

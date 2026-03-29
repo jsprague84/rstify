@@ -6,6 +6,7 @@ pub mod health;
 pub mod messages;
 pub mod mqtt;
 pub mod ntfy_publish;
+pub mod settings;
 pub mod stats;
 pub mod topics;
 pub mod users;
@@ -132,6 +133,9 @@ pub fn api_routes(_state: AppState) -> Router<AppState> {
         .route("/api/permissions", post(topics::create_permission))
         .route("/api/permissions", get(topics::list_permissions))
         .route("/api/permissions/{id}", delete(topics::delete_permission))
+        // Settings
+        .route("/api/settings", get(settings::list_settings))
+        .route("/api/settings/{key}", put(settings::update_setting))
 }
 
 /// ntfy-style catch-all publish routes.

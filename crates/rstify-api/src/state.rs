@@ -4,7 +4,7 @@ use rstify_db::repositories::{
 };
 use rstify_mqtt::bridge::BridgeManager;
 use sqlx::SqlitePool;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -43,6 +43,7 @@ pub struct AppState {
     pub fcm: Option<Arc<FcmClient>>,
     pub metrics: Arc<Metrics>,
     pub bridge_manager: Option<Arc<Mutex<BridgeManager>>>,
+    pub inbox_threshold: Arc<AtomicI32>,
 }
 
 impl AppState {
@@ -71,6 +72,7 @@ impl AppState {
             fcm: None,
             metrics: Arc::new(Metrics::default()),
             bridge_manager: None,
+            inbox_threshold: Arc::new(AtomicI32::new(5)),
         }
     }
 
