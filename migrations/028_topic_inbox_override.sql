@@ -1,0 +1,2 @@
+ALTER TABLE topics ADD COLUMN inbox_override TEXT DEFAULT NULL;
+ALTER TABLE topics ADD COLUMN inbox_priority_min INTEGER DEFAULT NULL;

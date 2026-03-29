@@ -152,6 +152,18 @@ impl Database {
                 "026_webhook_secret",
                 include_str!("../../../migrations/026_webhook_secret.sql"),
             ),
+            (
+                "027_message_inbox",
+                include_str!("../../../migrations/027_message_inbox.sql"),
+            ),
+            (
+                "028_topic_inbox_override",
+                include_str!("../../../migrations/028_topic_inbox_override.sql"),
+            ),
+            (
+                "029_settings_table",
+                include_str!("../../../migrations/029_settings_table.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {
