@@ -1,0 +1,19 @@
+name: Mirror to GitHub
+
+on:
+  push:
+    branches: [master]
+    tags: [v*]
+
+jobs:
+  mirror:
+    runs-on: docker
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to GitHub mirror
+        run: |
+          git remote add github https://x-access-token:${{ secrets.GITHUB_PAT }}@github.com/jsprague84/rstify.git || true
+          git push github master --tags --force
