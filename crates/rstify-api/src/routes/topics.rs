@@ -325,6 +325,11 @@ pub async fn publish_to_topic(
         .as_ref()
         .map(|a| serde_json::to_string(a).unwrap_or_default());
 
+    let threshold = state
+        .inbox_threshold
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let inbox = rstify_core::policy::should_inbox(&topic, req.priority.unwrap_or(5), threshold);
+
     let msg = state
         .message_repo
         .create(
@@ -342,6 +347,7 @@ pub async fn publish_to_topic(
             None,
             req.scheduled_for.as_deref(),
             None, // source: API
+            inbox,
         )
         .await
         .map_err(ApiError::from)?;
@@ -367,7 +373,7 @@ pub async fn publish_to_topic(
     }
 
     // Send FCM push notifications to topic owner (respecting notification policy)
-    if req.scheduled_for.is_none() && rstify_core::policy::should_notify(&topic, &response) {
+    if req.scheduled_for.is_none() && inbox {
         if let Some(ref fcm) = state.fcm {
             if let Some(owner_id) = topic.owner_id {
                 let fcm = fcm.clone();

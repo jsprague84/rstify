@@ -85,6 +85,11 @@ pub async fn ntfy_publish(
         .as_ref()
         .map(|t| serde_json::to_string(t).unwrap_or_default());
 
+    let threshold = state
+        .inbox_threshold
+        .load(std::sync::atomic::Ordering::Relaxed);
+    let inbox = rstify_core::policy::should_inbox(&topic, h.priority.unwrap_or(3), threshold);
+
     let msg = state
         .message_repo
         .create(
@@ -106,6 +111,7 @@ pub async fn ntfy_publish(
             h.content_type.as_deref(),
             h.scheduled_for.as_deref(),
             Some("ntfy"),
+            inbox,
         )
         .await
         .map_err(ApiError::from)?;
@@ -175,7 +181,7 @@ pub async fn ntfy_publish(
     }
 
     // Send FCM push notifications to topic owner (respecting notification policy)
-    if h.scheduled_for.is_none() && rstify_core::policy::should_notify(&topic, &response) {
+    if h.scheduled_for.is_none() && inbox {
         if let Some(ref fcm) = state.fcm {
             if let Some(owner_id) = topic.owner_id {
                 let fcm = fcm.clone();

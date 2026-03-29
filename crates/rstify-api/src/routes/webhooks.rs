@@ -458,6 +458,20 @@ pub async fn receive_webhook(
         None
     };
 
+    // Determine inbox flag
+    let inbox = if let Some(topic_id) = config.target_topic_id {
+        if let Ok(Some(topic)) = state.topic_repo.find_by_id(topic_id).await {
+            let threshold = state
+                .inbox_threshold
+                .load(std::sync::atomic::Ordering::Relaxed);
+            rstify_core::policy::should_inbox(&topic, priority, threshold)
+        } else {
+            true
+        }
+    } else {
+        true // app-targeted webhooks always go to inbox
+    };
+
     // Create message targeting topic or application
     let msg = state
         .message_repo
@@ -476,6 +490,7 @@ pub async fn receive_webhook(
             content_type,
             None,
             Some("webhook"),
+            inbox,
         )
         .await
         .map_err(ApiError::from)?;
@@ -625,6 +640,7 @@ pub async fn test_webhook(
             content_type: None,
             extras: None,
             source: Some("webhook-test".to_string()),
+            inbox: true,
             attachments: None,
             date: chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
         };

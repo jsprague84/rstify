@@ -2,8 +2,8 @@ use axum::extract::{Path, State};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
-use crate::extractors::auth::AuthUser;
 use crate::error::ApiError;
+use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
 use rstify_core::error::CoreError;
 

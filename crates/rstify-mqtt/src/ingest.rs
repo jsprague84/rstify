@@ -147,6 +147,17 @@ pub fn run_mqtt_ingest(
                     );
 
                     if should_store {
+                        // Load inbox threshold from DB and evaluate
+                        let threshold: i32 = sqlx::query_scalar(
+                            "SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'inbox_priority_threshold'",
+                        )
+                        .fetch_optional(&pool)
+                        .await
+                        .ok()
+                        .flatten()
+                        .unwrap_or(5);
+                        let inbox = rstify_core::policy::should_inbox(&topic, priority, threshold);
+
                         // Create rstify message in DB
                         let msg = match message_repo
                             .create(
@@ -164,6 +175,7 @@ pub fn run_mqtt_ingest(
                                 None,
                                 None,
                                 Some("mqtt"),
+                                inbox,
                             )
                             .await
                         {
@@ -207,6 +219,7 @@ pub fn run_mqtt_ingest(
                             extras: None,
                             content_type: None,
                             source: Some("mqtt".to_string()),
+                            inbox: false,
                             attachments: None,
                             date: chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
                         };

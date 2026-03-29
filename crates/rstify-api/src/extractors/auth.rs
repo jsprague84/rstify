@@ -57,9 +57,7 @@ impl AuthUser {
             Ok(())
         } else {
             Err(crate::error::ApiError::from(
-                rstify_core::error::CoreError::Forbidden(
-                    "Admin privileges required".to_string(),
-                ),
+                rstify_core::error::CoreError::Forbidden("Admin privileges required".to_string()),
             ))
         }
     }

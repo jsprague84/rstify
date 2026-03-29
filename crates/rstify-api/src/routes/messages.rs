@@ -53,6 +53,7 @@ async fn enrich_with_attachments(
 pub struct ListParams {
     pub limit: Option<i64>,
     pub since: Option<i64>,
+    pub inbox: Option<bool>,
 }
 
 /// POST /message - Send message via app token (Gotify compat)
@@ -95,6 +96,7 @@ pub async fn create_app_message(
             None,
             None,
             None, // source: API
+            true, // app messages always go to inbox
         )
         .await
         .map_err(ApiError::from)?;
@@ -134,7 +136,7 @@ pub async fn list_messages(
 
     let messages = state
         .message_repo
-        .list_by_user_apps(auth.user.id, limit, since)
+        .list_by_user_apps(auth.user.id, limit, since, params.inbox)
         .await
         .map_err(ApiError::from)?;
 

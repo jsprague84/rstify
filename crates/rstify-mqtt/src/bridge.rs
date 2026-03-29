@@ -237,6 +237,17 @@ async fn run_bridge(
                     }
                 };
 
+                // Evaluate inbox flag
+                let threshold: i32 = sqlx::query_scalar(
+                    "SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'inbox_priority_threshold'",
+                )
+                .fetch_optional(&pool)
+                .await
+                .ok()
+                .flatten()
+                .unwrap_or(5);
+                let inbox = rstify_core::policy::should_inbox(&topic, priority, threshold);
+
                 // Create message
                 match message_repo
                     .create(
@@ -254,6 +265,7 @@ async fn run_bridge(
                         None,
                         None,
                         Some("mqtt"),
+                        inbox,
                     )
                     .await
                 {

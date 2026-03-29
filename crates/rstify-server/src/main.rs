@@ -43,13 +43,14 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // Load inbox_priority_threshold setting from DB (default 5)
-    let inbox_threshold_value: i32 =
-        sqlx::query_scalar("SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'inbox_priority_threshold'")
-            .fetch_optional(&pool)
-            .await
-            .ok()
-            .flatten()
-            .unwrap_or(5);
+    let inbox_threshold_value: i32 = sqlx::query_scalar(
+        "SELECT CAST(value AS INTEGER) FROM settings WHERE key = 'inbox_priority_threshold'",
+    )
+    .fetch_optional(&pool)
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or(5);
 
     let mut state = AppState::new(
         pool.clone(),
@@ -105,7 +106,7 @@ async fn main() -> anyhow::Result<()> {
                         rstify_core::repositories::TopicRepository::find_by_name(&topic_repo, name)
                             .await
                     {
-                        if rstify_core::policy::should_notify(&topic, &msg) {
+                        if msg.inbox {
                             if let Some(owner_id) = topic.owner_id {
                                 fcm.notify_user(&client_repo, owner_id, &msg).await;
                             }
