@@ -93,17 +93,8 @@ struct Payload {
     workflow_run: Option<WorkflowRun>,
 }
 
-pub fn parse_forgejo_event(event_type: &str, body: &[u8]) -> Option<WebhookMessageOutput> {
+pub fn parse_forgejo_event(event_type: &str, body: &[u8]) -> WebhookMessageOutput {
     let payload: Payload = serde_json::from_slice(body).unwrap_or_default();
-
-    // Skip non-completed workflow runs (GitHub/Forgejo send requested, in_progress, completed)
-    if matches!(event_type, "workflow_run" | "workflow_job") {
-        let action = payload.action.as_deref().unwrap_or("");
-        if action != "completed" {
-            return None;
-        }
-    }
-
     let repo = payload
         .repository
         .as_ref()
@@ -115,7 +106,7 @@ pub fn parse_forgejo_event(event_type: &str, body: &[u8]) -> Option<WebhookMessa
         .and_then(|s| s.login.as_deref())
         .unwrap_or("unknown");
 
-    Some(match event_type {
+    match event_type {
         "push" => parse_push(&payload, repo, sender),
         "pull_request" => parse_pull_request(&payload, repo, sender),
         "issues" => parse_issue(&payload, repo, sender),
@@ -136,7 +127,7 @@ pub fn parse_forgejo_event(event_type: &str, body: &[u8]) -> Option<WebhookMessa
             tags: vec![event_type.to_string()],
             content_type: Some("text/markdown".to_string()),
         },
-    })
+    }
 }
 
 fn truncate(s: &str, max: usize) -> String {
