@@ -6,6 +6,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
 import { useToast } from '../components/Toast';
 import PriorityBadge from '../components/PriorityBadge';
+import { formatLocalTime } from '../utils/time';
 
 const PAGE_SIZE = 50;
 
@@ -226,7 +227,7 @@ export default function Messages() {
                   }} />
                   <MessageActions message={m} />
                   <p className="text-xs text-gray-400 mt-2">
-                    {m.date}
+                    {formatLocalTime(m.date)}
                     {m.source && (
                       <span className="ml-2 px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs">
                         via {m.source}

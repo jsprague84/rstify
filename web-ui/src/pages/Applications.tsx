@@ -7,6 +7,7 @@ import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
 import PriorityBadge from '../components/PriorityBadge';
+import { formatLocalTime } from '../utils/time';
 
 function AppIcon({ app, size = 32 }: { app: Application; size?: number }) {
   const [v] = useState(() => Date.now());
@@ -153,7 +154,7 @@ export default function Applications() {
                       {m.tags.map(t => <span key={t} className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">{t}</span>)}
                     </div>
                   )}
-                  <p className="text-xs text-gray-400 mt-1">{m.date}</p>
+                  <p className="text-xs text-gray-400 mt-1">{formatLocalTime(m.date)}</p>
                 </div>
               ))
             )}

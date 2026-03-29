@@ -855,7 +855,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
 }
 
 function relativeTime(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr + 'Z').getTime();
+  const diff = Date.now() - new Date(dateStr).getTime();
   const secs = Math.floor(diff / 1000);
   if (secs < 60) return `${secs}s ago`;
   const mins = Math.floor(secs / 60);
@@ -930,7 +930,7 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
               {logs.map(log => (
                 <tr key={log.id} className="border-b dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}>
                   <td className="py-1.5 pr-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
-                    <span title={new Date(log.attempted_at + 'Z').toLocaleString()}>{relativeTime(log.attempted_at)}</span>
+                    <span title={new Date(log.attempted_at).toLocaleString()}>{relativeTime(log.attempted_at)}</span>
                     {!log.message_id && <span className="ml-1 px-1 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-[10px] font-medium">TEST</span>}
                   </td>
                   <td className="py-1.5 pr-2">

@@ -5,6 +5,7 @@ import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
+import { formatLocalTime } from '../utils/time';
 
 const AVAILABLE_SCOPES = ['read', 'write', 'admin'];
 
@@ -81,7 +82,7 @@ export default function Clients() {
           { key: 'name', header: 'Name' },
           { key: 'token', header: 'Token', render: c => <TokenDisplay token={c.token} /> },
           { key: 'scopes', header: 'Scopes', render: c => <ScopeBadges scopes={c.scopes} /> },
-          { key: 'created_at', header: 'Created' },
+          { key: 'created_at', header: 'Created', render: c => formatLocalTime(c.created_at) },
         ]}
         actions={c => (
           <div className="flex gap-2 justify-end">

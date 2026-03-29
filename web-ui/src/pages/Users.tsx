@@ -4,6 +4,7 @@ import type { User, CreateUser, UpdateUser } from '../api/types';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { formatLocalTime } from '../utils/time';
 
 export default function Users() {
   const [users, setUsers] = useState<User[]>([]);
@@ -66,7 +67,7 @@ export default function Users() {
           { key: 'username', header: 'Username' },
           { key: 'email', header: 'Email', render: u => u.email || '-' },
           { key: 'is_admin', header: 'Admin', render: u => u.is_admin ? 'Yes' : 'No' },
-          { key: 'created_at', header: 'Created' },
+          { key: 'created_at', header: 'Created', render: u => formatLocalTime(u.created_at) },
         ]}
         actions={u => (
           <div className="flex gap-2 justify-end">

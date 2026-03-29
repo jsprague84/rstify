@@ -6,6 +6,7 @@ import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
 import { useToast } from '../components/Toast';
+import { formatLocalTime } from '../utils/time';
 import PriorityBadge from '../components/PriorityBadge';
 
 export default function Topics() {
@@ -331,7 +332,7 @@ function TopicMessagesView({ topic, messages, loading }: {
           {m.tags.map(t => <span key={t} className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">{t}</span>)}
         </div>
       )}
-      <p className="text-xs text-gray-400 mt-1">{m.date}</p>
+      <p className="text-xs text-gray-400 mt-1">{formatLocalTime(m.date)}</p>
     </div>
   );
 
