@@ -61,30 +61,13 @@ jobs:
       - name: Login to Forgejo registry
         run: echo "${{ secrets.RSTIFY_FORGEJO_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ secrets.FORGEJO_USER }} --password-stdin
 
-      - name: Determine tags
-        id: tags
+      - name: Build and push Docker image
         run: |
           IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          TAGS="${IMAGE}:latest"
-          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
-            TAGS="${TAGS},${IMAGE}:${VERSION}"
+          docker build -t "${IMAGE}:latest" .
+          docker push "${IMAGE}:latest"
+          if echo "${GITHUB_REF}" | grep -q "^refs/tags/v"; then
+            VERSION=$(echo "${GITHUB_REF}" | sed 's|refs/tags/v||')
+            docker tag "${IMAGE}:latest" "${IMAGE}:${VERSION}"
+            docker push "${IMAGE}:${VERSION}"
           fi
-          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-          echo "Building tags: ${TAGS}"
-
-      - name: Build Docker image
-        run: |
-          IFS=',' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.tags }}"
-          TAG_FLAGS=""
-          for tag in "${TAG_ARRAY[@]}"; do
-            TAG_FLAGS="${TAG_FLAGS} -t ${tag}"
-          done
-          docker build ${TAG_FLAGS} .
-
-      - name: Push Docker image
-        run: |
-          IFS=',' read -ra TAG_ARRAY <<< "${{ steps.tags.outputs.tags }}"
-          for tag in "${TAG_ARRAY[@]}"; do
-            docker push "${tag}"
-          done
