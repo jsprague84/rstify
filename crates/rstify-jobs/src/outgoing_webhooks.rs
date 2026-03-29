@@ -104,9 +104,12 @@ pub async fn fire_outgoing_webhooks(
             _ => client.post(&target_url).body(body.clone()),
         };
 
-        // Add custom headers
+        // Add custom headers (with env var substitution)
         if let Some(ref headers_json) = config.headers {
-            if let Ok(headers) = serde_json::from_str::<HashMap<String, String>>(headers_json) {
+            let headers_substituted = apply_env_vars(pool, config.user_id, headers_json).await;
+            if let Ok(headers) =
+                serde_json::from_str::<HashMap<String, String>>(&headers_substituted)
+            {
                 for (key, value) in &headers {
                     req = req.header(key, value);
                 }
@@ -291,7 +294,8 @@ pub async fn fire_single_outgoing_webhook(
     };
 
     if let Some(ref headers_json) = config.headers {
-        if let Ok(headers) = serde_json::from_str::<HashMap<String, String>>(headers_json) {
+        let headers_substituted = apply_env_vars(pool, config.user_id, headers_json).await;
+        if let Ok(headers) = serde_json::from_str::<HashMap<String, String>>(&headers_substituted) {
             for (key, value) in &headers {
                 req = req.header(key, value);
             }
