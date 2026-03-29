@@ -47,9 +47,16 @@ jobs:
   build-and-push:
     needs: test
     runs-on: docker
+    container:
+      image: docker:27-cli
     steps:
+      - name: Install git
+        run: apk add --no-cache git
+
       - name: Checkout
-        uses: actions/checkout@v4
+        run: |
+          git clone --depth=1 --branch=${GITHUB_REF_NAME} ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . 2>/dev/null || \
+          (git clone --depth=50 ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git . && git checkout ${GITHUB_SHA})
 
       - name: Login to Forgejo registry
         run: echo "${{ secrets.RSTIFY_FORGEJO_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ secrets.FORGEJO_USER }} --password-stdin
