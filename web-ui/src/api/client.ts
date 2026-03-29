@@ -223,6 +223,9 @@ export const api = {
   deleteAllMessages(): Promise<void> {
     return request('/message', { method: 'DELETE' });
   },
+  deleteBatchMessages(ids: number[]): Promise<{ deleted: number }> {
+    return request('/message/batch', { method: 'DELETE', body: JSON.stringify({ ids }) });
+  },
 
   // Health & version
   getHealth(): Promise<HealthResponse> {

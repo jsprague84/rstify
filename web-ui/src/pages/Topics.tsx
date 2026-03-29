@@ -20,6 +20,7 @@ export default function Topics() {
   const [topicMessages, setTopicMessages] = useState<MessageResponse[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [publishTopic, setPublishTopic] = useState<Topic | null>(null);
+  const [showDeleteAllTopicMsgs, setShowDeleteAllTopicMsgs] = useState(false);
 
   const loadTopicMessages = (topic: Topic) => {
     setMessagesTopic(topic);
@@ -115,9 +116,33 @@ export default function Topics() {
       />
       {messagesTopic && (
         <Modal open onClose={() => { setMessagesTopic(null); setTopicMessages([]); }} title={`Messages — ${messagesTopic.name}`}>
-          <TopicMessagesView topic={messagesTopic} messages={topicMessages} loading={messagesLoading} />
+          <TopicMessagesView
+            topic={messagesTopic}
+            messages={topicMessages}
+            loading={messagesLoading}
+            onRequestDeleteAll={() => setShowDeleteAllTopicMsgs(true)}
+          />
         </Modal>
       )}
+      <ConfirmDialog
+        open={showDeleteAllTopicMsgs}
+        onClose={() => setShowDeleteAllTopicMsgs(false)}
+        onConfirm={async () => {
+          const ids = topicMessages.map(m => m.id).filter(id => id > 0);
+          if (ids.length > 0) {
+            try {
+              await api.deleteBatchMessages(ids);
+              setTopicMessages([]);
+              toast('All messages deleted', 'success');
+            } catch (e) {
+              toast(e instanceof Error ? e.message : 'Failed to delete messages', 'error');
+            }
+          }
+          setShowDeleteAllTopicMsgs(false);
+        }}
+        title="Delete All Messages"
+        message={`Delete all ${topicMessages.length} messages in this topic? This cannot be undone.`}
+      />
       {publishTopic && (
         <Modal open onClose={() => setPublishTopic(null)} title={`Send to ${publishTopic.name}`}>
           <PublishForm topicName={publishTopic.name} onSuccess={() => { setPublishTopic(null); toast('Message sent', 'success'); }} onClose={() => setPublishTopic(null)} />
@@ -291,10 +316,11 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
   );
 }
 
-function TopicMessagesView({ topic, messages, loading }: {
+function TopicMessagesView({ topic, messages, loading, onRequestDeleteAll }: {
   topic: Topic;
   messages: MessageResponse[];
   loading: boolean;
+  onRequestDeleteAll: () => void;
 }) {
   const [mode, setMode] = useState<'history' | 'live'>('history');
   const [liveMessages, setLiveMessages] = useState<MessageResponse[]>([]);
@@ -340,17 +366,27 @@ function TopicMessagesView({ topic, messages, loading }: {
 
   return (
     <div>
-      <div className="flex gap-2 mb-3">
-        <button onClick={() => setMode('history')} className={`px-3 py-1 text-sm rounded ${mode === 'history' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
-          History
-        </button>
-        <button onClick={() => setMode('live')} className={`px-3 py-1 text-sm rounded ${mode === 'live' ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
-          Live
-        </button>
-        {mode === 'live' && (
-          <span className="text-xs text-green-500 flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Connected
-          </span>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex gap-2">
+          <button onClick={() => setMode('history')} className={`px-3 py-1 text-sm rounded ${mode === 'history' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
+            History
+          </button>
+          <button onClick={() => setMode('live')} className={`px-3 py-1 text-sm rounded ${mode === 'live' ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
+            Live
+          </button>
+          {mode === 'live' && (
+            <span className="text-xs text-green-500 flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Connected
+            </span>
+          )}
+        </div>
+        {mode === 'history' && messages.length > 0 && (
+          <button
+            onClick={onRequestDeleteAll}
+            className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Delete All
+          </button>
         )}
       </div>
       <div className="max-h-96 overflow-y-auto space-y-3">
