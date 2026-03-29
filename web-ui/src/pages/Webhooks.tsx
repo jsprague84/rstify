@@ -202,7 +202,7 @@ export default function Webhooks() {
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${w.enabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'}`}
               title={w.enabled ? 'Enabled – click to disable' : 'Disabled – click to enable'}
             >
-              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${w.enabled ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${w.enabled ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
             </button>
           )},
           { key: 'health' as const, header: 'Health', render: (w: WebhookConfig) => {
