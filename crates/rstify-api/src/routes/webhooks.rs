@@ -380,7 +380,12 @@ pub async fn receive_webhook(
                 .or_else(|| headers.get("X-Forgejo-Event"))
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("unknown");
-            let output = crate::webhooks::forgejo::parse_forgejo_event(event, &body);
+            let output = match crate::webhooks::forgejo::parse_forgejo_event(event, &body) {
+                Some(o) => o,
+                None => {
+                    return Ok(Json(serde_json::json!({"success": true, "skipped": true})));
+                }
+            };
             let tags = output.tags_json();
             let extras = output.extras_json();
             (
@@ -412,7 +417,12 @@ pub async fn receive_webhook(
                 .get("X-GitHub-Event")
                 .and_then(|v| v.to_str().ok())
                 .unwrap_or("unknown");
-            let output = crate::webhooks::github::parse_github_event(event, &body);
+            let output = match crate::webhooks::github::parse_github_event(event, &body) {
+                Some(o) => o,
+                None => {
+                    return Ok(Json(serde_json::json!({"success": true, "skipped": true})));
+                }
+            };
             let tags = output.tags_json();
             let extras = output.extras_json();
             (
