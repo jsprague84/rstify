@@ -8,6 +8,7 @@ import CodeGenerator from '../components/CodeGenerator';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
 import { parseWebhookHeaders } from '../utils/webhookHelpers';
+import { formatLocalTime } from '../utils/time';
 
 export default function Webhooks() {
   const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
@@ -215,7 +216,7 @@ export default function Webhooks() {
             const dotCls = color === 'green' ? 'bg-green-500' : color === 'amber' ? 'bg-amber-500' : 'bg-red-500';
             const textCls = color === 'green' ? 'text-green-700 dark:text-green-400' : color === 'amber' ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400';
             return (
-              <span className={`inline-flex items-center gap-1 text-xs ${textCls}`} title={`${Math.round(rate * 100)}% success rate${w.last_delivery_at ? ` | Last: ${new Date(w.last_delivery_at).toLocaleString()}` : ''}`}>
+              <span className={`inline-flex items-center gap-1 text-xs ${textCls}`} title={`${Math.round(rate * 100)}% success rate${w.last_delivery_at ? ` | Last: ${formatLocalTime(w.last_delivery_at)}` : ''}`}>
                 <span className={`w-2 h-2 rounded-full ${dotCls} inline-block`} />
                 {label}
               </span>
@@ -930,7 +931,7 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
               {logs.map(log => (
                 <tr key={log.id} className="border-b dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}>
                   <td className="py-1.5 pr-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
-                    <span title={new Date(log.attempted_at).toLocaleString()}>{relativeTime(log.attempted_at)}</span>
+                    <span title={formatLocalTime(log.attempted_at)}>{relativeTime(log.attempted_at)}</span>
                     {!log.message_id && <span className="ml-1 px-1 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-[10px] font-medium">TEST</span>}
                   </td>
                   <td className="py-1.5 pr-2">

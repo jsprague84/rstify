@@ -208,7 +208,7 @@ pub fn run_mqtt_ingest(
                             content_type: None,
                             source: Some("mqtt".to_string()),
                             attachments: None,
-                            date: chrono::Utc::now().to_rfc3339(),
+                            date: chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
                         };
                         let _ = topic_broadcast.send(Arc::new(response));
                     }
