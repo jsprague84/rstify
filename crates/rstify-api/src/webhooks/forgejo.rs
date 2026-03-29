@@ -380,30 +380,34 @@ fn parse_issue_comment(p: &Payload, repo: &str, sender: &str) -> WebhookMessageO
 }
 
 fn parse_workflow(p: &Payload, repo: &str, sender: &str) -> WebhookMessageOutput {
+    let action = p.action.as_deref().unwrap_or("unknown");
     let wf = p.workflow_run.as_ref();
     let name = wf.and_then(|w| w.name.as_deref()).unwrap_or("CI");
-    let conclusion = wf
-        .and_then(|w| w.conclusion.as_deref())
-        .unwrap_or("unknown");
+    let conclusion = wf.and_then(|w| w.conclusion.as_deref());
     let url = wf.and_then(|w| w.html_url.clone());
     let branch = wf.and_then(|w| w.head_branch.as_deref()).unwrap_or("?");
 
-    let (emoji, priority) = match conclusion {
+    // Use conclusion for completed runs, action for in-progress states
+    let status = conclusion.unwrap_or(action);
+
+    let (emoji, priority) = match status {
         "success" => ("✅", 5),
         "failure" => ("❌", 8),
         "cancelled" => ("⚠️", 4),
+        "requested" => ("⏳", 3),
+        "in_progress" => ("🔄", 3),
         _ => ("🔄", 5),
     };
 
     WebhookMessageOutput {
-        title: format!("[{}] {} {} {} on {}", repo, emoji, name, conclusion, branch),
+        title: format!("[{}] {} {} {} on {}", repo, emoji, name, status, branch),
         message: format!(
             "Workflow **{}** {} on branch `{}` by {}",
-            name, conclusion, branch, sender
+            name, status, branch, sender
         ),
         priority,
         click_url: url,
-        tags: vec!["ci".to_string(), conclusion.to_string()],
+        tags: vec!["ci".to_string(), status.to_string()],
         content_type: Some("text/markdown".to_string()),
     }
 }
