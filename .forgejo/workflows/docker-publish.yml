@@ -12,11 +12,13 @@ env:
 
 jobs:
   test:
-    runs-on: docker
-    container:
-      image: data.forgejo.org/oci/node:20
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Build web UI
         run: cd web-ui && npm ci && npm run build
@@ -27,17 +29,17 @@ jobs:
           echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Check formatting
-        run: $HOME/.cargo/bin/cargo fmt --all -- --check
+        run: cargo fmt --all -- --check
 
       - name: Run clippy
-        run: $HOME/.cargo/bin/cargo clippy --workspace -- -D warnings
+        run: cargo clippy --workspace -- -D warnings
 
       - name: Run tests
-        run: $HOME/.cargo/bin/cargo test --workspace
+        run: cargo test --workspace
 
   build-and-push:
     needs: test
-    runs-on: docker
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
