@@ -47,7 +47,7 @@ jobs:
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.FORGEJO_USER }}
-          password: ${{ secrets.FORGEJO_TOKEN }}
+          password: ${{ secrets.RSTIFY_FORGEJO_TOKEN }}
 
       - uses: docker/metadata-action@v5
         id: meta
