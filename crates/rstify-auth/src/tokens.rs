@@ -46,7 +46,7 @@ pub fn create_jwt(
     secret: &str,
 ) -> Result<String, TokenError> {
     let now = Utc::now();
-    let exp = now + Duration::hours(24);
+    let exp = now + Duration::days(90);
     let claims = Claims {
         sub: user_id,
         username: username.to_string(),
