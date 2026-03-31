@@ -54,6 +54,8 @@ struct FcmMessage {
 struct FcmNotification {
     title: String,
     body: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    image: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -190,8 +192,13 @@ impl FcmClient {
     }
 
     /// Send a push notification to a single FCM token.
-    /// Uses the ID-only relay pattern for privacy — only sends message ID + title.
-    async fn send_to_token(&self, fcm_token: &str, msg: &MessageResponse) -> Result<(), String> {
+    /// `image_url` is an optional public URL for a large notification image (e.g., app icon).
+    async fn send_to_token(
+        &self,
+        fcm_token: &str,
+        msg: &MessageResponse,
+        image_url: Option<&str>,
+    ) -> Result<(), String> {
         let access_token = self.get_access_token().await?;
 
         let channel_id = if msg.priority >= 8 {
@@ -217,6 +224,7 @@ impl FcmClient {
                         .clone()
                         .unwrap_or_else(|| "New Message".to_string()),
                     body: msg.message.clone(),
+                    image: image_url.map(|s| s.to_string()),
                 },
                 data,
                 android: Some(AndroidConfig {
@@ -255,12 +263,14 @@ impl FcmClient {
         }
     }
 
-    /// Send push notifications to all of a user's registered FCM devices
+    /// Send push notifications to all of a user's registered FCM devices.
+    /// `image_url` is an optional public URL for a large notification image (e.g., app icon).
     pub async fn notify_user<R: ClientRepository>(
         &self,
         client_repo: &R,
         user_id: i64,
         msg: &MessageResponse,
+        image_url: Option<&str>,
     ) {
         let tokens = match client_repo.list_fcm_tokens_by_user(user_id).await {
             Ok(t) => t,
@@ -281,7 +291,7 @@ impl FcmClient {
         );
 
         for token in &tokens {
-            if let Err(e) = self.send_to_token(token, msg).await {
+            if let Err(e) = self.send_to_token(token, msg, image_url).await {
                 warn!("FCM send error: {}", e);
             }
         }

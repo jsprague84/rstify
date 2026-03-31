@@ -108,7 +108,13 @@ async fn main() -> anyhow::Result<()> {
                     {
                         if msg.inbox {
                             if let Some(owner_id) = topic.owner_id {
-                                fcm.notify_user(&client_repo, owner_id, &msg).await;
+                                fcm.notify_user(
+                                    &client_repo,
+                                    owner_id,
+                                    &msg,
+                                    msg.icon_url.as_deref(),
+                                )
+                                .await;
                             }
                         }
                     }

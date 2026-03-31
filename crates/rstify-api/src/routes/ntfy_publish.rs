@@ -188,7 +188,8 @@ pub async fn ntfy_publish(
                 let client_repo = state.client_repo.clone();
                 let resp = response.clone();
                 tokio::spawn(async move {
-                    fcm.notify_user(&client_repo, owner_id, &resp).await;
+                    fcm.notify_user(&client_repo, owner_id, &resp, resp.icon_url.as_deref())
+                        .await;
                 });
             }
         }

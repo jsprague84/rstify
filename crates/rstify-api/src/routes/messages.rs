@@ -116,7 +116,8 @@ pub async fn create_app_message(
         let user_id = auth.user.id;
         let resp = response.clone();
         tokio::spawn(async move {
-            fcm.notify_user(&client_repo, user_id, &resp).await;
+            fcm.notify_user(&client_repo, user_id, &resp, resp.icon_url.as_deref())
+                .await;
         });
     }
 
