@@ -6,7 +6,9 @@ use serde::Serialize;
 /// instead of panicking.
 pub fn to_json_string<T: Serialize>(value: &T) -> Result<String, ApiError> {
     serde_json::to_string(value).map_err(|e| {
-        ApiError::from(CoreError::Internal(format!("JSON serialization failed: {e}")))
+        ApiError::from(CoreError::Internal(format!(
+            "JSON serialization failed: {e}"
+        )))
     })
 }
 

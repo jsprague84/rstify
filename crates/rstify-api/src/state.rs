@@ -55,7 +55,12 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(pool: SqlitePool, jwt_secret: String, upload_dir: String, max_upload_size: usize) -> Self {
+    pub fn new(
+        pool: SqlitePool,
+        jwt_secret: String,
+        upload_dir: String,
+        max_upload_size: usize,
+    ) -> Self {
         Self {
             user_repo: SqliteUserRepo::new(pool.clone()),
             app_repo: SqliteApplicationRepo::new(pool.clone()),

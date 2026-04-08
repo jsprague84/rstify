@@ -61,7 +61,8 @@ pub async fn update_client(
     let existing = fetch_or_not_found("Client", || state.client_repo.find_by_id(id)).await?;
     verify_ownership(&auth, existing.user_id, "client")?;
 
-    let scopes_json = req.scopes
+    let scopes_json = req
+        .scopes
         .map(|s| crate::helpers::json::to_json_string(&s))
         .transpose()?;
     let client = state

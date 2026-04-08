@@ -29,7 +29,11 @@ pub async fn mqtt_status(
     _auth: AuthUser,
 ) -> Result<Json<MqttStatusResponse>, ApiError> {
     let (mqtt_enabled, listen_addr, ws_listen_addr) = match &state.mqtt_config {
-        Some(cfg) => (true, Some(cfg.listen_addr.clone()), cfg.ws_listen_addr.clone()),
+        Some(cfg) => (
+            true,
+            Some(cfg.listen_addr.clone()),
+            cfg.ws_listen_addr.clone(),
+        ),
         None => (false, None, None),
     };
 

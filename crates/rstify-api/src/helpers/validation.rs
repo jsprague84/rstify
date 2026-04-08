@@ -6,7 +6,12 @@ pub const STORE_POLICIES: &[&str] = &["all", "on_change", "interval"];
 
 /// Validates that a string field's length is within the given bounds (inclusive).
 /// Returns `BAD_REQUEST` if the length is outside `[min, max]`.
-pub fn validate_length(field_name: &str, value: &str, min: usize, max: usize) -> Result<(), ApiError> {
+pub fn validate_length(
+    field_name: &str,
+    value: &str,
+    min: usize,
+    max: usize,
+) -> Result<(), ApiError> {
     let len = value.len();
     if len < min || len > max {
         return Err(ApiError::from(CoreError::Validation(format!(
@@ -89,11 +94,7 @@ pub fn validate_json(field_name: &str, value: &str) -> Result<(), ApiError> {
 }
 
 /// Validates that a string value is one of the allowed values.
-pub fn validate_policy(
-    field_name: &str,
-    value: &str,
-    allowed: &[&str],
-) -> Result<(), ApiError> {
+pub fn validate_policy(field_name: &str, value: &str, allowed: &[&str]) -> Result<(), ApiError> {
     if !allowed.contains(&value) {
         return Err(ApiError::from(CoreError::Validation(format!(
             "{field_name} must be one of: {}",

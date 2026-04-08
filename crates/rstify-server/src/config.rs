@@ -120,15 +120,11 @@ impl Config {
         // --- Server ---
         let listen_addr = lookup("LISTEN_ADDR").unwrap_or_else(|| "0.0.0.0:8080".into());
         let upload_dir = lookup("UPLOAD_DIR").unwrap_or_else(|| "./uploads".into());
-        let max_attachment_size = parse_optional::<usize>(
-            &lookup,
-            "RSTIFY_MAX_ATTACHMENT_SIZE",
-            25 * 1024 * 1024,
-        )?;
+        let max_attachment_size =
+            parse_optional::<usize>(&lookup, "RSTIFY_MAX_ATTACHMENT_SIZE", 25 * 1024 * 1024)?;
 
         // --- Database ---
-        let database_url =
-            lookup("DATABASE_URL").unwrap_or_else(|| "sqlite://rstify.db".into());
+        let database_url = lookup("DATABASE_URL").unwrap_or_else(|| "sqlite://rstify.db".into());
 
         // --- Rate limit ---
         let burst = parse_optional::<u32>(&lookup, "RATE_LIMIT_BURST", 60)?;
@@ -156,8 +152,7 @@ impl Config {
                 let require_auth = lookup("MQTT_REQUIRE_AUTH")
                     .map(|v| v != "false" && v != "0")
                     .unwrap_or(true);
-                let max_payload_size =
-                    parse_optional::<usize>(&lookup, "MQTT_MAX_PAYLOAD", 20480)?;
+                let max_payload_size = parse_optional::<usize>(&lookup, "MQTT_MAX_PAYLOAD", 20480)?;
                 let max_connections =
                     parse_optional::<usize>(&lookup, "MQTT_MAX_CONNECTIONS", 1000)?;
 
@@ -343,7 +338,10 @@ mod tests {
     #[test]
     fn test_cors_origins_whitespace_trimming() {
         let mut m = minimal_valid_map();
-        m.insert("CORS_ORIGINS", " http://a.com , http://b.com , http://c.com ");
+        m.insert(
+            "CORS_ORIGINS",
+            " http://a.com , http://b.com , http://c.com ",
+        );
         let config = Config::from_map(make_lookup(m)).unwrap();
         assert_eq!(
             config.cors.origins,
