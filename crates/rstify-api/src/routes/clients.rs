@@ -36,7 +36,7 @@ pub async fn create_client(
     let scopes = req
         .scopes
         .unwrap_or_else(|| vec!["read".into(), "write".into()]);
-    let scopes_json = serde_json::to_string(&scopes).unwrap();
+    let scopes_json = crate::helpers::json::to_json_string(&scopes)?;
     let client = state
         .client_repo
         .create(auth.user.id, &req.name, &token, &scopes_json)
@@ -74,7 +74,9 @@ pub async fn update_client(
         )));
     }
 
-    let scopes_json = req.scopes.map(|s| serde_json::to_string(&s).unwrap());
+    let scopes_json = req.scopes
+        .map(|s| crate::helpers::json::to_json_string(&s))
+        .transpose()?;
     let client = state
         .client_repo
         .update(id, req.name.as_deref(), scopes_json.as_deref())
