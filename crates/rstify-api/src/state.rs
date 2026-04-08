@@ -27,6 +27,12 @@ impl Metrics {
 }
 
 #[derive(Clone)]
+pub struct MqttStatusConfig {
+    pub listen_addr: String,
+    pub ws_listen_addr: Option<String>,
+}
+
+#[derive(Clone)]
 pub struct AppState {
     pub user_repo: SqliteUserRepo,
     pub app_repo: SqliteApplicationRepo,
@@ -44,18 +50,12 @@ pub struct AppState {
     pub metrics: Arc<Metrics>,
     pub bridge_manager: Option<Arc<Mutex<BridgeManager>>>,
     pub inbox_threshold: Arc<AtomicI32>,
+    pub mqtt_config: Option<MqttStatusConfig>,
+    pub email_config: Option<rstify_jobs::email::EmailConfig>,
 }
 
 impl AppState {
-    /// Default max upload size: 25 MiB. Override with RSTIFY_MAX_ATTACHMENT_SIZE env var.
-    const DEFAULT_MAX_UPLOAD: usize = 25 * 1024 * 1024;
-
-    pub fn new(pool: SqlitePool, jwt_secret: String, upload_dir: String) -> Self {
-        let max_upload_size = std::env::var("RSTIFY_MAX_ATTACHMENT_SIZE")
-            .ok()
-            .and_then(|v| v.parse().ok())
-            .unwrap_or(Self::DEFAULT_MAX_UPLOAD);
-
+    pub fn new(pool: SqlitePool, jwt_secret: String, upload_dir: String, max_upload_size: usize) -> Self {
         Self {
             user_repo: SqliteUserRepo::new(pool.clone()),
             app_repo: SqliteApplicationRepo::new(pool.clone()),
@@ -73,6 +73,8 @@ impl AppState {
             metrics: Arc::new(Metrics::default()),
             bridge_manager: None,
             inbox_threshold: Arc::new(AtomicI32::new(5)),
+            mqtt_config: None,
+            email_config: None,
         }
     }
 
@@ -83,6 +85,16 @@ impl AppState {
 
     pub fn with_bridge_manager(mut self, bm: Arc<Mutex<BridgeManager>>) -> Self {
         self.bridge_manager = Some(bm);
+        self
+    }
+
+    pub fn with_mqtt_status(mut self, config: MqttStatusConfig) -> Self {
+        self.mqtt_config = Some(config);
+        self
+    }
+
+    pub fn with_email_config(mut self, config: rstify_jobs::email::EmailConfig) -> Self {
+        self.email_config = Some(config);
         self
     }
 }

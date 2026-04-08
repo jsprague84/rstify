@@ -56,24 +56,41 @@ async fn main() -> anyhow::Result<()> {
         pool.clone(),
         config.auth.jwt_secret.clone(),
         config.server.upload_dir.clone(),
+        config.server.max_attachment_size,
     );
     state
         .inbox_threshold
         .store(inbox_threshold_value, std::sync::atomic::Ordering::Relaxed);
 
     // Initialize FCM push notifications if configured
-    if let Some(ref _fcm_cfg) = config.fcm {
-        if let Some(fcm_config) = rstify_api::fcm::FcmConfig::from_env() {
+    if let Some(ref fcm_cfg) = config.fcm {
+        if let Some(fcm_config) = rstify_api::fcm::FcmConfig::from_path(
+            fcm_cfg.project_id.clone(),
+            &fcm_cfg.service_account_path,
+        ) {
             info!(
                 "FCM push notifications enabled (project: {})",
-                fcm_config.project_id
+                fcm_cfg.project_id
             );
             state = state.with_fcm(rstify_api::fcm::FcmClient::new(fcm_config));
         } else {
-            tracing::error!("FCM_PROJECT_ID is set but FCM configuration is incomplete — check FCM_SERVICE_ACCOUNT_PATH");
+            tracing::error!("FCM configuration invalid — push notifications disabled");
         }
     } else {
         info!("FCM push notifications disabled (set FCM_PROJECT_ID and FCM_SERVICE_ACCOUNT_PATH to enable)");
+    }
+
+    // Wire SMTP email config if configured
+    if let Some(ref smtp_cfg) = config.smtp {
+        let email_config = rstify_jobs::email::EmailConfig::new(
+            smtp_cfg.host.clone(),
+            smtp_cfg.port,
+            smtp_cfg.username.clone(),
+            smtp_cfg.password.clone(),
+            smtp_cfg.from.clone(),
+        );
+        state = state.with_email_config(email_config);
+        info!("SMTP email notifications enabled (host: {})", smtp_cfg.host);
     }
 
     // Start periodic connection cleanup
@@ -139,8 +156,20 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // Start MQTT broker if enabled (must clone state before build_router takes ownership)
-    if config.mqtt.is_some() {
-        let mqtt_config = rstify_mqtt::MqttConfig::from_env();
+    if let Some(ref mqtt_cfg) = config.mqtt {
+        state = state.with_mqtt_status(rstify_api::state::MqttStatusConfig {
+            listen_addr: mqtt_cfg.listen_addr.clone(),
+            ws_listen_addr: mqtt_cfg.ws_listen_addr.clone(),
+        });
+
+        let mqtt_config = rstify_mqtt::MqttConfig {
+            enabled: true,
+            listen_addr: mqtt_cfg.listen_addr.clone(),
+            ws_listen_addr: mqtt_cfg.ws_listen_addr.clone(),
+            require_auth: mqtt_cfg.require_auth,
+            max_payload_size: mqtt_cfg.max_payload_size,
+            max_connections: mqtt_cfg.max_connections,
+        };
         let mqtt_pool = state.pool.clone();
         let mqtt_jwt_secret = state.jwt_secret.clone();
         let mqtt_topic_repo = state.topic_repo.clone();

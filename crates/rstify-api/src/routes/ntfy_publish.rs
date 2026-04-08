@@ -197,7 +197,8 @@ pub async fn ntfy_publish(
 
     // Send email notification if Email header present and SMTP configured
     if let Some(ref email_to) = h.email {
-        if let Some(email_config) = rstify_jobs::email::EmailConfig::from_env() {
+        if let Some(ref email_config) = state.email_config {
+            let email_config = email_config.clone();
             let email_to = email_to.clone();
             let subject = h
                 .title

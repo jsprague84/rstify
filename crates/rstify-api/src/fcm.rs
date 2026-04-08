@@ -78,17 +78,15 @@ struct GoogleTokenResponse {
 }
 
 impl FcmConfig {
-    /// Load FCM config from environment. Returns None if not configured.
-    pub fn from_env() -> Option<Self> {
-        let project_id = std::env::var("FCM_PROJECT_ID").ok()?;
-        let sa_path = std::env::var("FCM_SERVICE_ACCOUNT_PATH").ok()?;
-
-        let sa_json = match std::fs::read_to_string(&sa_path) {
+    /// Load FCM config from a service account file path. Returns None if the file
+    /// cannot be read or parsed.
+    pub fn from_path(project_id: String, service_account_path: &str) -> Option<Self> {
+        let sa_json = match std::fs::read_to_string(service_account_path) {
             Ok(json) => json,
             Err(e) => {
                 error!(
                     "Failed to read FCM service account file '{}': {}",
-                    sa_path, e
+                    service_account_path, e
                 );
                 return None;
             }
