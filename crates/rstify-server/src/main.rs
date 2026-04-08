@@ -17,10 +17,10 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     telemetry::init();
 
-    let config = config::Config::from_env();
-    info!("Starting rstify server on {}", config.listen_addr);
+    let config = config::Config::from_env().expect("Failed to load configuration");
+    info!("Starting rstify server on {}", config.server.listen_addr);
 
-    let db = Database::connect(&config.database_url).await?;
+    let db = Database::connect(&config.database.url).await?;
     db.migrate().await?;
 
     let pool = db.pool().clone();
@@ -54,15 +54,15 @@ async fn main() -> anyhow::Result<()> {
 
     let mut state = AppState::new(
         pool.clone(),
-        config.jwt_secret.clone(),
-        config.upload_dir.clone(),
+        config.auth.jwt_secret.clone(),
+        config.server.upload_dir.clone(),
     );
     state
         .inbox_threshold
         .store(inbox_threshold_value, std::sync::atomic::Ordering::Relaxed);
 
     // Initialize FCM push notifications if configured
-    if config.fcm_enabled {
+    if let Some(ref _fcm_cfg) = config.fcm {
         if let Some(fcm_config) = rstify_api::fcm::FcmConfig::from_env() {
             info!(
                 "FCM push notifications enabled (project: {})",
@@ -126,7 +126,7 @@ async fn main() -> anyhow::Result<()> {
     let job_runner = JobRunner::new(pool).with_broadcast(broadcast_fn);
 
     // Build rate limiter
-    let limiter = RateLimiter::new(config.rate_limit_max, config.rate_limit_rps);
+    let limiter = RateLimiter::new(config.rate_limit.burst, config.rate_limit.rps);
 
     // Periodic rate limiter cleanup
     let limiter_cleanup = limiter.clone();
@@ -139,7 +139,7 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // Start MQTT broker if enabled (must clone state before build_router takes ownership)
-    if config.mqtt_enabled {
+    if config.mqtt.is_some() {
         let mqtt_config = rstify_mqtt::MqttConfig::from_env();
         let mqtt_pool = state.pool.clone();
         let mqtt_jwt_secret = state.jwt_secret.clone();
@@ -200,12 +200,13 @@ async fn main() -> anyhow::Result<()> {
     let app = rstify_api::build_router(state, limiter);
 
     // CORS configuration
-    let cors = if config.cors_origins.is_empty() {
+    let cors = if config.cors.origins.is_empty() {
         warn!("CORS_ORIGINS not set — defaulting to same-origin only. Set CORS_ORIGINS env var for cross-origin access.");
         CorsLayer::new()
     } else {
         let origins: Vec<HeaderValue> = config
-            .cors_origins
+            .cors
+            .origins
             .iter()
             .filter_map(|o| o.parse::<HeaderValue>().ok())
             .collect();
@@ -234,8 +235,8 @@ async fn main() -> anyhow::Result<()> {
 
     job_runner.start().await;
 
-    let listener = tokio::net::TcpListener::bind(&config.listen_addr).await?;
-    info!("Listening on {}", config.listen_addr);
+    let listener = tokio::net::TcpListener::bind(&config.server.listen_addr).await?;
+    info!("Listening on {}", config.server.listen_addr);
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
