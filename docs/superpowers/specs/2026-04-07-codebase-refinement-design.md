@@ -1,7 +1,7 @@
 # Rstify Codebase Refinement Design
 
 **Date:** 2026-04-07
-**Status:** Draft
+**Status:** Approved
 **Scope:** Backend, shared types layer, frontend (web-ui + mobile), testing
 
 ## Problem Statement
@@ -28,6 +28,21 @@ Rstify is a functional, feature-complete self-hosted notification server. The ap
 - JWT refresh token mechanism
 - Performance optimization or load testing
 - Feature additions of any kind
+
+## Architecture Rules (Enforced Across All Phases)
+
+1. Environment variables may only be accessed in the config bootstrap layer
+2. All HTTP requests must go through the API client layer (no direct `fetch()`)
+3. API DTOs are defined in Rust and generated into the shared package; frontends do not define their own API contracts
+4. Shared package contains only frontend-safe contracts and utilities — no UI framework or backend logic
+5. Hooks own async state; components/pages own layout
+6. No raw `unwrap()` in production code paths
+7. New shared abstractions require unit tests before they are considered complete
+8. API response shapes remain backward-compatible unless a deliberate breaking change is documented
+
+## Migration Strategy
+
+Phases are executed incrementally and validated before proceeding. No phase requires a full codebase rewrite before delivering value. Each phase produces a working, shippable codebase.
 
 ---
 
@@ -75,7 +90,7 @@ Extract patterns currently duplicated across 10+ handler functions into shared, 
 **Response builders (API DTOs only, not database models):**
 - Repo returns domain/data models
 - Handler maps to response DTOs using standardized `to_response()` methods
-- Response helpers standardize output shape: pagination construction, `Z`-append for UTC dates applied uniformly
+- Response helpers standardize output shape: pagination construction, UTC timestamps normalized to ISO 8601 with explicit timezone (`Z`) consistently across all API responses
 - These are for API response shaping, not database model transformation
 
 **Safe serialization helpers:**
@@ -325,6 +340,7 @@ Measurable outcomes that define completion:
 - [ ] Baseline handler coverage for all refactored critical route families (happy path, auth failure, validation failure, not-found, forbidden)
 - [ ] Duplicated web-ui CRUD boilerplate reduced: shared hooks used across all 11 target pages
 - [ ] Duplicate web/mobile type definitions eliminated (two `types.ts` files → zero)
+- [ ] All frontend API types originate from generated shared package (no duplication or divergence)
 - [ ] All new shared backend abstractions have unit tests
 
 ## Deferred Work
@@ -350,3 +366,4 @@ Explicitly out of scope for this effort:
 - **CrudPageLayout rigidity** — If the layout component becomes too opinionated, pages will fight it. Mitigation: keep it opt-in, composition-based, with escape hatches. Kill it if it causes more friction than it removes.
 - **Mobile NativeWind constraints** — Shared component patterns from web-ui may not translate. Mitigation: mobile cleanup uses equivalent principles, not identical implementations.
 - **Refactor without regressions** — Moving code always risks breaking behavior. Mitigation: Phase 4a testing runs concurrent with refactoring; existing shell scripts serve as smoke tests; handler tests follow.
+- **Generated types drift confusion** — Developers may forget to run codegen locally, leading to confusion when types don't match backend changes. Mitigation: CI diff check enforces freshness; local dev workflow includes `just generate-types` as a standard step.
