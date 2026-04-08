@@ -10,6 +10,11 @@ use rstify_core::repositories::{MessageRepository, TopicRepository};
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
+use crate::helpers::ownership::{fetch_or_not_found, verify_optional_ownership};
+use crate::helpers::validation::{
+    validate_json, validate_policy, validate_positive, validate_topic_name, NOTIFY_POLICIES,
+    STORE_POLICIES,
+};
 use crate::routes::messages::ListParams;
 use crate::state::AppState;
 
@@ -25,33 +30,7 @@ pub async fn create_topic(
     Json(req): Json<CreateTopic>,
 ) -> Result<Json<Topic>, ApiError> {
     let name = req.name.trim();
-    if name.is_empty() || name.len() > 128 {
-        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-            "Topic name must be between 1 and 128 characters".to_string(),
-        )));
-    }
-    if !name
-        .chars()
-        .all(|c| c.is_alphanumeric() || c == '-' || c == '_' || c == '.')
-    {
-        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-            "Topic name may only contain alphanumeric characters, hyphens, underscores, and dots"
-                .to_string(),
-        )));
-    }
-    // Reject names that are only dots, start/end with dots, or have consecutive dots
-    if name.chars().all(|c| c == '.')
-        || name.starts_with('.')
-        || name.ends_with('.')
-        || name.contains("..")
-        || name.starts_with('-')
-        || name.starts_with('_')
-    {
-        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-            "Topic name must start with an alphanumeric character and not contain consecutive dots"
-                .to_string(),
-        )));
-    }
+    validate_topic_name(name)?;
 
     let topic = state
         .topic_repo
@@ -123,59 +102,24 @@ pub async fn update_topic(
     Path(name): Path<String>,
     Json(req): Json<UpdateTopic>,
 ) -> Result<Json<Topic>, ApiError> {
-    let topic = state
-        .topic_repo
-        .find_by_name(&name)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
-                "Topic not found".to_string(),
-            ))
-        })?;
+    let topic = fetch_or_not_found("Topic", || state.topic_repo.find_by_name(&name)).await?;
+    verify_optional_ownership(&auth, topic.owner_id, "topic")?;
 
-    if topic.owner_id != Some(auth.user.id) && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your topic".to_string(),
-        )));
-    }
-
-    // Validate notification policy fields
+    // Validate notification/store policy fields
     if let Some(ref policy) = req.notify_policy {
-        if !["always", "never", "threshold", "on_change", "digest"].contains(&policy.as_str()) {
-            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-                "notify_policy must be one of: always, never, threshold, on_change, digest"
-                    .to_string(),
-            )));
-        }
-    }
-    if let Some(ref policy) = req.store_policy {
-        if !["all", "on_change", "interval"].contains(&policy.as_str()) {
-            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-                "store_policy must be one of: all, on_change, interval".to_string(),
-            )));
-        }
+        validate_policy("notify_policy", policy, NOTIFY_POLICIES)?;
     }
     if let Some(ref condition) = req.notify_condition {
-        if serde_json::from_str::<serde_json::Value>(condition).is_err() {
-            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-                "notify_condition must be valid JSON".to_string(),
-            )));
-        }
+        validate_json("notify_condition", condition)?;
     }
     if let Some(interval) = req.notify_digest_interval {
-        if interval <= 0 {
-            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-                "notify_digest_interval must be positive".to_string(),
-            )));
-        }
+        validate_positive("notify_digest_interval", interval)?;
+    }
+    if let Some(ref policy) = req.store_policy {
+        validate_policy("store_policy", policy, STORE_POLICIES)?;
     }
     if let Some(interval) = req.store_interval {
-        if interval <= 0 {
-            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-                "store_interval must be positive".to_string(),
-            )));
-        }
+        validate_positive("store_interval", interval)?;
     }
 
     let updated = state
@@ -204,23 +148,8 @@ pub async fn delete_topic(
     auth: AuthUser,
     Path(name): Path<String>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let topic = state
-        .topic_repo
-        .find_by_name(&name)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(format!(
-                "Topic '{}' not found",
-                name
-            )))
-        })?;
-
-    if topic.owner_id != Some(auth.user.id) && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your topic".to_string(),
-        )));
-    }
+    let topic = fetch_or_not_found("Topic", || state.topic_repo.find_by_name(&name)).await?;
+    verify_optional_ownership(&auth, topic.owner_id, "topic")?;
 
     state
         .topic_repo

@@ -10,6 +10,8 @@ use uuid::Uuid;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
+use crate::helpers::ownership::{fetch_or_not_found, verify_ownership};
+use crate::helpers::validation::validate_length;
 use crate::state::AppState;
 use crate::utils::sanitize_filename;
 
@@ -50,11 +52,7 @@ pub async fn create_application(
     Json(req): Json<CreateApplication>,
 ) -> Result<Json<Application>, ApiError> {
     let name = req.name.trim();
-    if name.is_empty() || name.len() > 128 {
-        return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-            "Application name must be between 1 and 128 characters".to_string(),
-        )));
-    }
+    validate_length("Application name", name, 1, 128)?;
 
     let token = generate_app_token();
     let app = state
@@ -83,23 +81,8 @@ pub async fn update_application(
     Path(id): Path<i64>,
     Json(req): Json<UpdateApplication>,
 ) -> Result<Json<Application>, ApiError> {
-    // Verify ownership
-    let existing = state
-        .app_repo
-        .find_by_id(id)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
-                "Application not found".to_string(),
-            ))
-        })?;
-
-    if existing.user_id != auth.user.id && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your application".to_string(),
-        )));
-    }
+    let existing = fetch_or_not_found("Application", || state.app_repo.find_by_id(id)).await?;
+    verify_ownership(&auth, existing.user_id, "application")?;
 
     let app = state
         .app_repo
@@ -121,22 +104,8 @@ pub async fn delete_application(
     auth: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let existing = state
-        .app_repo
-        .find_by_id(id)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
-                "Application not found".to_string(),
-            ))
-        })?;
-
-    if existing.user_id != auth.user.id && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your application".to_string(),
-        )));
-    }
+    let existing = fetch_or_not_found("Application", || state.app_repo.find_by_id(id)).await?;
+    verify_ownership(&auth, existing.user_id, "application")?;
 
     // Clean up icon file if present
     if let Some(ref image) = existing.image {
@@ -159,22 +128,8 @@ pub async fn upload_icon(
     Path(id): Path<i64>,
     mut multipart: Multipart,
 ) -> Result<Json<Application>, ApiError> {
-    let existing = state
-        .app_repo
-        .find_by_id(id)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
-                "Application not found".to_string(),
-            ))
-        })?;
-
-    if existing.user_id != auth.user.id && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your application".to_string(),
-        )));
-    }
+    let existing = fetch_or_not_found("Application", || state.app_repo.find_by_id(id)).await?;
+    verify_ownership(&auth, existing.user_id, "application")?;
 
     let icons_dir = format!("{}/icons", state.upload_dir);
     fs::create_dir_all(&icons_dir).await.map_err(|e| {
@@ -313,22 +268,8 @@ pub async fn delete_icon(
     auth: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let existing = state
-        .app_repo
-        .find_by_id(id)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
-                "Application not found".to_string(),
-            ))
-        })?;
-
-    if existing.user_id != auth.user.id && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your application".to_string(),
-        )));
-    }
+    let existing = fetch_or_not_found("Application", || state.app_repo.find_by_id(id)).await?;
+    verify_ownership(&auth, existing.user_id, "application")?;
 
     if let Some(ref image) = existing.image {
         let icon_path = format!("{}/{}", state.upload_dir, image);
