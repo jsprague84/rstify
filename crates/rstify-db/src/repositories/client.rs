@@ -33,7 +33,13 @@ impl ClientRepository for SqliteClientRepo {
         .bind(scopes)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(|e| {
+            if e.to_string().contains("UNIQUE") {
+                CoreError::AlreadyExists(format!("Client '{}' already exists", name))
+            } else {
+                CoreError::Database(e.to_string())
+            }
+        })
     }
 
     async fn find_by_id(&self, id: i64) -> Result<Option<Client>, CoreError> {

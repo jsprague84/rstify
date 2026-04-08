@@ -44,7 +44,13 @@ impl WebhookVariableRepository for SqliteWebhookVariableRepo {
         .bind(value)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(|e| {
+            if e.to_string().contains("UNIQUE") {
+                CoreError::AlreadyExists(format!("Webhook variable '{}' already exists", key))
+            } else {
+                CoreError::Database(e.to_string())
+            }
+        })
     }
 
     async fn update_webhook_variable(
