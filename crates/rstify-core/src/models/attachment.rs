@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema, TS)]
+#[ts(export)]
 pub struct Attachment {
     pub id: i64,
     pub message_id: i64,
@@ -14,7 +16,8 @@ pub struct Attachment {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema, TS)]
+#[ts(export)]
 pub struct WebhookConfig {
     pub id: i64,
     pub user_id: i64,
@@ -40,8 +43,9 @@ pub struct WebhookConfig {
     pub secret: Option<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct CreateWebhookConfig {
     pub name: String,
     #[serde(alias = "webhook_type")]
@@ -75,8 +79,9 @@ pub struct CreateWebhookConfig {
     pub secret: Option<String>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export)]
 pub struct UpdateWebhookConfig {
     pub name: Option<String>,
     pub template: Option<serde_json::Value>,

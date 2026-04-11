@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 use super::action::MessageAction;
@@ -27,7 +28,8 @@ pub struct Message {
 }
 
 /// Gotify-compatible message creation (via app token)
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateAppMessage {
     pub title: Option<String>,
     pub message: String,
@@ -36,7 +38,8 @@ pub struct CreateAppMessage {
 }
 
 /// Enhanced message creation (via topic)
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateTopicMessage {
     pub title: Option<String>,
     pub message: String,
@@ -49,7 +52,8 @@ pub struct CreateTopicMessage {
 }
 
 /// Update an existing message
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateMessage {
     pub title: Option<String>,
     pub message: Option<String>,
@@ -58,7 +62,8 @@ pub struct UpdateMessage {
 }
 
 /// Lightweight attachment info included in message responses
-#[derive(Debug, Clone, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct AttachmentInfo {
     pub id: i64,
     pub name: String,
@@ -80,7 +85,8 @@ impl AttachmentInfo {
     }
 }
 
-#[derive(Debug, Clone, Serialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct MessageResponse {
     pub id: i64,
     pub appid: Option<i64>,
@@ -155,13 +161,15 @@ impl Message {
     }
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct PagedMessages {
     pub messages: Vec<MessageResponse>,
     pub paging: Paging,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct Paging {
     pub size: i64,
     pub since: i64,

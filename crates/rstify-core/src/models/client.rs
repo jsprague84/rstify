@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema, TS)]
+#[ts(export)]
 pub struct Client {
     pub id: i64,
     pub user_id: i64,
@@ -47,7 +49,8 @@ impl Client {
     }
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateClient {
     pub name: String,
     /// Scopes for this client token. Default: ["read", "write"]
@@ -55,7 +58,8 @@ pub struct CreateClient {
     pub scopes: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateClient {
     pub name: Option<String>,
     /// Update scopes for this client token
@@ -63,7 +67,8 @@ pub struct UpdateClient {
     pub scopes: Option<Vec<String>>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct RegisterFcmToken {
     pub fcm_token: String,
 }
