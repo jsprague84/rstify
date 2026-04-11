@@ -72,3 +72,4 @@ humantime = "2"
 lettre = { version = "0.11", features = ["tokio1-native-tls", "builder", "smtp-transport"] }
 mime_guess = "2"
 moka = { version = "0.12", features = ["future"] }
+ts-rs = { version = "10", features = ["serde-compat", "serde-json-impl"] }
