@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
-import type { MessageResponse } from '../api/types';
+import type { MessageResponse } from 'shared';
 
 export type WsStatus = 'connected' | 'reconnecting' | 'disconnected';
 

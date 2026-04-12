@@ -30,3 +30,4 @@ jsonwebtoken = { workspace = true }
 url = "2.5.8"
 hmac = "0.12"
 sha2 = "0.10"
+ts-rs = { workspace = true }

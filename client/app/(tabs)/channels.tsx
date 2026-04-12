@@ -22,7 +22,7 @@ import { EditTopicModal } from "../../src/components/channels/EditTopicModal";
 import { PublishModal } from "../../src/components/channels/PublishModal";
 import { ConfirmSheet } from "../../src/components/design/ConfirmSheet";
 import { EmptyState } from "../../src/components/EmptyState";
-import type { Topic } from "../../src/api/types";
+import type { Topic } from "shared";
 
 // --- Create Topic Modal ---
 interface CreateTopicModalProps {
@@ -48,7 +48,7 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
     try {
       await getApiClient().createTopic({
         name: trimmedName,
-        description: description.trim() || undefined,
+        description: description.trim() || null,
         everyone_read: everyoneRead,
         everyone_write: everyoneWrite,
       });

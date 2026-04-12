@@ -17,10 +17,10 @@ async fn main() -> anyhow::Result<()> {
     dotenvy::dotenv().ok();
     telemetry::init();
 
-    let config = config::Config::from_env();
-    info!("Starting rstify server on {}", config.listen_addr);
+    let config = config::Config::from_env().expect("Failed to load configuration");
+    info!("Starting rstify server on {}", config.server.listen_addr);
 
-    let db = Database::connect(&config.database_url).await?;
+    let db = Database::connect(&config.database.url).await?;
     db.migrate().await?;
 
     let pool = db.pool().clone();
@@ -54,26 +54,43 @@ async fn main() -> anyhow::Result<()> {
 
     let mut state = AppState::new(
         pool.clone(),
-        config.jwt_secret.clone(),
-        config.upload_dir.clone(),
+        config.auth.jwt_secret.clone(),
+        config.server.upload_dir.clone(),
+        config.server.max_attachment_size,
     );
     state
         .inbox_threshold
         .store(inbox_threshold_value, std::sync::atomic::Ordering::Relaxed);
 
     // Initialize FCM push notifications if configured
-    if config.fcm_enabled {
-        if let Some(fcm_config) = rstify_api::fcm::FcmConfig::from_env() {
+    if let Some(ref fcm_cfg) = config.fcm {
+        if let Some(fcm_config) = rstify_api::fcm::FcmConfig::from_path(
+            fcm_cfg.project_id.clone(),
+            &fcm_cfg.service_account_path,
+        ) {
             info!(
                 "FCM push notifications enabled (project: {})",
-                fcm_config.project_id
+                fcm_cfg.project_id
             );
             state = state.with_fcm(rstify_api::fcm::FcmClient::new(fcm_config));
         } else {
-            tracing::error!("FCM_PROJECT_ID is set but FCM configuration is incomplete — check FCM_SERVICE_ACCOUNT_PATH");
+            tracing::error!("FCM configuration invalid — push notifications disabled");
         }
     } else {
         info!("FCM push notifications disabled (set FCM_PROJECT_ID and FCM_SERVICE_ACCOUNT_PATH to enable)");
+    }
+
+    // Wire SMTP email config if configured
+    if let Some(ref smtp_cfg) = config.smtp {
+        let email_config = rstify_jobs::email::EmailConfig::new(
+            smtp_cfg.host.clone(),
+            smtp_cfg.port,
+            smtp_cfg.username.clone(),
+            smtp_cfg.password.clone(),
+            smtp_cfg.from.clone(),
+        );
+        state = state.with_email_config(email_config);
+        info!("SMTP email notifications enabled (host: {})", smtp_cfg.host);
     }
 
     // Start periodic connection cleanup
@@ -126,7 +143,7 @@ async fn main() -> anyhow::Result<()> {
     let job_runner = JobRunner::new(pool).with_broadcast(broadcast_fn);
 
     // Build rate limiter
-    let limiter = RateLimiter::new(config.rate_limit_max, config.rate_limit_rps);
+    let limiter = RateLimiter::new(config.rate_limit.burst, config.rate_limit.rps);
 
     // Periodic rate limiter cleanup
     let limiter_cleanup = limiter.clone();
@@ -139,8 +156,20 @@ async fn main() -> anyhow::Result<()> {
     });
 
     // Start MQTT broker if enabled (must clone state before build_router takes ownership)
-    if config.mqtt_enabled {
-        let mqtt_config = rstify_mqtt::MqttConfig::from_env();
+    if let Some(ref mqtt_cfg) = config.mqtt {
+        state = state.with_mqtt_status(rstify_api::state::MqttStatusConfig {
+            listen_addr: mqtt_cfg.listen_addr.clone(),
+            ws_listen_addr: mqtt_cfg.ws_listen_addr.clone(),
+        });
+
+        let mqtt_config = rstify_mqtt::MqttConfig {
+            enabled: true,
+            listen_addr: mqtt_cfg.listen_addr.clone(),
+            ws_listen_addr: mqtt_cfg.ws_listen_addr.clone(),
+            require_auth: mqtt_cfg.require_auth,
+            max_payload_size: mqtt_cfg.max_payload_size,
+            max_connections: mqtt_cfg.max_connections,
+        };
         let mqtt_pool = state.pool.clone();
         let mqtt_jwt_secret = state.jwt_secret.clone();
         let mqtt_topic_repo = state.topic_repo.clone();
@@ -200,12 +229,13 @@ async fn main() -> anyhow::Result<()> {
     let app = rstify_api::build_router(state, limiter);
 
     // CORS configuration
-    let cors = if config.cors_origins.is_empty() {
+    let cors = if config.cors.origins.is_empty() {
         warn!("CORS_ORIGINS not set — defaulting to same-origin only. Set CORS_ORIGINS env var for cross-origin access.");
         CorsLayer::new()
     } else {
         let origins: Vec<HeaderValue> = config
-            .cors_origins
+            .cors
+            .origins
             .iter()
             .filter_map(|o| o.parse::<HeaderValue>().ok())
             .collect();
@@ -234,8 +264,8 @@ async fn main() -> anyhow::Result<()> {
 
     job_runner.start().await;
 
-    let listener = tokio::net::TcpListener::bind(&config.listen_addr).await?;
-    info!("Listening on {}", config.listen_addr);
+    let listener = tokio::net::TcpListener::bind(&config.server.listen_addr).await?;
+    info!("Listening on {}", config.server.listen_addr);
 
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())

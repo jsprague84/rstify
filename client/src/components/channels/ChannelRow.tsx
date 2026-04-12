@@ -3,7 +3,7 @@ import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import * as ContextMenu from "zeego/context-menu";
 import { useChannelsStore } from "../../store";
-import type { Topic } from "../../api/types";
+import type { Topic } from "shared";
 
 interface ChannelRowProps {
   topic: Topic;

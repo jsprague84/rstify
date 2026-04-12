@@ -1,4 +1,4 @@
-import type { MessageResponse } from "../api/types";
+import type { MessageResponse } from "shared";
 
 export function getSourceId(msg: MessageResponse): string {
   if (msg.topic) {

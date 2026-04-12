@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { User, CreateUser, UpdateUser } from '../api/types';
+import type { UserResponse, CreateUser, UpdateUser } from 'shared';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { formatLocalTime } from '../utils/time';
+import { formatLocalTime } from 'shared';
 
 export default function Users() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserResponse[]>([]);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [editUser, setEditUser] = useState<User | null>(null);
-  const [deleteUser, setDeleteUser] = useState<User | null>(null);
+  const [editUser, setEditUser] = useState<UserResponse | null>(null);
+  const [deleteUser, setDeleteUser] = useState<UserResponse | null>(null);
 
   const load = useCallback(() => {
     api.listUsers().then(setUsers).catch(e => setError(e.message));
@@ -101,7 +101,7 @@ function CreateUserModal({ onClose, onSubmit }: { onClose: () => void; onSubmit:
       await onSubmit({
         username: form.username,
         password: form.password,
-        email: form.email || undefined,
+        email: form.email || null,
         is_admin: form.is_admin,
       });
     } catch (err) {
@@ -131,7 +131,7 @@ function CreateUserModal({ onClose, onSubmit }: { onClose: () => void; onSubmit:
   );
 }
 
-function EditUserModal({ user, onClose, onSubmit }: { user: User; onClose: () => void; onSubmit: (id: number, d: UpdateUser) => Promise<void> }) {
+function EditUserModal({ user, onClose, onSubmit }: { user: UserResponse; onClose: () => void; onSubmit: (id: number, d: UpdateUser) => Promise<void> }) {
   const [form, setForm] = useState({ username: user.username, email: user.email || '', is_admin: user.is_admin });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -142,7 +142,7 @@ function EditUserModal({ user, onClose, onSubmit }: { user: User; onClose: () =>
     try {
       await onSubmit(user.id, {
         username: form.username,
-        email: form.email || undefined,
+        email: form.email || null,
         is_admin: form.is_admin,
       });
     } catch (err) {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig, WebhookDeliveryLog, WebhookTestResult, Topic, Application, WebhookVariable } from '../api/types';
+import type { WebhookConfig, WebhookConfigWithHealth, CreateWebhookConfig, UpdateWebhookConfig, WebhookDeliveryLog, WebhookTestResult, Topic, Application, WebhookVariable } from 'shared';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import Sparkline from '../components/Sparkline';
@@ -8,19 +8,19 @@ import CodeGenerator from '../components/CodeGenerator';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
 import { parseWebhookHeaders } from '../utils/webhookHelpers';
-import { formatLocalTime } from '../utils/time';
+import { formatLocalTime } from 'shared';
 
 export default function Webhooks() {
-  const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
+  const [webhooks, setWebhooks] = useState<WebhookConfigWithHealth[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
-  const [editWh, setEditWh] = useState<WebhookConfig | null>(null);
-  const [deleteWh, setDeleteWh] = useState<WebhookConfig | null>(null);
-  const [logsWh, setLogsWh] = useState<WebhookConfig | null>(null);
-  const [testResult, setTestResult] = useState<{ wh: WebhookConfig; result: WebhookTestResult | null; loading: boolean; error: string; customPayload: string } | null>(null);
-  const [codeWh, setCodeWh] = useState<WebhookConfig | null>(null);
+  const [editWh, setEditWh] = useState<WebhookConfigWithHealth | null>(null);
+  const [deleteWh, setDeleteWh] = useState<WebhookConfigWithHealth | null>(null);
+  const [logsWh, setLogsWh] = useState<WebhookConfigWithHealth | null>(null);
+  const [testResult, setTestResult] = useState<{ wh: WebhookConfigWithHealth; result: WebhookTestResult | null; loading: boolean; error: string; customPayload: string } | null>(null);
+  const [codeWh, setCodeWh] = useState<WebhookConfigWithHealth | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [variables, setVariables] = useState<WebhookVariable[]>([]);
   const [showVars, setShowVars] = useState(false);
@@ -53,22 +53,26 @@ export default function Webhooks() {
     load();
   };
 
-  const handleDuplicate = async (w: WebhookConfig) => {
+  const handleDuplicate = async (w: WebhookConfigWithHealth) => {
     try {
       await api.createWebhook({
         name: `${w.name} (copy)`,
-        webhook_type: w.webhook_type,
+        webhookType: w.webhook_type,
         direction: w.direction,
-        target_topic_id: w.target_topic_id ?? undefined,
-        target_application_id: w.target_application_id ?? undefined,
-        target_url: w.target_url ?? undefined,
-        http_method: w.http_method,
-        headers: Object.keys(parseWebhookHeaders(w.headers)).length > 0 ? parseWebhookHeaders(w.headers) : undefined,
-        body_template: w.body_template ?? undefined,
-        max_retries: w.max_retries,
-        retry_delay_secs: w.retry_delay_secs,
-        timeout_secs: w.timeout_secs,
-        follow_redirects: w.follow_redirects,
+        targetTopicId: w.target_topic_id ?? null,
+        targetApplicationId: w.target_application_id ?? null,
+        targetUrl: w.target_url ?? null,
+        httpMethod: w.http_method,
+        headers: Object.keys(parseWebhookHeaders(w.headers)).length > 0 ? parseWebhookHeaders(w.headers) : null,
+        bodyTemplate: w.body_template ?? null,
+        maxRetries: w.max_retries,
+        retryDelaySecs: w.retry_delay_secs,
+        timeoutSecs: w.timeout_secs,
+        followRedirects: w.follow_redirects,
+        enabled: null,
+        template: null,
+        groupName: null,
+        secret: null,
       });
       load();
     } catch (e) {
@@ -76,9 +80,14 @@ export default function Webhooks() {
     }
   };
 
-  const handleToggleEnabled = async (w: WebhookConfig) => {
+  const handleToggleEnabled = async (w: WebhookConfigWithHealth) => {
     try {
-      await api.updateWebhook(w.id, { enabled: !w.enabled });
+      await api.updateWebhook(w.id, {
+        name: null, template: null, enabled: !w.enabled,
+        targetUrl: null, httpMethod: null, headers: null,
+        bodyTemplate: null, maxRetries: null, retryDelaySecs: null,
+        timeoutSecs: null, followRedirects: null, groupName: null, secret: null,
+      });
       load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Toggle failed');
@@ -94,7 +103,7 @@ export default function Webhooks() {
 
   const defaultTestPayload = JSON.stringify({ title: 'Test Webhook', message: 'This is a test message from rstify.', priority: 5, topic: 'test-topic' }, null, 2);
 
-  const handleTest = async (wh: WebhookConfig) => {
+  const handleTest = async (wh: WebhookConfigWithHealth) => {
     if (wh.direction === 'outgoing') {
       // Show payload editor first
       setTestResult({ wh, result: null, loading: false, error: '', customPayload: defaultTestPayload });
@@ -125,12 +134,12 @@ export default function Webhooks() {
     }
   };
 
-  const getWebhookUrl = (wh: WebhookConfig) => {
+  const getWebhookUrl = (wh: WebhookConfigWithHealth) => {
     const base = window.location.origin;
     return `${base}/api/wh/${wh.token}`;
   };
 
-  const generateCurl = (w: WebhookConfig) => {
+  const generateCurl = (w: WebhookConfigWithHealth) => {
     if (w.direction === 'outgoing' && w.target_url) {
       const parts = [`curl -X ${w.http_method} '${w.target_url}'`];
       if (w.headers) {
@@ -152,7 +161,7 @@ export default function Webhooks() {
     return `curl -X POST '${url}' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"title":"Test","message":"Hello"}'`;
   };
 
-  const copyCurl = (w: WebhookConfig) => {
+  const copyCurl = (w: WebhookConfigWithHealth) => {
     navigator.clipboard.writeText(generateCurl(w));
   };
 
@@ -188,16 +197,16 @@ export default function Webhooks() {
         const columns = [
           { key: 'id' as const, header: 'ID' },
           { key: 'name' as const, header: 'Name' },
-          { key: 'direction' as const, header: 'Direction', render: (w: WebhookConfig) => directionBadge(w.direction || 'incoming') },
+          { key: 'direction' as const, header: 'Direction', render: (w: WebhookConfigWithHealth) => directionBadge(w.direction || 'incoming') },
           { key: 'webhook_type' as const, header: 'Type' },
-          { key: 'target_url' as const, header: 'Target', render: (w: WebhookConfig) =>
+          { key: 'target_url' as const, header: 'Target', render: (w: WebhookConfigWithHealth) =>
             w.direction === 'outgoing' && w.target_url ? (
               <span className="text-xs text-gray-600 dark:text-gray-400">{w.http_method} {w.target_url}</span>
             ) : (
               <WebhookUrlDisplay url={getWebhookUrl(w)} />
             )
           },
-          { key: 'enabled' as const, header: 'Enabled', render: (w: WebhookConfig) => (
+          { key: 'enabled' as const, header: 'Enabled', render: (w: WebhookConfigWithHealth) => (
             <button
               onClick={() => handleToggleEnabled(w)}
               className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${w.enabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'}`}
@@ -206,7 +215,7 @@ export default function Webhooks() {
               <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${w.enabled ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
             </button>
           )},
-          { key: 'health' as const, header: 'Health', render: (w: WebhookConfig) => {
+          { key: 'health' as const, header: 'Health', render: (w: WebhookConfigWithHealth) => {
             if (w.direction !== 'outgoing' || w.recent_success_rate == null) {
               return <span className="inline-flex items-center gap-1 text-xs text-gray-400"><span className="w-2 h-2 rounded-full bg-gray-300 dark:bg-gray-600 inline-block" />No data</span>;
             }
@@ -222,13 +231,13 @@ export default function Webhooks() {
               </span>
             );
           }},
-          { key: 'sparkline' as const, header: '', render: (w: WebhookConfig) =>
+          { key: 'sparkline' as const, header: '', render: (w: WebhookConfigWithHealth) =>
             w.direction === 'outgoing' && w.recent_durations && w.recent_durations.length >= 2
               ? <Sparkline data={w.recent_durations} />
               : null
           },
         ];
-        const renderActions = (w: WebhookConfig) => (
+        const renderActions = (w: WebhookConfigWithHealth) => (
           <div className="flex gap-2 justify-end">
             <button onClick={() => handleTest(w)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 text-sm">Test</button>
             <button onClick={() => copyCurl(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Curl</button>
@@ -241,8 +250,8 @@ export default function Webhooks() {
         );
 
         // Group webhooks by group_name
-        const groups = new Map<string, WebhookConfig[]>();
-        const ungrouped: WebhookConfig[] = [];
+        const groups = new Map<string, WebhookConfigWithHealth[]>();
+        const ungrouped: WebhookConfigWithHealth[] = [];
         for (const wh of webhooks) {
           if (wh.group_name) {
             const list = groups.get(wh.group_name) || [];
@@ -303,7 +312,10 @@ export default function Webhooks() {
             onClose={() => setEditWh(null)}
             onRegenerate={editWh.direction !== 'outgoing' ? async () => {
               const updated = await api.regenerateWebhookToken(editWh.id);
-              setEditWh(updated);
+              setEditWh({
+                ...editWh,
+                ...updated,
+              });
               load();
             } : undefined}
             existingGroups={[...new Set(webhooks.map(w => w.group_name).filter((g): g is string => !!g))]}
@@ -494,7 +506,7 @@ const inputCls = "w-full border dark:border-gray-600 rounded px-3 py-2 text-sm d
 const btnCls = (active: boolean) =>
   `px-3 py-1.5 text-sm rounded font-medium ${active ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`;
 
-function parseHeaders(text: string): Record<string, string> | undefined {
+function parseHeaders(text: string): Record<string, string> | null {
   const headers: Record<string, string> = {};
   for (const line of text.split('\n')) {
     const idx = line.indexOf(':');
@@ -502,7 +514,7 @@ function parseHeaders(text: string): Record<string, string> | undefined {
       headers[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
     }
   }
-  return Object.keys(headers).length > 0 ? headers : undefined;
+  return Object.keys(headers).length > 0 ? headers : null;
 }
 
 function headersToText(headers?: string | null): string {
@@ -684,21 +696,22 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
     try {
       await onSubmit({
         name: form.name,
-        webhook_type: form.webhook_type,
+        webhookType: form.webhook_type,
         direction: form.direction,
-        template: form.template || undefined,
-        target_topic_id: form.target_topic_id,
-        target_application_id: form.target_application_id,
-        target_url: form.direction === 'outgoing' ? form.target_url : undefined,
-        http_method: form.direction === 'outgoing' ? form.http_method : undefined,
-        headers: form.direction === 'outgoing' && form.headers ? parseHeaders(form.headers) : undefined,
-        body_template: form.direction === 'outgoing' && form.body_template ? form.body_template : undefined,
-        max_retries: form.direction === 'outgoing' ? form.max_retries : undefined,
-        retry_delay_secs: form.direction === 'outgoing' ? form.retry_delay_secs : undefined,
-        timeout_secs: form.direction === 'outgoing' ? form.timeout_secs : undefined,
-        follow_redirects: form.direction === 'outgoing' ? form.follow_redirects : undefined,
-        group_name: form.group_name || undefined,
-        secret: form.secret || undefined,
+        template: form.template || null,
+        enabled: null,
+        targetTopicId: form.target_topic_id ?? null,
+        targetApplicationId: form.target_application_id ?? null,
+        targetUrl: form.direction === 'outgoing' ? form.target_url : null,
+        httpMethod: form.direction === 'outgoing' ? form.http_method : null,
+        headers: form.direction === 'outgoing' && form.headers ? parseHeaders(form.headers) : null,
+        bodyTemplate: form.direction === 'outgoing' && form.body_template ? form.body_template : null,
+        maxRetries: form.direction === 'outgoing' ? form.max_retries : null,
+        retryDelaySecs: form.direction === 'outgoing' ? form.retry_delay_secs : null,
+        timeoutSecs: form.direction === 'outgoing' ? form.timeout_secs : null,
+        followRedirects: form.direction === 'outgoing' ? form.follow_redirects : null,
+        groupName: form.group_name || null,
+        secret: form.secret || null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -867,7 +880,7 @@ function relativeTime(dateStr: string): string {
   return `${days}d ago`;
 }
 
-function statusBadgeCls(code: number | undefined, success: boolean): string {
+function statusBadgeCls(code: number | null | undefined, success: boolean): string {
   if (!code) return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
   if (code < 300) return 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300';
   if (code < 400) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
@@ -965,7 +978,7 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
 }
 
 function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerate, existingGroups = [] }: {
-  webhook: WebhookConfig;
+  webhook: WebhookConfigWithHealth;
   topics: Topic[];
   apps: Application[];
   onSubmit: (d: UpdateWebhookConfig) => Promise<void>;
@@ -1000,18 +1013,16 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
         name: form.name,
         template: form.template,
         enabled: form.enabled,
-        group_name: form.group_name || undefined,
-        secret: form.secret || undefined,
-        ...(isOutgoing ? {
-          target_url: form.target_url,
-          http_method: form.http_method,
-          headers: parseHeaders(form.headers),
-          body_template: form.body_template || undefined,
-          max_retries: form.max_retries,
-          retry_delay_secs: form.retry_delay_secs,
-          timeout_secs: form.timeout_secs,
-          follow_redirects: form.follow_redirects,
-        } : {}),
+        groupName: form.group_name || null,
+        secret: form.secret || null,
+        targetUrl: isOutgoing ? form.target_url : null,
+        httpMethod: isOutgoing ? form.http_method : null,
+        headers: isOutgoing ? parseHeaders(form.headers) : null,
+        bodyTemplate: isOutgoing ? (form.body_template || null) : null,
+        maxRetries: isOutgoing ? form.max_retries : null,
+        retryDelaySecs: isOutgoing ? form.retry_delay_secs : null,
+        timeoutSecs: isOutgoing ? form.timeout_secs : null,
+        followRedirects: isOutgoing ? form.follow_redirects : null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');

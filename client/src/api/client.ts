@@ -1,7 +1,5 @@
 import type {
-  ApiError,
   Application,
-  AttachmentInfo,
   ChangePassword,
   Client,
   CreateApplication,
@@ -18,7 +16,7 @@ import type {
   LoginResponse,
   MessageResponse,
   MqttBridge,
-  MqttStatus,
+  MqttStatusResponse,
   PagedMessages,
   StatsResponse,
   Topic,
@@ -31,9 +29,15 @@ import type {
   UserResponse,
   VersionResponse,
   WebhookConfig,
+  WebhookConfigWithHealth,
   WebhookDeliveryLog,
   WebhookTestResult,
-} from "./types";
+} from "shared";
+
+interface ApiError {
+  error: string;
+  errorCode: number;
+}
 
 export class RstifyApiError extends Error {
   constructor(
@@ -403,7 +407,7 @@ export class RstifyClient {
   }
 
   // Webhooks
-  async listWebhooks(): Promise<WebhookConfig[]> {
+  async listWebhooks(): Promise<WebhookConfigWithHealth[]> {
     return this.request("GET", "/api/webhooks");
   }
 
@@ -435,7 +439,7 @@ export class RstifyClient {
   }
 
   // MQTT
-  async getMqttStatus(): Promise<MqttStatus> {
+  async getMqttStatus(): Promise<MqttStatusResponse> {
     return this.request("GET", "/api/mqtt/status");
   }
 

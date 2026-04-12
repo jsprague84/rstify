@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { MqttBridge, MqttStatus, CreateMqttBridge, UpdateMqttBridge } from '../api/types';
+import type { MqttBridge, MqttStatusResponse, CreateMqttBridge, UpdateMqttBridge } from 'shared';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -8,7 +8,7 @@ import { parseJsonArray } from '../utils/webhookHelpers';
 
 export default function Bridges() {
   const [bridges, setBridges] = useState<MqttBridge[]>([]);
-  const [mqttStatus, setMqttStatus] = useState<MqttStatus | null>(null);
+  const [mqttStatus, setMqttStatus] = useState<MqttStatusResponse | null>(null);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editBridge, setEditBridge] = useState<MqttBridge | null>(null);
@@ -172,10 +172,10 @@ function BridgeFormModal({
     onSubmit({
       name,
       remote_url: remoteUrl,
-      username: username || undefined,
-      password: password || undefined,
+      username: username || null,
+      password: password || null,
       qos,
-      topic_prefix: topicPrefix || undefined,
+      topic_prefix: topicPrefix || null,
       subscribe_topics: subTopics,
       publish_topics: pubTopics,
       auto_create_topics: autoCreate,

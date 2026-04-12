@@ -12,3 +12,4 @@ thiserror = { workspace = true }
 async-trait = { workspace = true }
 utoipa = { workspace = true }
 sqlx = { workspace = true }
+ts-rs = { workspace = true }

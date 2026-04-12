@@ -1,13 +1,32 @@
 use axum::extract::State;
 use axum::response::IntoResponse;
 use axum::Json;
-use serde_json::{json, Value};
+use serde::Serialize;
 use std::sync::atomic::Ordering;
+use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::state::AppState;
 
-#[utoipa::path(get, path = "/health", responses((status = 200, body = Value)))]
-pub async fn health(State(state): State<AppState>) -> Json<Value> {
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
+pub struct HealthResponse {
+    pub health: String,
+    pub database: String,
+    pub version: String,
+}
+
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
+#[serde(rename_all = "camelCase")]
+pub struct VersionResponse {
+    pub version: String,
+    pub name: String,
+    pub build_date: String,
+}
+
+#[utoipa::path(get, path = "/health", responses((status = 200, body = HealthResponse)))]
+pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     let db_status = match sqlx::query_scalar::<_, i32>("SELECT 1")
         .fetch_one(&state.pool)
         .await
@@ -18,24 +37,22 @@ pub async fn health(State(state): State<AppState>) -> Json<Value> {
 
     let health = if db_status == "ok" { "green" } else { "red" };
 
-    Json(json!({
-        "health": health,
-        "database": db_status,
-        "version": env!("CARGO_PKG_VERSION"),
-        "max_attachment_size": state.max_upload_size
-    }))
+    Json(HealthResponse {
+        health: health.to_string(),
+        database: db_status.to_string(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
+    })
 }
 
-#[utoipa::path(get, path = "/version", responses((status = 200, body = Value)))]
-pub async fn version() -> Json<Value> {
-    // Build date can be set via BUILD_DATE env var during compilation
+#[utoipa::path(get, path = "/version", responses((status = 200, body = VersionResponse)))]
+pub async fn version() -> Json<VersionResponse> {
     let build_date = option_env!("BUILD_DATE").unwrap_or("");
 
-    Json(json!({
-        "version": env!("CARGO_PKG_VERSION"),
-        "name": "rstify",
-        "buildDate": build_date
-    }))
+    Json(VersionResponse {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        name: "rstify".to_string(),
+        build_date: build_date.to_string(),
+    })
 }
 
 /// GET /metrics - Prometheus-format metrics

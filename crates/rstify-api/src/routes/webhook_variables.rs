@@ -5,6 +5,7 @@ use rstify_core::repositories::WebhookVariableRepository;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
+use crate::helpers::ownership::fetch_or_not_found;
 use crate::state::AppState;
 
 /// GET /api/webhook-variables
@@ -49,17 +50,15 @@ pub async fn update_variable(
     Path(id): Path<i64>,
     Json(req): Json<UpdateWebhookVariable>,
 ) -> Result<Json<WebhookVariable>, ApiError> {
-    // Verify ownership
-    let vars = state
-        .webhook_variable_repo
-        .list_webhook_variables(auth.user.id)
-        .await
-        .map_err(ApiError::from)?;
-    if !vars.iter().any(|v| v.id == id) {
-        return Err(ApiError::from(rstify_core::error::CoreError::NotFound(
-            "Variable not found".to_string(),
-        )));
-    }
+    let _existing = fetch_or_not_found("Webhook variable", || {
+        let repo = &state.webhook_variable_repo;
+        let user_id = auth.user.id;
+        async move {
+            let vars = repo.list_webhook_variables(user_id).await?;
+            Ok(vars.into_iter().find(|v| v.id == id))
+        }
+    })
+    .await?;
 
     let var = state
         .webhook_variable_repo
@@ -76,17 +75,15 @@ pub async fn delete_variable(
     auth: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<Json<()>, ApiError> {
-    // Verify ownership
-    let vars = state
-        .webhook_variable_repo
-        .list_webhook_variables(auth.user.id)
-        .await
-        .map_err(ApiError::from)?;
-    if !vars.iter().any(|v| v.id == id) {
-        return Err(ApiError::from(rstify_core::error::CoreError::NotFound(
-            "Variable not found".to_string(),
-        )));
-    }
+    let _existing = fetch_or_not_found("Webhook variable", || {
+        let repo = &state.webhook_variable_repo;
+        let user_id = auth.user.id;
+        async move {
+            let vars = repo.list_webhook_variables(user_id).await?;
+            Ok(vars.into_iter().find(|v| v.id == id))
+        }
+    })
+    .await?;
 
     state
         .webhook_variable_repo

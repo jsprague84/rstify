@@ -5,14 +5,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { AnimatedPressable } from "./design/AnimatedPressable";
 import { useAuthStore } from "../store";
 import { getApiClient } from "../api";
-import type { MessageResponse, AttachmentInfo } from "../api/types";
+import type { MessageResponse, AttachmentInfo } from "shared";
 
 interface MessageAttachmentsProps {
   message: MessageResponse;
   onDeleteAttachment?: (id: number) => void;
 }
 
-function isImage(type?: string): boolean {
+function isImage(type: string | null): boolean {
   return !!type && type.startsWith("image/");
 }
 
@@ -29,7 +29,10 @@ function resolveAttachments(message: MessageResponse): AttachmentInfo[] {
   }
 
   // Check extras["client::attachment"] for Gotify compat
-  const attachmentExtra = message.extras?.["client::attachment"] as
+  const extrasObj = (message.extras && typeof message.extras === "object" && !Array.isArray(message.extras))
+    ? message.extras as Record<string, unknown>
+    : undefined;
+  const attachmentExtra = extrasObj?.["client::attachment"] as
     | { url?: string; name?: string; type?: string; size?: number }
     | undefined;
 
@@ -38,7 +41,7 @@ function resolveAttachments(message: MessageResponse): AttachmentInfo[] {
       {
         id: 0,
         name: attachmentExtra.name ?? "attachment",
-        type: attachmentExtra.type,
+        type: attachmentExtra.type ?? null,
         size: attachmentExtra.size ?? 0,
         url: attachmentExtra.url,
       },

@@ -5,9 +5,9 @@ import { SwipeableRow } from "../design/SwipeableRow";
 import { AnimatedPressable } from "../design/AnimatedPressable";
 import { MessageIcon } from "../MessageIcon";
 import { useMessagesStore, useApplicationsStore } from "../../store";
-import { formatTimeAgo } from "../../utils/time";
+import { formatTimeAgoCompact as formatTimeAgo } from "shared";
+import type { MessageResponse } from "shared";
 import { getSourceId } from "../../utils/source";
-import type { MessageResponse } from "../../api/types";
 
 interface StreamMessageCardProps {
   message: MessageResponse;

@@ -28,3 +28,18 @@ check:
 # Build Docker image
 docker-build:
     docker build -t rstify .
+
+# Generate TypeScript types from Rust DTOs
+generate-types:
+    TS_RS_EXPORT_DIR={{justfile_directory()}}/shared/generated cargo test --workspace 2>&1 | tail -5
+    find shared/generated -name '*.ts' -exec sed -i 's/bigint/number/g' {} +
+    @echo '// Auto-generated barrel export — do not hand-edit' > shared/generated/index.ts
+    @echo '// Re-run: just generate-types' >> shared/generated/index.ts
+    @echo '' >> shared/generated/index.ts
+    @for f in shared/generated/*.ts; do \
+        name=$$(basename "$$f" .ts); \
+        [ "$$name" = "index" ] && continue; \
+        echo "export * from \"./$$name\";" >> shared/generated/index.ts; \
+    done
+    @echo 'export * from "./serde_json/JsonValue";' >> shared/generated/index.ts
+    @echo "Generated $$(ls shared/generated/*.ts | grep -v index.ts | wc -l) type files"

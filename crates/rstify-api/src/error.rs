@@ -4,6 +4,7 @@ use axum::Json;
 use rstify_core::error::CoreError;
 use serde_json::json;
 
+#[derive(Debug)]
 pub struct ApiError {
     pub status: StatusCode,
     pub message: String,

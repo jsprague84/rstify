@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { Client, CreateClient, UpdateClient } from '../api/types';
+import type { Client, CreateClient, UpdateClient } from 'shared';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
-import { formatLocalTime } from '../utils/time';
+import { formatLocalTime } from 'shared';
 
 const AVAILABLE_SCOPES = ['read', 'write', 'admin'];
 

@@ -18,12 +18,12 @@ import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
 import { SectionLabel } from '../../src/components/design/SectionLabel';
 import { getApiClient } from '../../src/api';
-import type { MqttBridge, MqttStatus } from '../../src/api';
+import type { MqttBridge, MqttStatusResponse } from '../../src/api';
 
 export default function MqttScreen() {
   const user = useAuthStore((s) => s.user);
 
-  const [mqttStatus, setMqttStatus] = useState<MqttStatus | null>(null);
+  const [mqttStatus, setMqttStatus] = useState<MqttStatusResponse | null>(null);
   const [bridges, setBridges] = useState<MqttBridge[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -76,8 +76,12 @@ export default function MqttScreen() {
         name: newBridgeName.trim(),
         remote_url: newBridgeUrl.trim(),
         subscribe_topics: ['#'],
-        username: newBridgeUsername || undefined,
-        password: newBridgePassword || undefined,
+        publish_topics: [],
+        username: newBridgeUsername || null,
+        password: newBridgePassword || null,
+        qos: null,
+        topic_prefix: null,
+        auto_create_topics: null,
       });
       setNewBridgeName(''); setNewBridgeUrl('');
       setNewBridgeUsername(''); setNewBridgePassword('');

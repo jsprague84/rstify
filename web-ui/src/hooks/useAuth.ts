@@ -1,9 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { User } from '../api/types';
+import type { UserResponse } from 'shared';
 import { api } from '../api/client';
 
 interface AuthContextType {
-  user: User | null;
+  user: UserResponse | null;
   token: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
@@ -23,7 +23,7 @@ export function useAuth() {
 }
 
 export function useAuthProvider(): AuthContextType {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserResponse | null>(null);
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('rstify_token'));
   const [loading, setLoading] = useState(true);
 

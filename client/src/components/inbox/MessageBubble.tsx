@@ -7,7 +7,7 @@ import { MessageContent } from "../MessageContent";
 import { MessageActions } from "../MessageActions";
 import { MessageAttachments } from "../MessageAttachments";
 import { PRIORITY_BORDER_COLORS, getPriorityLevel } from "../../utils/priority";
-import type { MessageResponse } from "../../api/types";
+import type { MessageResponse } from "shared";
 
 interface MessageBubbleProps {
   message: MessageResponse;
@@ -32,7 +32,10 @@ export const MessageBubble = React.memo(function MessageBubble({
   const priorityLabel = PRIORITY_LABELS[level];
 
   // Big image from extras
-  const notification = message.extras?.["client::notification"] as
+  const extrasObj = (message.extras && typeof message.extras === "object" && !Array.isArray(message.extras))
+    ? message.extras as Record<string, unknown>
+    : undefined;
+  const notification = extrasObj?.["client::notification"] as
     | { bigImageUrl?: string }
     | undefined;
   const bigImageUrl = notification?.bigImageUrl;

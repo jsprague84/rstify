@@ -6,6 +6,7 @@ use rstify_core::repositories::ClientRepository;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
+use crate::helpers::ownership::{fetch_or_not_found, verify_ownership};
 use crate::state::AppState;
 
 #[utoipa::path(get, path = "/client", responses((status = 200, body = Vec<Client>)))]
@@ -36,7 +37,7 @@ pub async fn create_client(
     let scopes = req
         .scopes
         .unwrap_or_else(|| vec!["read".into(), "write".into()]);
-    let scopes_json = serde_json::to_string(&scopes).unwrap();
+    let scopes_json = crate::helpers::json::to_json_string(&scopes)?;
     let client = state
         .client_repo
         .create(auth.user.id, &req.name, &token, &scopes_json)
@@ -57,24 +58,13 @@ pub async fn update_client(
     Path(id): Path<i64>,
     Json(req): Json<UpdateClient>,
 ) -> Result<Json<Client>, ApiError> {
-    let existing = state
-        .client_repo
-        .find_by_id(id)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
-                "Client not found".to_string(),
-            ))
-        })?;
+    let existing = fetch_or_not_found("Client", || state.client_repo.find_by_id(id)).await?;
+    verify_ownership(&auth, existing.user_id, "client")?;
 
-    if existing.user_id != auth.user.id && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your client".to_string(),
-        )));
-    }
-
-    let scopes_json = req.scopes.map(|s| serde_json::to_string(&s).unwrap());
+    let scopes_json = req
+        .scopes
+        .map(|s| crate::helpers::json::to_json_string(&s))
+        .transpose()?;
     let client = state
         .client_repo
         .update(id, req.name.as_deref(), scopes_json.as_deref())
@@ -89,22 +79,8 @@ pub async fn delete_client(
     auth: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    let existing = state
-        .client_repo
-        .find_by_id(id)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
-                "Client not found".to_string(),
-            ))
-        })?;
-
-    if existing.user_id != auth.user.id && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your client".to_string(),
-        )));
-    }
+    let _existing = fetch_or_not_found("Client", || state.client_repo.find_by_id(id)).await?;
+    verify_ownership(&auth, _existing.user_id, "client")?;
 
     state.client_repo.delete(id).await.map_err(ApiError::from)?;
     Ok(Json(serde_json::json!({"success": true})))
@@ -123,22 +99,8 @@ pub async fn register_fcm_token(
     Path(id): Path<i64>,
     Json(req): Json<RegisterFcmToken>,
 ) -> Result<Json<Client>, ApiError> {
-    let existing = state
-        .client_repo
-        .find_by_id(id)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
-                "Client not found".to_string(),
-            ))
-        })?;
-
-    if existing.user_id != auth.user.id && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your client".to_string(),
-        )));
-    }
+    let existing = fetch_or_not_found("Client", || state.client_repo.find_by_id(id)).await?;
+    verify_ownership(&auth, existing.user_id, "client")?;
 
     let client = state
         .client_repo
@@ -155,22 +117,8 @@ pub async fn remove_fcm_token(
     auth: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<Json<Client>, ApiError> {
-    let existing = state
-        .client_repo
-        .find_by_id(id)
-        .await
-        .map_err(ApiError::from)?
-        .ok_or_else(|| {
-            ApiError::from(rstify_core::error::CoreError::NotFound(
-                "Client not found".to_string(),
-            ))
-        })?;
-
-    if existing.user_id != auth.user.id && !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Not your client".to_string(),
-        )));
-    }
+    let existing = fetch_or_not_found("Client", || state.client_repo.find_by_id(id)).await?;
+    verify_ownership(&auth, existing.user_id, "client")?;
 
     let client = state
         .client_repo

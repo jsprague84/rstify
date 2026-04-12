@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema, TS)]
+#[ts(export)]
 pub struct WebhookDeliveryLog {
     pub id: i64,
     pub webhook_config_id: i64,

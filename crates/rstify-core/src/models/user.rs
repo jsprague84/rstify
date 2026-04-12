@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
@@ -13,7 +14,8 @@ pub struct User {
     pub updated_at: String,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateUser {
     pub username: String,
     pub password: String,
@@ -21,20 +23,23 @@ pub struct CreateUser {
     pub is_admin: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateUser {
     pub username: Option<String>,
     pub email: Option<String>,
     pub is_admin: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct ChangePassword {
     pub current_password: String,
     pub new_password: String,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UserResponse {
     pub id: i64,
     pub username: String,

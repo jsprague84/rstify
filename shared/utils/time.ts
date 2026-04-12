@@ -3,7 +3,7 @@
  * SQLite datetime('now') produces "2026-03-29 04:31:12" (space, no Z).
  * This normalizes to "2026-03-29T04:31:12Z" for correct UTC parsing.
  */
-function normalizeUtcDate(dateStr: string): string {
+export function normalizeUtcDate(dateStr: string): string {
   if (!dateStr) return dateStr;
   // Already has timezone info — pass through
   if (dateStr.includes('Z') || dateStr.includes('+')) return dateStr;
@@ -13,8 +13,7 @@ function normalizeUtcDate(dateStr: string): string {
 
 /**
  * Format a UTC date string to the user's local time.
- * Handles "2026-03-29 04:31:12", "2026-03-29 04:31:12Z",
- * "2026-03-29T04:31:12Z", and "+00:00" offset formats.
+ * Handles bare SQLite dates, ISO 8601 with Z, and +00:00 offset formats.
  */
 export function formatLocalTime(dateStr: string): string {
   const d = new Date(normalizeUtcDate(dateStr));
@@ -23,7 +22,8 @@ export function formatLocalTime(dateStr: string): string {
 }
 
 /**
- * Format a UTC date string as a relative time (e.g., "5m ago", "2h ago").
+ * Format a UTC date string as a verbose relative time (e.g., "5m ago", "2h ago").
+ * Falls back to locale date string for dates older than 7 days.
  */
 export function formatTimeAgo(dateStr: string): string {
   const now = Date.now();
@@ -35,4 +35,19 @@ export function formatTimeAgo(dateStr: string): string {
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
   return new Date(normalizeUtcDate(dateStr)).toLocaleDateString();
+}
+
+/**
+ * Format a UTC date string as a compact relative time (e.g., "5m", "2h").
+ * Designed for space-constrained mobile UIs.
+ */
+export function formatTimeAgoCompact(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(normalizeUtcDate(dateStr)).getTime();
+  if (isNaN(then)) return dateStr;
+  const diff = Math.floor((now - then) / 1000);
+  if (diff < 60) return 'now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return `${Math.floor(diff / 86400)}d`;
 }

@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema, TS)]
+#[ts(export)]
 pub struct MqttBridge {
     pub id: i64,
     pub user_id: i64,
@@ -21,7 +23,8 @@ pub struct MqttBridge {
     pub created_at: String,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateMqttBridge {
     pub name: String,
     pub remote_url: String,
@@ -35,7 +38,8 @@ pub struct CreateMqttBridge {
     pub auto_create_topics: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateMqttBridge {
     pub name: Option<String>,
     pub remote_url: Option<String>,

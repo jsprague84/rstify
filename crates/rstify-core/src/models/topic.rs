@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema, TS)]
+#[ts(export)]
 pub struct Topic {
     pub id: i64,
     pub name: String,
@@ -26,7 +28,8 @@ pub struct Topic {
     pub inbox_priority_min: Option<i32>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateTopic {
     pub name: String,
     pub description: Option<String>,
@@ -34,7 +37,8 @@ pub struct CreateTopic {
     pub everyone_write: Option<bool>,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateTopic {
     pub description: Option<String>,
     pub everyone_read: Option<bool>,
@@ -49,7 +53,8 @@ pub struct UpdateTopic {
     pub inbox_priority_min: Option<i32>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema, TS)]
+#[ts(export)]
 pub struct TopicPermission {
     pub id: i64,
     pub user_id: i64,
@@ -58,7 +63,8 @@ pub struct TopicPermission {
     pub can_write: bool,
 }
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct CreateTopicPermission {
     pub user_id: i64,
     pub topic_pattern: String,

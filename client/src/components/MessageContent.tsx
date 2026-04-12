@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { Text } from "react-native";
 import Markdown from "react-native-markdown-display";
 import { useColorScheme } from "nativewind";
-import type { MessageResponse } from "../api/types";
+import type { MessageResponse } from "shared";
 
 interface MessageContentProps {
   message: MessageResponse;
@@ -12,8 +12,11 @@ export const MessageContent = React.memo(function MessageContent({ message }: Me
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
 
-  // Detect markdown via extras — extras is Record<string, unknown>, cast nested access
-  const display = message.extras?.["client::display"] as { contentType?: string } | undefined;
+  // Detect markdown via extras — extras is JsonValue | null, narrow to object before indexing
+  const extrasObj = (message.extras && typeof message.extras === "object" && !Array.isArray(message.extras))
+    ? message.extras as Record<string, unknown>
+    : undefined;
+  const display = extrasObj?.["client::display"] as { contentType?: string } | undefined;
   const isMarkdown =
     display?.contentType === "text/markdown" ||
     message.content_type === "text/markdown";

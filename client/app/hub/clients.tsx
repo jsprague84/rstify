@@ -61,7 +61,7 @@ export default function ClientsScreen() {
     if (!newTokenName.trim()) return;
     try {
       const api = getApiClient();
-      await api.createClient({ name: newTokenName.trim() });
+      await api.createClient({ name: newTokenName.trim(), scopes: null });
       setNewTokenName('');
       setShowCreate(false);
       fetchData();

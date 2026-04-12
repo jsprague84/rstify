@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { api } from '../api/client';
-import type { Application, MessageResponse } from '../api/types';
+import type { Application, MessageResponse } from 'shared';
 import { useMessageStream } from '../hooks/useMessageStream';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
 import { useToast } from '../components/Toast';
 import PriorityBadge from '../components/PriorityBadge';
-import { formatLocalTime } from '../utils/time';
+import { formatLocalTime } from 'shared';
 
 const PAGE_SIZE = 50;
 
@@ -278,7 +278,7 @@ export default function Messages() {
   );
 }
 
-function isImageType(type?: string): boolean {
+function isImageType(type?: string | null): boolean {
   return !!type && type.startsWith('image/');
 }
 
@@ -391,9 +391,10 @@ function MessageActions({ message }: { message: MessageResponse }) {
 function getMessageActions(message: MessageResponse): any[] | null {
   if (message.actions && message.actions.length > 0) return message.actions;
   const extras = message.extras;
-  if (!extras) return null;
-  if (extras['android::action']?.actions) return extras['android::action'].actions;
-  if (Array.isArray(extras.actions)) return extras.actions;
+  if (!extras || typeof extras !== 'object' || Array.isArray(extras)) return null;
+  const ex = extras as Record<string, any>;
+  if (ex['android::action']?.actions) return ex['android::action'].actions;
+  if (Array.isArray(ex.actions)) return ex.actions;
   return null;
 }
 

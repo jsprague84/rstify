@@ -22,6 +22,7 @@ import { FormInput } from '../../src/components/design/FormInput';
 import { getApiClient } from '../../src/api';
 import type {
   WebhookConfig,
+  WebhookConfigWithHealth,
   Topic,
   UpdateWebhookConfig,
   WebhookDeliveryLog,
@@ -32,12 +33,12 @@ import * as Clipboard from 'expo-clipboard';
 type Direction = 'incoming' | 'outgoing';
 
 export default function WebhooksScreen() {
-  const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
+  const [webhooks, setWebhooks] = useState<WebhookConfigWithHealth[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
 
-  const [editWebhook, setEditWebhook] = useState<WebhookConfig | null>(null);
+  const [editWebhook, setEditWebhook] = useState<WebhookConfigWithHealth | null>(null);
   const [editName, setEditName] = useState('');
   const [editEnabled, setEditEnabled] = useState(true);
   const [editTargetUrl, setEditTargetUrl] = useState('');
@@ -80,7 +81,7 @@ export default function WebhooksScreen() {
   const [createGroupName, setCreateGroupName] = useState('');
 
   const [serverBase, setServerBase] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<WebhookConfig | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<WebhookConfigWithHealth | null>(null);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -163,7 +164,7 @@ export default function WebhooksScreen() {
     setCreateFollowRedirects(true); setCreateGroupName(''); setCreateContentType('application/json');
   };
 
-  const getWebhookUrl = (wh: WebhookConfig) => {
+  const getWebhookUrl = (wh: WebhookConfigWithHealth) => {
     const base = serverBase || 'https://your-server';
     return `${base}/api/wh/${wh.token}`;
   };
@@ -178,21 +179,24 @@ export default function WebhooksScreen() {
     try {
       const api = getApiClient();
       await api.createWebhook({
-        name: name.trim(), webhook_type: webhookType, template: {}, direction,
-        target_topic_id: selectedTopicId ?? undefined,
-        target_url: direction === 'outgoing' ? targetUrl.trim() : undefined,
-        http_method: direction === 'outgoing' ? httpMethod : undefined,
+        name: name.trim(), webhookType: webhookType, template: null, direction: direction,
+        targetTopicId: selectedTopicId ?? null,
+        targetApplicationId: null,
+        enabled: null,
+        targetUrl: direction === 'outgoing' ? targetUrl.trim() : null,
+        httpMethod: direction === 'outgoing' ? httpMethod : null,
         headers: direction === 'outgoing' ? (() => {
           const h = mergeAuthIntoHeaders(createHeaders, createAuthType, createAuthToken, createAuthUser, createAuthPass) || {};
           h['Content-Type'] = createContentType;
           return h;
-        })() : undefined,
-        body_template: direction === 'outgoing' && bodyTemplate.trim() ? bodyTemplate.trim() : undefined,
-        max_retries: direction === 'outgoing' ? parseInt(createMaxRetries, 10) || 3 : undefined,
-        retry_delay_secs: direction === 'outgoing' ? parseInt(createRetryDelay, 10) || 60 : undefined,
-        timeout_secs: direction === 'outgoing' ? parseInt(createTimeout, 10) || 15 : undefined,
-        follow_redirects: direction === 'outgoing' ? createFollowRedirects : undefined,
-        group_name: createGroupName.trim() || undefined,
+        })() : null,
+        bodyTemplate: direction === 'outgoing' && bodyTemplate.trim() ? bodyTemplate.trim() : null,
+        maxRetries: direction === 'outgoing' ? parseInt(createMaxRetries, 10) || 3 : null,
+        retryDelaySecs: direction === 'outgoing' ? parseInt(createRetryDelay, 10) || 60 : null,
+        timeoutSecs: direction === 'outgoing' ? parseInt(createTimeout, 10) || 15 : null,
+        followRedirects: direction === 'outgoing' ? createFollowRedirects : null,
+        groupName: createGroupName.trim() || null,
+        secret: null,
       });
       resetForm(); setShowCreate(false); fetchData();
     } catch (e) {
@@ -200,17 +204,22 @@ export default function WebhooksScreen() {
     }
   };
 
-  const handleToggleEnabled = async (webhook: WebhookConfig) => {
+  const handleToggleEnabled = async (webhook: WebhookConfigWithHealth) => {
     try {
       const api = getApiClient();
-      await api.updateWebhook(webhook.id, { enabled: !webhook.enabled });
+      await api.updateWebhook(webhook.id, {
+        name: null, template: null, enabled: !webhook.enabled,
+        targetUrl: null, httpMethod: null, headers: null,
+        bodyTemplate: null, maxRetries: null, retryDelaySecs: null,
+        timeoutSecs: null, followRedirects: null, groupName: null, secret: null,
+      });
       fetchData();
     } catch (e) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update webhook');
     }
   };
 
-  const handleDuplicate = (webhook: WebhookConfig) => {
+  const handleDuplicate = (webhook: WebhookConfigWithHealth) => {
     Alert.alert('Duplicate Webhook', `Create a copy of "${webhook.name}"?`, [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -219,18 +228,20 @@ export default function WebhooksScreen() {
           try {
             const api = getApiClient();
             await api.createWebhook({
-              name: `${webhook.name} (copy)`, webhook_type: webhook.webhook_type,
+              name: `${webhook.name} (copy)`, webhookType: webhook.webhook_type,
               direction: webhook.direction,
-              target_topic_id: webhook.target_topic_id ?? undefined,
-              target_application_id: webhook.target_application_id ?? undefined,
-              template: webhook.template ? JSON.parse(webhook.template) : {},
-              target_url: webhook.target_url ?? undefined,
-              http_method: webhook.http_method,
-              headers: webhook.headers ? JSON.parse(webhook.headers) : undefined,
-              body_template: webhook.body_template ?? undefined,
-              max_retries: webhook.max_retries, retry_delay_secs: webhook.retry_delay_secs,
-              timeout_secs: webhook.timeout_secs, follow_redirects: webhook.follow_redirects,
-              group_name: webhook.group_name ?? undefined,
+              targetTopicId: webhook.target_topic_id ?? null,
+              targetApplicationId: webhook.target_application_id ?? null,
+              template: webhook.template ? JSON.parse(webhook.template) : null,
+              enabled: webhook.enabled,
+              targetUrl: webhook.target_url ?? null,
+              httpMethod: webhook.http_method,
+              headers: webhook.headers ? JSON.parse(webhook.headers) : null,
+              bodyTemplate: webhook.body_template ?? null,
+              maxRetries: webhook.max_retries, retryDelaySecs: webhook.retry_delay_secs,
+              timeoutSecs: webhook.timeout_secs, followRedirects: webhook.follow_redirects,
+              groupName: webhook.group_name ?? null,
+              secret: null,
             });
             fetchData();
           } catch (e) {
@@ -241,7 +252,7 @@ export default function WebhooksScreen() {
     ]);
   };
 
-  const handleDelete = (webhook: WebhookConfig) => setDeleteTarget(webhook);
+  const handleDelete = (webhook: WebhookConfigWithHealth) => setDeleteTarget(webhook);
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -254,7 +265,7 @@ export default function WebhooksScreen() {
     }
   };
 
-  const handleTest = async (webhook: WebhookConfig) => {
+  const handleTest = async (webhook: WebhookConfigWithHealth) => {
     setTestingId(webhook.id);
     try {
       const api = getApiClient();
@@ -279,7 +290,7 @@ export default function WebhooksScreen() {
     } finally { setTestingId(null); }
   };
 
-  const openEdit = (wh: WebhookConfig) => {
+  const openEdit = (wh: WebhookConfigWithHealth) => {
     setEditWebhook(wh); setEditName(wh.name); setEditEnabled(wh.enabled);
     setEditTargetUrl(wh.target_url || ''); setEditHttpMethod(wh.http_method || 'POST');
     setEditHeaders(parseHeadersToText(wh.headers));
@@ -307,20 +318,19 @@ export default function WebhooksScreen() {
     try {
       const api = getApiClient();
       await api.updateWebhook(editWebhook.id, {
-        name: editName.trim() || undefined, enabled: editEnabled,
-        group_name: editGroupName.trim() || undefined,
-        ...(isOutgoing ? {
-          target_url: editTargetUrl.trim() || undefined, http_method: editHttpMethod,
-          headers: (() => {
-            const h = mergeAuthIntoHeaders(editHeaders, editAuthType, editAuthToken, editAuthUser, editAuthPass) || {};
-            h['Content-Type'] = editContentType; return h;
-          })(),
-          body_template: editBodyTemplate.trim() || undefined,
-          max_retries: parseInt(editMaxRetries, 10) || 3,
-          retry_delay_secs: parseInt(editRetryDelay, 10) || 60,
-          timeout_secs: parseInt(editTimeout, 10) || 15,
-          follow_redirects: editFollowRedirects,
-        } : {}),
+        name: editName.trim() || null, template: null, enabled: editEnabled,
+        groupName: editGroupName.trim() || null, secret: null,
+        targetUrl: isOutgoing ? (editTargetUrl.trim() || null) : null,
+        httpMethod: isOutgoing ? editHttpMethod : null,
+        headers: isOutgoing ? (() => {
+          const h = mergeAuthIntoHeaders(editHeaders, editAuthType, editAuthToken, editAuthUser, editAuthPass) || {};
+          h['Content-Type'] = editContentType; return h;
+        })() : null,
+        bodyTemplate: isOutgoing ? (editBodyTemplate.trim() || null) : null,
+        maxRetries: isOutgoing ? (parseInt(editMaxRetries, 10) || 3) : null,
+        retryDelaySecs: isOutgoing ? (parseInt(editRetryDelay, 10) || 60) : null,
+        timeoutSecs: isOutgoing ? (parseInt(editTimeout, 10) || 15) : null,
+        followRedirects: isOutgoing ? editFollowRedirects : null,
       });
       setEditWebhook(null); fetchData();
     } catch (e) {
@@ -328,7 +338,7 @@ export default function WebhooksScreen() {
     }
   };
 
-  const openDeliveries = async (wh: WebhookConfig) => {
+  const openDeliveries = async (wh: WebhookConfigWithHealth) => {
     setDeliveriesWebhook(wh); setDeliveriesLoading(true);
     try {
       const api = getApiClient();
@@ -339,7 +349,7 @@ export default function WebhooksScreen() {
     } finally { setDeliveriesLoading(false); }
   };
 
-  const generateCurl = (wh: WebhookConfig): string => {
+  const generateCurl = (wh: WebhookConfigWithHealth): string => {
     if (wh.direction === 'outgoing' && wh.target_url) {
       const parts = [`curl -X ${wh.http_method} '${wh.target_url}'`];
       if (wh.headers) {
@@ -361,12 +371,12 @@ export default function WebhooksScreen() {
     return `curl -X POST '${url}' \\\n  -H 'Content-Type: application/json' \\\n  -d '{"title":"Test","message":"Hello"}'`;
   };
 
-  const handleCopyCurl = async (wh: WebhookConfig) => {
+  const handleCopyCurl = async (wh: WebhookConfigWithHealth) => {
     try { await Clipboard.setStringAsync(generateCurl(wh)); Alert.alert('Copied', 'curl command copied'); }
     catch { Alert.alert('Error', 'Failed to copy'); }
   };
 
-  const handleCopyUrl = async (wh: WebhookConfig) => {
+  const handleCopyUrl = async (wh: WebhookConfigWithHealth) => {
     const url = getWebhookUrl(wh);
     try { await Clipboard.setStringAsync(url); Alert.alert('Copied', 'Webhook URL copied'); }
     catch { Alert.alert('Webhook URL', url); }
@@ -439,13 +449,13 @@ export default function WebhooksScreen() {
   // --- Sections ---
 
   const sections = (() => {
-    const ungrouped: WebhookConfig[] = [];
-    const groups: Record<string, WebhookConfig[]> = {};
+    const ungrouped: WebhookConfigWithHealth[] = [];
+    const groups: Record<string, WebhookConfigWithHealth[]> = {};
     for (const w of webhooks) {
       if (w.group_name) (groups[w.group_name] ??= []).push(w);
       else ungrouped.push(w);
     }
-    const s: { title: string; data: WebhookConfig[] }[] = [];
+    const s: { title: string; data: WebhookConfigWithHealth[] }[] = [];
     if (ungrouped.length > 0) s.push({ title: '', data: ungrouped });
     for (const [title, data] of Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))) {
       s.push({ title, data });
@@ -687,7 +697,7 @@ export default function WebhooksScreen() {
                           try {
                             const api = getApiClient();
                             const updated = await api.regenerateWebhookToken(editWebhook.id);
-                            setEditWebhook(updated); fetchData();
+                            setEditWebhook({ ...editWebhook, ...updated }); fetchData();
                           } catch (e) {
                             Alert.alert('Error', e instanceof Error ? e.message : 'Failed to regenerate token');
                           }

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../api/client';
-import type { Application, CreateApplication, UpdateApplication, MessageResponse } from '../api/types';
+import type { Application, CreateApplication, UpdateApplication, MessageResponse } from 'shared';
 import MessageContent from '../components/MessageContent';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
 import PriorityBadge from '../components/PriorityBadge';
-import { formatLocalTime } from '../utils/time';
+import { formatLocalTime } from 'shared';
 
 function AppIcon({ app, size = 32 }: { app: Application; size?: number }) {
   const [v] = useState(() => Date.now());
@@ -185,9 +185,9 @@ function AppForm({ app, onSubmit, onClose, onIconChange }: { app?: Application; 
     try {
       await onSubmit({
         name: form.name,
-        description: form.description || undefined,
+        description: form.description || null,
         default_priority: form.default_priority,
-        ...(app && form.retention_days !== '' ? { retention_days: Number(form.retention_days) } : {}),
+        retention_days: app && form.retention_days !== '' ? Number(form.retention_days) : null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');

@@ -13,23 +13,14 @@ pub struct EmailConfig {
 }
 
 impl EmailConfig {
-    pub fn from_env() -> Option<Self> {
-        let host = std::env::var("SMTP_HOST").ok()?;
-        let port = std::env::var("SMTP_PORT")
-            .ok()
-            .and_then(|p| p.parse().ok())
-            .unwrap_or(587);
-        let username = std::env::var("SMTP_USER").unwrap_or_default();
-        let password = std::env::var("SMTP_PASS").unwrap_or_default();
-        let from = std::env::var("SMTP_FROM").unwrap_or_else(|_| format!("rstify@{}", host));
-
-        Some(Self {
+    pub fn new(host: String, port: u16, username: String, password: String, from: String) -> Self {
+        Self {
             host,
             port,
             username,
             password,
             from,
-        })
+        }
     }
 }
 

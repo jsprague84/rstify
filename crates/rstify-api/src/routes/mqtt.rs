@@ -4,13 +4,15 @@ use rstify_core::models::{CreateMqttBridge, MqttBridge, UpdateMqttBridge};
 use rstify_core::repositories::MqttBridgeRepository;
 use rstify_mqtt::bridge::BridgeStatusInfo;
 use serde::Serialize;
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
 
-#[derive(Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct MqttStatusResponse {
     pub enabled: bool,
     pub listen_addr: Option<String>,
@@ -28,20 +30,13 @@ pub async fn mqtt_status(
     State(state): State<AppState>,
     _auth: AuthUser,
 ) -> Result<Json<MqttStatusResponse>, ApiError> {
-    let mqtt_enabled = std::env::var("MQTT_ENABLED")
-        .map(|v| v == "true" || v == "1")
-        .unwrap_or(false);
-
-    let listen_addr = if mqtt_enabled {
-        Some(std::env::var("MQTT_LISTEN_ADDR").unwrap_or_else(|_| "0.0.0.0:1883".to_string()))
-    } else {
-        None
-    };
-
-    let ws_listen_addr = if mqtt_enabled {
-        std::env::var("MQTT_WS_LISTEN_ADDR").ok()
-    } else {
-        None
+    let (mqtt_enabled, listen_addr, ws_listen_addr) = match &state.mqtt_config {
+        Some(cfg) => (
+            true,
+            Some(cfg.listen_addr.clone()),
+            cfg.ws_listen_addr.clone(),
+        ),
+        None => (false, None, None),
     };
 
     let (bridges_active, bridges) = if let Some(ref bm) = state.bridge_manager {

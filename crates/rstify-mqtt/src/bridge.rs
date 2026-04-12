@@ -12,7 +12,8 @@ use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 
 /// Status info for a single bridge.
-#[derive(Clone, Debug, serde::Serialize, utoipa::ToSchema)]
+#[derive(Clone, Debug, serde::Serialize, utoipa::ToSchema, ts_rs::TS)]
+#[ts(export)]
 pub struct BridgeStatusInfo {
     pub id: i64,
     pub name: String,

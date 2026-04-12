@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, TS)]
 #[serde(tag = "action")]
+#[ts(export)]
 pub enum MessageAction {
     #[serde(rename = "view")]
     View {

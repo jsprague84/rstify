@@ -65,11 +65,7 @@ pub async fn list_users(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<Json<Vec<UserResponse>>, ApiError> {
-    if !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Admin access required".to_string(),
-        )));
-    }
+    auth.require_admin()?;
 
     let users = state.user_repo.list_all().await.map_err(ApiError::from)?;
     Ok(Json(users.into_iter().map(UserResponse::from).collect()))
@@ -86,11 +82,7 @@ pub async fn create_user(
     auth: AuthUser,
     Json(req): Json<CreateUser>,
 ) -> Result<Json<UserResponse>, ApiError> {
-    if !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Admin access required".to_string(),
-        )));
-    }
+    auth.require_admin()?;
 
     // Validate input
     let username = req.username.trim();
@@ -138,11 +130,7 @@ pub async fn update_user(
     Path(id): Path<i64>,
     Json(req): Json<UpdateUser>,
 ) -> Result<Json<UserResponse>, ApiError> {
-    if !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Admin access required".to_string(),
-        )));
-    }
+    auth.require_admin()?;
 
     let user = state
         .user_repo
@@ -164,11 +152,7 @@ pub async fn delete_user(
     auth: AuthUser,
     Path(id): Path<i64>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    if !auth.user.is_admin {
-        return Err(ApiError::from(rstify_core::error::CoreError::Forbidden(
-            "Admin access required".to_string(),
-        )));
-    }
+    auth.require_admin()?;
 
     if id == auth.user.id {
         return Err(ApiError::from(rstify_core::error::CoreError::Validation(

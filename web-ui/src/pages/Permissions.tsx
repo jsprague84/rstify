@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { TopicPermission, CreateTopicPermission, User } from '../api/types';
+import type { TopicPermission, CreateTopicPermission, UserResponse } from 'shared';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function Permissions() {
   const [permissions, setPermissions] = useState<TopicPermission[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserResponse[]>([]);
   const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [deletePerm, setDeletePerm] = useState<TopicPermission | null>(null);
@@ -81,7 +81,7 @@ export default function Permissions() {
 const inputCls = "w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white";
 
 function PermissionForm({ users, onSubmit, onClose }: {
-  users: User[];
+  users: UserResponse[];
   onSubmit: (d: CreateTopicPermission) => Promise<void>;
   onClose: () => void;
 }) {
