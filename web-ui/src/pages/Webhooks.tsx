@@ -1,20 +1,37 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { WebhookConfig, WebhookConfigWithHealth, CreateWebhookConfig, UpdateWebhookConfig, WebhookDeliveryLog, WebhookTestResult, Topic, Application, WebhookVariable } from 'shared';
+import type { WebhookConfigWithHealth, CreateWebhookConfig, UpdateWebhookConfig, WebhookDeliveryLog, WebhookTestResult, Topic, Application, WebhookVariable } from 'shared';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import Sparkline from '../components/Sparkline';
 import CodeGenerator from '../components/CodeGenerator';
 import ConfirmDialog from '../components/ConfirmDialog';
-import TokenDisplay from '../components/TokenDisplay';
 import { parseWebhookHeaders } from '../utils/webhookHelpers';
 import { formatLocalTime } from 'shared';
+import { useCrudResource } from '../hooks/useCrudResource';
 
 export default function Webhooks() {
-  const [webhooks, setWebhooks] = useState<WebhookConfigWithHealth[]>([]);
+  // Reference data (not CRUD-managed on this page)
   const [topics, setTopics] = useState<Topic[]>([]);
   const [apps, setApps] = useState<Application[]>([]);
-  const [error, setError] = useState('');
+  const [variables, setVariables] = useState<WebhookVariable[]>([]);
+
+  // Load webhooks via useCrudResource; side-load topics, apps, variables
+  const fetchWebhooks = useCallback(async () => {
+    const [wh, tp, ap, vars] = await Promise.all([
+      api.listWebhooks(),
+      api.listTopics(),
+      api.listApplications(),
+      api.listWebhookVariables(),
+    ]);
+    setTopics(tp);
+    setApps(ap);
+    setVariables(vars);
+    return wh;
+  }, []);
+  const crud = useCrudResource(fetchWebhooks);
+
+  // Modal / UI state
   const [showCreate, setShowCreate] = useState(false);
   const [editWh, setEditWh] = useState<WebhookConfigWithHealth | null>(null);
   const [deleteWh, setDeleteWh] = useState<WebhookConfigWithHealth | null>(null);
@@ -22,87 +39,61 @@ export default function Webhooks() {
   const [testResult, setTestResult] = useState<{ wh: WebhookConfigWithHealth; result: WebhookTestResult | null; loading: boolean; error: string; customPayload: string } | null>(null);
   const [codeWh, setCodeWh] = useState<WebhookConfigWithHealth | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-  const [variables, setVariables] = useState<WebhookVariable[]>([]);
   const [showVars, setShowVars] = useState(false);
-
-  const load = useCallback(() => {
-    Promise.all([
-      api.listWebhooks(),
-      api.listTopics(),
-      api.listApplications(),
-      api.listWebhookVariables(),
-    ]).then(([wh, tp, ap, vars]) => {
-      setWebhooks(wh);
-      setTopics(tp);
-      setApps(ap);
-      setVariables(vars);
-    }).catch(e => setError(e.message));
-  }, []);
-
-  useEffect(load, [load]);
 
   const handleCreate = async (data: CreateWebhookConfig) => {
     await api.createWebhook(data);
     setShowCreate(false);
-    load();
+    await crud.reload();
   };
 
   const handleUpdate = async (id: number, data: UpdateWebhookConfig) => {
     await api.updateWebhook(id, data);
     setEditWh(null);
-    load();
+    await crud.reload();
   };
 
   const handleDuplicate = async (w: WebhookConfigWithHealth) => {
-    try {
-      await api.createWebhook({
-        name: `${w.name} (copy)`,
-        webhookType: w.webhook_type,
-        direction: w.direction,
-        targetTopicId: w.target_topic_id ?? null,
-        targetApplicationId: w.target_application_id ?? null,
-        targetUrl: w.target_url ?? null,
-        httpMethod: w.http_method,
-        headers: Object.keys(parseWebhookHeaders(w.headers)).length > 0 ? parseWebhookHeaders(w.headers) : null,
-        bodyTemplate: w.body_template ?? null,
-        maxRetries: w.max_retries,
-        retryDelaySecs: w.retry_delay_secs,
-        timeoutSecs: w.timeout_secs,
-        followRedirects: w.follow_redirects,
-        enabled: null,
-        template: null,
-        groupName: null,
-        secret: null,
-      });
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Duplicate failed');
-    }
+    await crud.mutate(() => api.createWebhook({
+      name: `${w.name} (copy)`,
+      webhookType: w.webhook_type,
+      direction: w.direction,
+      targetTopicId: w.target_topic_id ?? null,
+      targetApplicationId: w.target_application_id ?? null,
+      targetUrl: w.target_url ?? null,
+      httpMethod: w.http_method,
+      headers: Object.keys(parseWebhookHeaders(w.headers)).length > 0 ? parseWebhookHeaders(w.headers) : null,
+      bodyTemplate: w.body_template ?? null,
+      maxRetries: w.max_retries,
+      retryDelaySecs: w.retry_delay_secs,
+      timeoutSecs: w.timeout_secs,
+      followRedirects: w.follow_redirects,
+      enabled: null,
+      template: null,
+      groupName: null,
+      secret: null,
+    }).then(() => {}));
   };
 
   const handleToggleEnabled = async (w: WebhookConfigWithHealth) => {
-    try {
-      await api.updateWebhook(w.id, {
-        name: null, template: null, enabled: !w.enabled,
-        targetUrl: null, httpMethod: null, headers: null,
-        bodyTemplate: null, maxRetries: null, retryDelaySecs: null,
-        timeoutSecs: null, followRedirects: null, groupName: null, secret: null,
-      });
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Toggle failed');
-    }
+    await crud.mutate(() => api.updateWebhook(w.id, {
+      name: null, template: null, enabled: !w.enabled,
+      targetUrl: null, httpMethod: null, headers: null,
+      bodyTemplate: null, maxRetries: null, retryDelaySecs: null,
+      timeoutSecs: null, followRedirects: null, groupName: null, secret: null,
+    }).then(() => {}));
   };
 
   const handleDelete = async () => {
     if (!deleteWh) return;
-    await api.deleteWebhook(deleteWh.id);
-    setDeleteWh(null);
-    load();
+    const ok = await crud.mutate(() => api.deleteWebhook(deleteWh.id));
+    if (ok) setDeleteWh(null);
   };
 
   const defaultTestPayload = JSON.stringify({ title: 'Test Webhook', message: 'This is a test message from rstify.', priority: 5, topic: 'test-topic' }, null, 2);
 
+  // Test handlers use composite testResult state (loading+error+result in one object)
+  // which doesn't map cleanly to useAsyncAction, so we keep inline error handling here.
   const handleTest = async (wh: WebhookConfigWithHealth) => {
     if (wh.direction === 'outgoing') {
       // Show payload editor first
@@ -191,8 +182,8 @@ export default function Webhooks() {
           </button>
         </div>
       </div>
-      {showVars && <VariablesSection variables={variables} onReload={load} />}
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
+      {showVars && <VariablesSection variables={variables} onMutate={crud.mutate} />}
+      {crud.error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{crud.error}</div>}
       {(() => {
         const columns = [
           { key: 'id' as const, header: 'ID' },
@@ -252,7 +243,7 @@ export default function Webhooks() {
         // Group webhooks by group_name
         const groups = new Map<string, WebhookConfigWithHealth[]>();
         const ungrouped: WebhookConfigWithHealth[] = [];
-        for (const wh of webhooks) {
+        for (const wh of crud.items) {
           if (wh.group_name) {
             const list = groups.get(wh.group_name) || [];
             list.push(wh);
@@ -272,7 +263,7 @@ export default function Webhooks() {
         };
 
         if (!hasGroups) {
-          return <DataTable data={webhooks} keyField="id" columns={columns} actions={renderActions} />;
+          return <DataTable data={crud.items} keyField="id" columns={columns} actions={renderActions} />;
         }
 
         return (
@@ -299,7 +290,7 @@ export default function Webhooks() {
       })()}
       {showCreate && (
         <Modal open onClose={() => setShowCreate(false)} title="Create Webhook">
-          <WebhookForm topics={topics} apps={apps} onSubmit={handleCreate} onClose={() => setShowCreate(false)} existingGroups={[...new Set(webhooks.map(w => w.group_name).filter((g): g is string => !!g))]} />
+          <WebhookForm topics={topics} apps={apps} onSubmit={handleCreate} onClose={() => setShowCreate(false)} existingGroups={[...new Set(crud.items.map(w => w.group_name).filter((g): g is string => !!g))]} />
         </Modal>
       )}
       {editWh && (
@@ -316,9 +307,9 @@ export default function Webhooks() {
                 ...editWh,
                 ...updated,
               });
-              load();
+              await crud.reload();
             } : undefined}
-            existingGroups={[...new Set(webhooks.map(w => w.group_name).filter((g): g is string => !!g))]}
+            existingGroups={[...new Set(crud.items.map(w => w.group_name).filter((g): g is string => !!g))]}
           />
         </Modal>
       )}
@@ -1168,43 +1159,29 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
   );
 }
 
-function VariablesSection({ variables, onReload }: { variables: WebhookVariable[]; onReload: () => void }) {
+function VariablesSection({ variables, onMutate }: { variables: WebhookVariable[]; onMutate: (fn: () => Promise<void>) => Promise<boolean> }) {
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editKey, setEditKey] = useState('');
   const [editValue, setEditValue] = useState('');
-  const [error, setError] = useState('');
 
   const handleAdd = async () => {
     if (!newKey.trim()) return;
-    try {
-      await api.createWebhookVariable({ key: newKey.trim(), value: newValue });
+    const ok = await onMutate(() => api.createWebhookVariable({ key: newKey.trim(), value: newValue }).then(() => {}));
+    if (ok) {
       setNewKey('');
       setNewValue('');
-      onReload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed');
     }
   };
 
   const handleSave = async (id: number) => {
-    try {
-      await api.updateWebhookVariable(id, { key: editKey, value: editValue });
-      setEditingId(null);
-      onReload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed');
-    }
+    const ok = await onMutate(() => api.updateWebhookVariable(id, { key: editKey, value: editValue }).then(() => {}));
+    if (ok) setEditingId(null);
   };
 
   const handleDelete = async (id: number) => {
-    try {
-      await api.deleteWebhookVariable(id);
-      onReload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed');
-    }
+    await onMutate(() => api.deleteWebhookVariable(id));
   };
 
   return (
@@ -1213,7 +1190,6 @@ function VariablesSection({ variables, onReload }: { variables: WebhookVariable[
       <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
         Define variables to use in webhook body templates with <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{env.KEY}}'}</code> syntax.
       </p>
-      {error && <div className="text-xs text-red-600 dark:text-red-400 mb-2">{error}</div>}
       <table className="w-full text-sm mb-2">
         <thead>
           <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
