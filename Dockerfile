@@ -3,6 +3,7 @@ FROM node:20-slim AS web-builder
 WORKDIR /app/web-ui
 COPY web-ui/package.json web-ui/package-lock.json ./
 RUN npm ci
+COPY shared/ /app/shared/
 COPY web-ui/ .
 RUN npm run build
 
