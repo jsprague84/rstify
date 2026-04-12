@@ -71,7 +71,7 @@ export default function InboxScreen() {
               .catch(() => undefined);
           }
         } else {
-          const client = await api.createClient({ name: "rstify-mobile" });
+          const client = await api.createClient({ name: "rstify-mobile", scopes: null });
           setClientToken(client.token);
           const pushToken = await getDevicePushToken();
           if (pushToken) {

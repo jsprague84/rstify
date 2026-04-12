@@ -79,7 +79,8 @@ export default function AppsScreen() {
       const api = getApiClient();
       await api.createApplication({
         name: newAppName.trim(),
-        description: newAppDesc.trim() || undefined,
+        description: newAppDesc.trim() || null,
+        default_priority: null,
       });
       setNewAppName('');
       setNewAppDesc('');
@@ -112,8 +113,9 @@ export default function AppsScreen() {
       const api = getApiClient();
       await api.updateApplication(editApp.id, {
         name: editName.trim(),
-        description: editDesc.trim() || undefined,
+        description: editDesc.trim() || null,
         default_priority: parseInt(editPriority) || 5,
+        retention_days: null,
       });
       setEditApp(null);
       fetchApps();

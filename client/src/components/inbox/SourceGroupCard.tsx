@@ -6,7 +6,7 @@ import { SwipeableRow } from "../design/SwipeableRow";
 import { AnimatedPressable } from "../design/AnimatedPressable";
 import { MessageIcon } from "../MessageIcon";
 import { useMessagesStore } from "../../store";
-import { formatTimeAgo } from "../../utils/time";
+import { formatTimeAgoCompact as formatTimeAgo } from "shared";
 import { PRIORITY_BORDER_COLORS, getPriorityLevel } from "../../utils/priority";
 import type { SourceMeta } from "../../store/messages";
 

@@ -69,7 +69,7 @@ export default function UsersScreen() {
     }
     try {
       const api = getApiClient();
-      await api.updateUser(u.id, { is_admin: !u.is_admin });
+      await api.updateUser(u.id, { is_admin: !u.is_admin, username: null, email: null });
       fetchData();
     } catch (e) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update user');
@@ -88,7 +88,8 @@ export default function UsersScreen() {
       const api = getApiClient();
       await api.updateUser(editingUser.id, {
         username: editUsername.trim(),
-        email: editEmail.trim() || undefined,
+        email: editEmail.trim() || null,
+        is_admin: null,
       });
       setEditingUser(null);
       fetchData();
@@ -151,7 +152,7 @@ export default function UsersScreen() {
       await api.createUser({
         username: newUsername.trim(),
         password: newUserPassword,
-        email: newUserEmail.trim() || undefined,
+        email: newUserEmail.trim() || null,
         is_admin: newUserAdmin,
       });
       setNewUsername(''); setNewUserPassword(''); setNewUserEmail(''); setNewUserAdmin(false);

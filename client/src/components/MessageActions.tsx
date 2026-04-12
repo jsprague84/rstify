@@ -5,7 +5,7 @@ import * as IntentLauncher from "expo-intent-launcher";
 type IntentExtras = Record<string, string | number | boolean>;
 import Toast from "react-native-toast-message";
 import { AnimatedPressable } from "./design/AnimatedPressable";
-import type { MessageResponse, MessageAction } from "../api/types";
+import type { MessageResponse, MessageAction, JsonValue } from "shared";
 
 interface MessageActionsProps {
   message: MessageResponse;
@@ -18,23 +18,34 @@ function parseActions(message: MessageResponse): MessageAction[] | null {
   }
 
   // Gotify compat: extras["android::action"].actions
-  const androidAction = message.extras?.["android::action"] as
+  const extrasObj = (message.extras && typeof message.extras === "object" && !Array.isArray(message.extras))
+    ? message.extras as Record<string, unknown>
+    : undefined;
+  const androidAction = extrasObj?.["android::action"] as
     | { actions?: unknown[] }
     | undefined;
   if (androidAction?.actions && Array.isArray(androidAction.actions)) {
     return androidAction.actions.map((a: unknown) => {
       const raw = a as Record<string, unknown>;
-      return {
-        action: (raw.type ?? raw.action) as "view" | "http" | "broadcast",
-        label: (raw.label ?? raw.name ?? "Action") as string,
-        url: raw.url as string | undefined,
-        method: raw.method as string | undefined,
-        headers: raw.headers as Record<string, string> | undefined,
-        body: raw.body as string | undefined,
-        intent: raw.intent as string | undefined,
-        extras: raw.extras as Record<string, unknown> | undefined,
-        clear: raw.clear as boolean | undefined,
-      };
+      const actionType = (raw.type ?? raw.action) as "view" | "http" | "broadcast";
+      const label = (raw.label ?? raw.name ?? "Action") as string;
+      const clear = (raw.clear as boolean | undefined) ?? null;
+      if (actionType === "view") {
+        return { action: "view" as const, label, url: raw.url as string, clear };
+      } else if (actionType === "http") {
+        return {
+          action: "http" as const, label, url: raw.url as string,
+          method: (raw.method as string) ?? null,
+          headers: (raw.headers ?? null) as JsonValue | null,
+          body: (raw.body as string) ?? null, clear,
+        };
+      } else {
+        return {
+          action: "broadcast" as const, label,
+          intent: (raw.intent as string) ?? null,
+          extras: (raw.extras ?? null) as JsonValue | null, clear,
+        };
+      }
     });
   }
 
@@ -78,12 +89,15 @@ export const MessageActions = React.memo(function MessageActions({ message }: Me
       } else if (action.action === "http") {
         if (!action.url) throw new Error("No URL provided for HTTP action");
 
+        const hdrs: Record<string, string> = { "Content-Type": "application/json" };
+        if (action.headers && typeof action.headers === "object" && !Array.isArray(action.headers)) {
+          for (const [k, v] of Object.entries(action.headers)) {
+            if (typeof v === "string") hdrs[k] = v;
+          }
+        }
         const response = await fetch(action.url, {
           method: action.method || "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...action.headers,
-          },
+          headers: hdrs,
           body: action.body,
         });
 
@@ -96,8 +110,11 @@ export const MessageActions = React.memo(function MessageActions({ message }: Me
         if (Platform.OS === "android") {
           // Use the intent field as the Android action string, falling back to a generic main action
           const intentAction = action.intent ?? "android.intent.action.MAIN";
+          const intentExtras = (action.extras && typeof action.extras === "object" && !Array.isArray(action.extras))
+            ? action.extras as unknown as IntentExtras
+            : undefined;
           await IntentLauncher.startActivityAsync(intentAction, {
-            extra: action.extras as IntentExtras | undefined,
+            extra: intentExtras,
           });
           Toast.show({ type: "success", text1: "Broadcast Sent", text2: action.label, position: "bottom" });
         } else {

@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { ChannelRow } from "./ChannelRow";
-import type { Topic } from "../../api/types";
+import type { Topic } from "shared";
 
 interface FolderSectionProps {
   title: string;

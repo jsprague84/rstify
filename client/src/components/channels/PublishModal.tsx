@@ -33,9 +33,14 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
     setIsSubmitting(true);
     try {
       await getApiClient().publishToTopic(topicName, {
-        title: title.trim() || undefined,
+        title: title.trim() || null,
         message: message.trim(),
         priority,
+        tags: null,
+        click_url: null,
+        icon_url: null,
+        actions: null,
+        scheduled_for: null,
       });
 
       Toast.show({

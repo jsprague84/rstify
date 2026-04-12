@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Pressable } from "react-native";
 import { getApiClient } from "../../api";
-import type { Topic } from "../../api/types";
+import type { Topic } from "shared";
 import Toast from "react-native-toast-message";
 
 interface EditTopicModalProps {
@@ -35,9 +35,17 @@ export function EditTopicModal({ visible, topic, onClose, onUpdated }: EditTopic
     setIsSubmitting(true);
     try {
       await getApiClient().updateTopic(topic.name, {
-        description: description.trim() || undefined,
+        description: description.trim() || null,
         everyone_read: everyoneRead,
         everyone_write: everyoneWrite,
+        notify_policy: null,
+        notify_priority_min: null,
+        notify_condition: null,
+        notify_digest_interval: null,
+        store_policy: null,
+        store_interval: null,
+        inbox_override: null,
+        inbox_priority_min: null,
       });
       Toast.show({ type: "success", text1: "Topic updated" });
       onUpdated();
