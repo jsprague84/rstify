@@ -1,83 +1,136 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { api } from '../api/client';
-import type { UserResponse, CreateUser, UpdateUser } from 'shared';
+import type { UserResponse } from 'shared';
 import DataTable from '../components/DataTable';
-import Modal from '../components/Modal';
+import { FormModal } from '../components/FormModal';
+import { FormField } from '../components/FormField';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useCrudResource } from '../hooks/useCrudResource';
 import { formatLocalTime } from 'shared';
 
 export default function Users() {
-  const [users, setUsers] = useState<UserResponse[]>([]);
-  const [error, setError] = useState('');
+  const fetchUsers = useCallback(() => api.listUsers(), []);
+  const crud = useCrudResource(fetchUsers);
+
   const [showCreate, setShowCreate] = useState(false);
   const [editUser, setEditUser] = useState<UserResponse | null>(null);
   const [deleteUser, setDeleteUser] = useState<UserResponse | null>(null);
 
-  const load = useCallback(() => {
-    api.listUsers().then(setUsers).catch(e => setError(e.message));
-  }, []);
+  // Form field state
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  useEffect(load, [load]);
-
-  const handleCreate = async (data: CreateUser) => {
-    try {
-      await api.createUser(data);
-      setShowCreate(false);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create user');
-    }
+  const resetForm = () => {
+    setUsername('');
+    setPassword('');
+    setEmail('');
+    setIsAdmin(false);
   };
 
-  const handleUpdate = async (id: number, data: UpdateUser) => {
-    try {
-      await api.updateUser(id, data);
-      setEditUser(null);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update user');
-    }
+  const openCreate = () => {
+    resetForm();
+    setShowCreate(true);
+  };
+
+  const openEdit = (u: UserResponse) => {
+    setUsername(u.username);
+    setPassword('');
+    setEmail(u.email || '');
+    setIsAdmin(u.is_admin);
+    setEditUser(u);
   };
 
   const handleDelete = async () => {
     if (!deleteUser) return;
-    try {
-      await api.deleteUser(deleteUser.id);
-      setDeleteUser(null);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete user');
-    }
+    const ok = await crud.mutate(() => api.deleteUser(deleteUser.id));
+    if (ok) setDeleteUser(null);
   };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold dark:text-white">Users</h2>
-        <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+        <button
+          onClick={openCreate}
+          className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+        >
           Create User
         </button>
       </div>
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
+      {crud.error && (
+        <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">
+          {crud.error}
+        </div>
+      )}
       <DataTable
-        data={users}
+        data={crud.items}
         keyField="id"
         columns={[
           { key: 'id', header: 'ID' },
           { key: 'username', header: 'Username' },
-          { key: 'email', header: 'Email', render: u => u.email || '-' },
-          { key: 'is_admin', header: 'Admin', render: u => u.is_admin ? 'Yes' : 'No' },
-          { key: 'created_at', header: 'Created', render: u => formatLocalTime(u.created_at) },
+          { key: 'email', header: 'Email', render: (u) => u.email || '-' },
+          { key: 'is_admin', header: 'Admin', render: (u) => (u.is_admin ? 'Yes' : 'No') },
+          { key: 'created_at', header: 'Created', render: (u) => formatLocalTime(u.created_at) },
         ]}
-        actions={u => (
+        actions={(u) => (
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setEditUser(u)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
-            <button onClick={() => setDeleteUser(u)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
+            <button onClick={() => openEdit(u)} className="text-indigo-600 hover:text-indigo-800 text-sm">
+              Edit
+            </button>
+            <button onClick={() => setDeleteUser(u)} className="text-red-600 hover:text-red-800 text-sm">
+              Delete
+            </button>
           </div>
         )}
       />
-      {showCreate && <CreateUserModal onClose={() => setShowCreate(false)} onSubmit={handleCreate} />}
-      {editUser && <EditUserModal user={editUser} onClose={() => setEditUser(null)} onSubmit={handleUpdate} />}
+      <FormModal
+        title="Create User"
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onSubmit={async () => {
+          await api.createUser({
+            username,
+            password,
+            email: email || null,
+            is_admin: isAdmin,
+          });
+          await crud.reload();
+        }}
+        submitLabel="Create"
+      >
+        <FormField label="Username" required value={username} onChange={setUsername} placeholder="Username" />
+        <FormField
+          label="Password"
+          type="password"
+          required
+          value={password}
+          onChange={setPassword}
+          placeholder="Password"
+        />
+        <FormField label="Email" value={email} onChange={setEmail} placeholder="Email (optional)" />
+        <FormField type="checkbox" label="Admin" checked={isAdmin} onChange={setIsAdmin} />
+      </FormModal>
+      <FormModal
+        title="Edit User"
+        open={!!editUser}
+        onClose={() => setEditUser(null)}
+        onSubmit={async () => {
+          if (!editUser) return;
+          await api.updateUser(editUser.id, {
+            username,
+            email: email || null,
+            is_admin: isAdmin,
+          });
+          await crud.reload();
+        }}
+        submitLabel="Save"
+      >
+        <FormField label="Username" required value={username} onChange={setUsername} placeholder="Username" />
+        <FormField label="Email" value={email} onChange={setEmail} placeholder="Email (optional)" />
+        <FormField type="checkbox" label="Admin" checked={isAdmin} onChange={setIsAdmin} />
+      </FormModal>
       <ConfirmDialog
         open={!!deleteUser}
         onClose={() => setDeleteUser(null)}
@@ -86,87 +139,5 @@ export default function Users() {
         message={`Delete user "${deleteUser?.username}"? This cannot be undone.`}
       />
     </div>
-  );
-}
-
-function CreateUserModal({ onClose, onSubmit }: { onClose: () => void; onSubmit: (d: CreateUser) => Promise<void> }) {
-  const [form, setForm] = useState({ username: '', password: '', email: '', is_admin: false });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await onSubmit({
-        username: form.username,
-        password: form.password,
-        email: form.email || null,
-        is_admin: form.is_admin,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Modal open onClose={onClose} title="Create User">
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
-        <input placeholder="Username" required value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
-        <input placeholder="Password" type="password" required value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
-        <input placeholder="Email (optional)" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
-        <label className="flex items-center gap-2 text-sm dark:text-gray-300">
-          <input type="checkbox" checked={form.is_admin} onChange={e => setForm(f => ({ ...f, is_admin: e.target.checked }))} />
-          Admin
-        </label>
-        <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
-          <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Create</button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-function EditUserModal({ user, onClose, onSubmit }: { user: UserResponse; onClose: () => void; onSubmit: (id: number, d: UpdateUser) => Promise<void> }) {
-  const [form, setForm] = useState({ username: user.username, email: user.email || '', is_admin: user.is_admin });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await onSubmit(user.id, {
-        username: form.username,
-        email: form.email || null,
-        is_admin: form.is_admin,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Modal open onClose={onClose} title="Edit User">
-      <form onSubmit={handleSubmit} className="space-y-3">
-        {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
-        <input placeholder="Username" required value={form.username} onChange={e => setForm(f => ({ ...f, username: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
-        <input placeholder="Email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
-        <label className="flex items-center gap-2 text-sm dark:text-gray-300">
-          <input type="checkbox" checked={form.is_admin} onChange={e => setForm(f => ({ ...f, is_admin: e.target.checked }))} />
-          Admin
-        </label>
-        <div className="flex justify-end gap-3 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
-          <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Save</button>
-        </div>
-      </form>
-    </Modal>
   );
 }

@@ -1,11 +1,11 @@
 import { create } from "zustand";
 import { getApiClient } from "../api";
 import type { MessageResponse } from "../api";
-import { storage } from "../storage/mmkv";
+import { createCache } from "../utils/cache";
 import { useApplicationsStore } from "./applications";
 import { getSourceId } from "../utils/source";
 
-const CACHE_KEY = "msg_cache_groups";
+const msgCache = createCache<[string, MessageResponse[]][]>("msg_cache_groups");
 const MAX_MESSAGES_PER_SOURCE = 100;
 const PAGE_SIZE = 50;
 const SAVE_DEBOUNCE_MS = 2000;
@@ -304,7 +304,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       sourceMeta: new Map(),
       hasMore: false,
     });
-    storage.remove(CACHE_KEY);
+    msgCache.clear();
   },
 
   markGroupRead: (sourceId: string) => {
@@ -351,26 +351,17 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
   },
 
   loadFromCache: () => {
-    try {
-      const cached = storage.getString(CACHE_KEY);
-      if (!cached) return;
-      const entries: [string, MessageResponse[]][] = JSON.parse(cached);
-      const groups = new Map<string, MessageResponse[]>(entries);
-      const meta = rebuildAllMeta(groups);
-      set({ groupedMessages: groups, sourceMeta: meta });
-    } catch {
-      // Cache load failure is non-critical
-    }
+    const entries = msgCache.load();
+    if (!entries) return;
+    const groups = new Map<string, MessageResponse[]>(entries);
+    const meta = rebuildAllMeta(groups);
+    set({ groupedMessages: groups, sourceMeta: meta });
   },
 
   saveToCache: () => {
-    try {
-      const { groupedMessages } = get();
-      const entries = Array.from(groupedMessages.entries());
-      storage.set(CACHE_KEY, JSON.stringify(entries));
-    } catch {
-      // Cache save failure is non-critical
-    }
+    const { groupedMessages } = get();
+    const entries = Array.from(groupedMessages.entries());
+    msgCache.save(entries);
   },
 
   clear: () => {
@@ -378,7 +369,7 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       clearTimeout(saveCacheTimer);
       saveCacheTimer = null;
     }
-    storage.remove(CACHE_KEY);
+    msgCache.clear();
     set({
       groupedMessages: new Map(),
       sourceMeta: new Map(),

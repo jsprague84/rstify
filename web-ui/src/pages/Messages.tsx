@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { api } from '../api/client';
 import type { Application, MessageResponse } from 'shared';
 import { useMessageStream } from '../hooks/useMessageStream';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
 import { useToast } from '../components/Toast';
@@ -58,28 +59,31 @@ export default function Messages() {
   // Reset live count when filter changes
   useEffect(() => setLiveCount(0), [filter]);
 
+  const deleteAction = useAsyncAction<true>();
+  const deleteAllAction = useAsyncAction<true>();
+  const searchAction = useAsyncAction<MessageResponse[]>();
+
   const handleDelete = async () => {
     if (!deleteMsg) return;
-    try {
-      await api.deleteMessage(deleteMsg.id);
-      setDeleteMsg(null);
-      setMessages(prev => prev.filter(m => m.id !== deleteMsg.id));
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Failed to delete message', 'error');
-      setDeleteMsg(null);
+    const msgToDelete = deleteMsg;
+    const ok = await deleteAction.execute(async () => { await api.deleteMessage(msgToDelete.id); return true as const; });
+    if (ok) {
+      setMessages(prev => prev.filter(m => m.id !== msgToDelete.id));
+    } else {
+      toast('Failed to delete message', 'error');
     }
+    setDeleteMsg(null);
   };
 
   const handleDeleteAll = async () => {
-    try {
-      await api.deleteAllMessages();
-      setShowDeleteAll(false);
+    const ok = await deleteAllAction.execute(async () => { await api.deleteAllMessages(); return true as const; });
+    if (ok) {
       setMessages([]);
       setLiveCount(0);
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Failed to delete messages', 'error');
-      setShowDeleteAll(false);
+    } else {
+      toast('Failed to delete messages', 'error');
     }
+    setShowDeleteAll(false);
   };
 
   const handleSearch = async (query: string) => {
@@ -90,14 +94,13 @@ export default function Messages() {
       return;
     }
     setSearching(true);
-    try {
-      const results = await api.searchMessages({ q: query, limit: 100 });
+    const results = await searchAction.execute(() => api.searchMessages({ q: query, limit: 100 }));
+    if (results) {
       setMessages(results);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Search failed');
-    } finally {
-      setSearching(false);
+    } else {
+      setError('Search failed');
     }
+    setSearching(false);
   };
 
   const handleLoadMore = () => {
@@ -339,35 +342,40 @@ function MessageAttachments({ message, onDeleted }: { message: MessageResponse; 
 function MessageActions({ message }: { message: MessageResponse }) {
   const { toast } = useToast();
   const [executing, setExecuting] = useState<string | null>(null);
+  const actionRunner = useAsyncAction<Response>();
 
   const actions = getMessageActions(message);
   if (!actions || actions.length === 0) return null;
 
   const handleAction = async (action: any, index: number) => {
     setExecuting(`${message.id}-${index}`);
-    try {
-      if (action.type === 'view' || action.action === 'view') {
-        const url = action.url;
-        if (url) window.open(url, '_blank', 'noopener,noreferrer');
-      } else if (action.type === 'http' || action.action === 'http') {
-        const method = action.method || 'POST';
-        const response = await fetch(action.url, {
-          method,
-          headers: action.headers || {},
+    if (action.type === 'view' || action.action === 'view') {
+      const url = action.url;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      setExecuting(null);
+    } else if (action.type === 'http' || action.action === 'http') {
+      const response = await actionRunner.execute(() =>
+        api.executeMessageAction({
+          url: action.url,
+          method: action.method,
+          headers: action.headers,
           body: action.body,
-        });
+        })
+      );
+      if (response) {
         if (response.ok) {
           toast('Action executed successfully', 'success');
         } else {
           toast(`Action failed: ${response.statusText}`, 'error');
         }
-      } else if (action.type === 'broadcast' || action.action === 'broadcast') {
-        toast('Broadcast actions are only supported on Android devices', 'info');
+      } else {
+        toast('Action failed: network error', 'error');
       }
-    } catch (error) {
-      console.error('Action failed:', error);
-      toast(`Action failed: ${error}`, 'error');
-    } finally {
+      setExecuting(null);
+    } else if (action.type === 'broadcast' || action.action === 'broadcast') {
+      toast('Broadcast actions are only supported on Android devices', 'info');
+      setExecuting(null);
+    } else {
       setExecuting(null);
     }
   };

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import type { StatsResponse, HealthResponse, VersionResponse, MqttStatusResponse } from 'shared';
 import { useAuth } from '../hooks/useAuth';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -9,14 +10,19 @@ export default function Dashboard() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [version, setVersion] = useState<VersionResponse | null>(null);
   const [mqttStatus, setMqttStatus] = useState<MqttStatusResponse | null>(null);
-  const [error, setError] = useState('');
+  const statsAction = useAsyncAction<StatsResponse>();
+  const healthAction = useAsyncAction<HealthResponse>();
+  const versionAction = useAsyncAction<VersionResponse>();
+  const mqttAction = useAsyncAction<MqttStatusResponse>();
 
   useEffect(() => {
-    api.getHealth().then(setHealth).catch(() => {});
-    api.getVersion().then(setVersion).catch(() => {});
-    api.getMqttStatus().then(setMqttStatus).catch(() => {});
-    if (!user?.is_admin) return;
-    api.getStats().then(setStats).catch(e => setError(e.message));
+    healthAction.execute(() => api.getHealth()).then(r => r && setHealth(r));
+    versionAction.execute(() => api.getVersion()).then(r => r && setVersion(r));
+    mqttAction.execute(() => api.getMqttStatus()).then(r => r && setMqttStatus(r));
+    if (user?.is_admin) {
+      statsAction.execute(() => api.getStats()).then(r => r && setStats(r));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   if (!user?.is_admin) {
@@ -32,7 +38,7 @@ export default function Dashboard() {
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6 dark:text-white">Dashboard</h2>
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
+      {statsAction.error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{statsAction.error}</div>}
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard label="Users" value={stats.users} />

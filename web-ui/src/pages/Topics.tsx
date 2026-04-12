@@ -1,85 +1,75 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { Topic, CreateTopic, MessageResponse } from 'shared';
+import type { Topic, MessageResponse } from 'shared';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
+import { FormModal } from '../components/FormModal';
+import { FormField } from '../components/FormField';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
 import { useToast } from '../components/Toast';
 import { formatLocalTime } from 'shared';
 import PriorityBadge from '../components/PriorityBadge';
+import { useCrudResource } from '../hooks/useCrudResource';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 export default function Topics() {
   const { toast } = useToast();
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [error, setError] = useState('');
+  const fetchTopics = useCallback(() => api.listTopics(), []);
+  const crud = useCrudResource(fetchTopics);
+  const messagesAction = useAsyncAction<MessageResponse[]>();
+
   const [showCreate, setShowCreate] = useState(false);
   const [editTopic, setEditTopic] = useState<Topic | null>(null);
   const [deleteTopic, setDeleteTopic] = useState<Topic | null>(null);
   const [messagesTopic, setMessagesTopic] = useState<Topic | null>(null);
   const [topicMessages, setTopicMessages] = useState<MessageResponse[]>([]);
-  const [messagesLoading, setMessagesLoading] = useState(false);
   const [publishTopic, setPublishTopic] = useState<Topic | null>(null);
   const [showDeleteAllTopicMsgs, setShowDeleteAllTopicMsgs] = useState(false);
 
-  const loadTopicMessages = (topic: Topic) => {
+  // Create form state
+  const [createName, setCreateName] = useState('');
+  const [createDescription, setCreateDescription] = useState('');
+  const [createEveryoneRead, setCreateEveryoneRead] = useState(true);
+  const [createEveryoneWrite, setCreateEveryoneWrite] = useState(true);
+
+  const resetCreateForm = () => {
+    setCreateName('');
+    setCreateDescription('');
+    setCreateEveryoneRead(true);
+    setCreateEveryoneWrite(true);
+  };
+
+  const openCreate = () => {
+    resetCreateForm();
+    setShowCreate(true);
+  };
+
+  const loadTopicMessages = async (topic: Topic) => {
     setMessagesTopic(topic);
-    setMessagesLoading(true);
-    api.listTopicMessages(topic.name)
-      .then(res => setTopicMessages(res.messages))
-      .catch(e => setError(e.message))
-      .finally(() => setMessagesLoading(false));
-  };
-
-  const load = useCallback(() => {
-    api.listTopics().then(setTopics).catch(e => setError(e.message));
-  }, []);
-
-  useEffect(load, [load]);
-
-  const handleCreate = async (data: CreateTopic) => {
-    try {
-      await api.createTopic(data);
-      setShowCreate(false);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create topic');
-    }
-  };
-
-  const handleUpdate = async (data: Record<string, any>) => {
-    if (!editTopic) return;
-    try {
-      await api.updateTopic(editTopic.name, data);
-      setEditTopic(null);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update topic');
-    }
+    const result = await messagesAction.execute(() =>
+      api.listTopicMessages(topic.name).then(res => res.messages)
+    );
+    if (result) setTopicMessages(result);
   };
 
   const handleDelete = async () => {
     if (!deleteTopic) return;
-    try {
-      await api.deleteTopic(deleteTopic.name);
-      setDeleteTopic(null);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete topic');
-    }
+    const ok = await crud.mutate(() => api.deleteTopic(deleteTopic.name));
+    if (ok) setDeleteTopic(null);
   };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold dark:text-white">Topics</h2>
-        <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+        <button onClick={openCreate} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
           Create Topic
         </button>
       </div>
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
+      {crud.error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{crud.error}</div>}
       <DataTable
-        data={topics}
+        data={crud.items}
         keyField="id"
         columns={[
           { key: 'id', header: 'ID' },
@@ -97,14 +87,33 @@ export default function Topics() {
           </div>
         )}
       />
-      {showCreate && (
-        <Modal open onClose={() => setShowCreate(false)} title="Create Topic">
-          <TopicForm onSubmit={handleCreate} onClose={() => setShowCreate(false)} />
-        </Modal>
-      )}
+      <FormModal
+        title="Create Topic"
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onSubmit={async () => {
+          await api.createTopic({
+            name: createName,
+            description: createDescription || null,
+            everyone_read: createEveryoneRead,
+            everyone_write: createEveryoneWrite,
+          });
+          await crud.reload();
+        }}
+        submitLabel="Create"
+      >
+        <FormField label="Name" required value={createName} onChange={setCreateName} placeholder="Topic name" />
+        <FormField label="Description" value={createDescription} onChange={setCreateDescription} placeholder="Description (optional)" />
+        <FormField type="checkbox" label="Everyone can read" checked={createEveryoneRead} onChange={setCreateEveryoneRead} />
+        <FormField type="checkbox" label="Everyone can write" checked={createEveryoneWrite} onChange={setCreateEveryoneWrite} />
+      </FormModal>
       {editTopic && (
         <Modal open onClose={() => setEditTopic(null)} title={`Edit Topic: ${editTopic.name}`}>
-          <EditTopicForm topic={editTopic} onSubmit={handleUpdate} onClose={() => setEditTopic(null)} />
+          <EditTopicForm topic={editTopic} onSubmit={async (data) => {
+            await api.updateTopic(editTopic.name, data);
+            await crud.reload();
+            setEditTopic(null);
+          }} onClose={() => setEditTopic(null)} />
         </Modal>
       )}
       <ConfirmDialog
@@ -119,7 +128,7 @@ export default function Topics() {
           <TopicMessagesView
             topic={messagesTopic}
             messages={topicMessages}
-            loading={messagesLoading}
+            loading={messagesAction.loading}
             onRequestDeleteAll={() => setShowDeleteAllTopicMsgs(true)}
           />
         </Modal>
@@ -130,12 +139,10 @@ export default function Topics() {
         onConfirm={async () => {
           const ids = topicMessages.map(m => m.id).filter(id => id > 0);
           if (ids.length > 0) {
-            try {
-              await api.deleteBatchMessages(ids);
+            const ok = await crud.mutate(async () => { await api.deleteBatchMessages(ids); });
+            if (ok) {
               setTopicMessages([]);
               toast('All messages deleted', 'success');
-            } catch (e) {
-              toast(e instanceof Error ? e.message : 'Failed to delete messages', 'error');
             }
           }
           setShowDeleteAllTopicMsgs(false);
@@ -149,49 +156,6 @@ export default function Topics() {
         </Modal>
       )}
     </div>
-  );
-}
-
-function TopicForm({ onSubmit, onClose }: { onSubmit: (d: CreateTopic) => Promise<void>; onClose: () => void }) {
-  const [form, setForm] = useState({ name: '', description: '', everyone_read: true, everyone_write: true });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      await onSubmit({
-        name: form.name,
-        description: form.description || null,
-        everyone_read: form.everyone_read,
-        everyone_write: form.everyone_write,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
-      <input placeholder="Topic name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
-      <input placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
-      <label className="flex items-center gap-2 text-sm dark:text-gray-300">
-        <input type="checkbox" checked={form.everyone_read} onChange={e => setForm(f => ({ ...f, everyone_read: e.target.checked }))} />
-        Everyone can read
-      </label>
-      <label className="flex items-center gap-2 text-sm dark:text-gray-300">
-        <input type="checkbox" checked={form.everyone_write} onChange={e => setForm(f => ({ ...f, everyone_write: e.target.checked }))} />
-        Everyone can write
-      </label>
-      <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
-        <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Create</button>
-      </div>
-    </form>
   );
 }
 
@@ -219,6 +183,7 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     try {
       await onSubmit({
         description: form.description || undefined,
@@ -264,7 +229,7 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
       </label>
 
       <button type="button" onClick={() => setShowPolicies(!showPolicies)} className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
-        {showPolicies ? '▾ Hide' : '▸ Show'} Notification & Storage Policies
+        {showPolicies ? '\u25BE Hide' : '\u25B8 Show'} Notification & Storage Policies
       </button>
 
       {showPolicies && (
@@ -433,33 +398,27 @@ function TopicMessagesView({ topic, messages, loading, onRequestDeleteAll }: {
 }
 
 function PublishForm({ topicName, onSuccess, onClose }: { topicName: string; onSuccess: () => void; onClose: () => void }) {
+  const publishAction = useAsyncAction<MessageResponse>();
   const [form, setForm] = useState({ title: '', message: '', priority: 5, tags: '', scheduled_for: '' });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      const tags = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined;
-      await api.publishToTopic(topicName, {
+    const tags = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : undefined;
+    const result = await publishAction.execute(() =>
+      api.publishToTopic(topicName, {
         title: form.title || undefined,
         message: form.message,
         priority: form.priority,
         tags: tags && tags.length > 0 ? tags : undefined,
         scheduled_for: form.scheduled_for || undefined,
-      });
-      onSuccess();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed');
-    } finally {
-      setLoading(false);
-    }
+      })
+    );
+    if (result !== undefined) onSuccess();
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
+      {publishAction.error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{publishAction.error}</div>}
       <input placeholder="Title (optional)" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
       <textarea placeholder="Message" required rows={4} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
       <div className="flex gap-3">
@@ -479,7 +438,7 @@ function PublishForm({ topicName, onSuccess, onClose }: { topicName: string; onS
       </div>
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
-        <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">{form.scheduled_for ? 'Schedule' : 'Send'}</button>
+        <button type="submit" disabled={publishAction.loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">{form.scheduled_for ? 'Schedule' : 'Send'}</button>
       </div>
     </form>
   );

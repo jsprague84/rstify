@@ -1,9 +1,9 @@
 import { create } from "zustand";
 import { getApiClient } from "../api";
 import type { Application } from "../api";
-import { storage } from "../storage/mmkv";
+import { createCache } from "../utils/cache";
 
-const CACHE_KEY = "app_cache";
+const appCache = createCache<[number, Application][]>("app_cache");
 
 interface ApplicationsState {
   apps: Map<number, Application>;
@@ -33,7 +33,7 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
       // Save to cache
       try {
         const serializable = list.map((app) => [app.id, app] as [number, Application]);
-        storage.set(CACHE_KEY, JSON.stringify(serializable));
+        appCache.save(serializable);
       } catch {
         // Cache save failure is non-critical
       }
@@ -52,19 +52,14 @@ export const useApplicationsStore = create<ApplicationsState>((set, get) => ({
   },
 
   loadFromCache: () => {
-    try {
-      const cached = storage.getString(CACHE_KEY);
-      if (!cached) return;
-      const entries: [number, Application][] = JSON.parse(cached);
-      const map = new Map<number, Application>(entries);
-      set({ apps: map, isLoaded: true });
-    } catch {
-      // Cache load failure is non-critical
-    }
+    const entries = appCache.load();
+    if (!entries) return;
+    const map = new Map<number, Application>(entries);
+    set({ apps: map, isLoaded: true });
   },
 
   clear: () => {
-    storage.remove(CACHE_KEY);
+    appCache.clear();
     set({ apps: new Map(), isLoaded: false });
   },
 }));

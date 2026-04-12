@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 import { ConfirmSheet } from '../../src/components/design/ConfirmSheet';
-import { EmptyState } from '../../src/components/EmptyState';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
 import { SectionLabel } from '../../src/components/design/SectionLabel';
+import { useHubData } from '../../src/hooks/useHubData';
 import { getApiClient } from '../../src/api';
 import type { MqttBridge, MqttStatusResponse } from '../../src/api';
 
@@ -24,8 +24,6 @@ export default function MqttScreen() {
   const user = useAuthStore((s) => s.user);
 
   const [mqttStatus, setMqttStatus] = useState<MqttStatusResponse | null>(null);
-  const [bridges, setBridges] = useState<MqttBridge[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<MqttBridge | null>(null);
 
@@ -36,33 +34,22 @@ export default function MqttScreen() {
   const [newBridgeUsername, setNewBridgeUsername] = useState('');
   const [newBridgePassword, setNewBridgePassword] = useState('');
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const api = getApiClient();
-      const [status, bridgeList] = await Promise.allSettled([
-        api.getMqttStatus(),
-        api.listBridges(),
-      ]);
-      if (status.status === 'fulfilled') setMqttStatus(status.value);
-      if (bridgeList.status === 'fulfilled') setBridges(bridgeList.value);
-    } catch { /* ignore */ }
-    finally { setIsLoading(false); }
-  }, []);
-
-  useEffect(() => { if (user?.is_admin) fetchData(); }, [fetchData, user?.is_admin]);
+  const fetchBridges = useCallback(async () => {
+    if (!user?.is_admin) return [];
+    const api = getApiClient();
+    // Fetch MQTT status as a side-effect alongside the bridges list
+    api.getMqttStatus().then(setMqttStatus).catch(() => {});
+    return api.listBridges();
+  }, [user?.is_admin]);
+  const { items: bridges, isLoading, refresh, mutate } = useHubData(fetchBridges);
 
   const handleDeleteBridge = (b: MqttBridge) => setDeleteTarget(b);
 
   const confirmDeleteBridge = async () => {
     if (!deleteTarget) return;
-    try {
-      const api = getApiClient();
-      await api.deleteBridge(deleteTarget.id);
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
-    }
+    const api = getApiClient();
+    const ok = await mutate(() => api.deleteBridge(deleteTarget.id));
+    if (ok) setDeleteTarget(null);
   };
 
   const handleCreateBridge = async () => {
@@ -70,9 +57,9 @@ export default function MqttScreen() {
       Alert.alert('Error', 'Name and URL are required');
       return;
     }
-    try {
-      const api = getApiClient();
-      await api.createBridge({
+    const api = getApiClient();
+    const ok = await mutate(() =>
+      api.createBridge({
         name: newBridgeName.trim(),
         remote_url: newBridgeUrl.trim(),
         subscribe_topics: ['#'],
@@ -82,13 +69,12 @@ export default function MqttScreen() {
         qos: null,
         topic_prefix: null,
         auto_create_topics: null,
-      });
+      }),
+    );
+    if (ok) {
       setNewBridgeName(''); setNewBridgeUrl('');
       setNewBridgeUsername(''); setNewBridgePassword('');
       setShowCreate(false);
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create');
     }
   };
 
@@ -197,7 +183,7 @@ export default function MqttScreen() {
             </View>
           </View>
         )}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchData} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
       />
 
       <ConfirmSheet

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,19 +13,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/auth';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
-import { EmptyState } from '../../src/components/EmptyState';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
 import { SectionLabel } from '../../src/components/design/SectionLabel';
+import { useHubData } from '../../src/hooks/useHubData';
 import { getApiClient } from '../../src/api';
 import type { UserResponse, TopicPermission } from '../../src/api';
 
 export default function UsersScreen() {
   const user = useAuthStore((s) => s.user);
 
-  const [users, setUsers] = useState<UserResponse[]>([]);
-  const [permissions, setPermissions] = useState<TopicPermission[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const fetchUsers = useCallback(() => getApiClient().listUsers(), []);
+  const fetchPerms = useCallback(() => getApiClient().listPermissions(), []);
+
+  const { items: users, isLoading: usersLoading, refresh: refreshUsers, mutate: mutateUsers } = useHubData(fetchUsers);
+  const { items: permissions, isLoading: permsLoading, refresh: refreshPerms, mutate: mutatePerms } = useHubData(fetchPerms);
+
+  const isLoading = usersLoading || permsLoading;
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refreshUsers(), refreshPerms()]);
+  }, [refreshUsers, refreshPerms]);
 
   // Edit user
   const [editingUser, setEditingUser] = useState<UserResponse | null>(null);
@@ -46,34 +53,13 @@ export default function UsersScreen() {
   const [newPermRead, setNewPermRead] = useState(true);
   const [newPermWrite, setNewPermWrite] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const api = getApiClient();
-      const [u, p] = await Promise.allSettled([
-        api.listUsers(),
-        api.listPermissions(),
-      ]);
-      if (u.status === 'fulfilled') setUsers(u.value);
-      if (p.status === 'fulfilled') setPermissions(p.value);
-    } catch { /* ignore */ }
-    finally { setIsLoading(false); }
-  }, []);
-
-  useEffect(() => { if (user?.is_admin) fetchData(); }, [fetchData, user?.is_admin]);
-
   const handleToggleAdmin = async (u: UserResponse) => {
     if (u.id === user?.id) {
       Alert.alert('Error', 'Cannot change your own admin status');
       return;
     }
-    try {
-      const api = getApiClient();
-      await api.updateUser(u.id, { is_admin: !u.is_admin, username: null, email: null });
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update user');
-    }
+    const api = getApiClient();
+    await mutateUsers(() => api.updateUser(u.id, { is_admin: !u.is_admin, username: null, email: null }));
   };
 
   const openEditUser = (u: UserResponse) => {
@@ -84,18 +70,13 @@ export default function UsersScreen() {
 
   const handleEditUser = async () => {
     if (!editingUser || !editUsername.trim()) return;
-    try {
-      const api = getApiClient();
-      await api.updateUser(editingUser.id, {
-        username: editUsername.trim(),
-        email: editEmail.trim() || null,
-        is_admin: null,
-      });
-      setEditingUser(null);
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update user');
-    }
+    const api = getApiClient();
+    const ok = await mutateUsers(() => api.updateUser(editingUser.id, {
+      username: editUsername.trim(),
+      email: editEmail.trim() || null,
+      is_admin: null,
+    }));
+    if (ok) setEditingUser(null);
   };
 
   const handleDeleteUser = (u: UserResponse) => {
@@ -108,13 +89,9 @@ export default function UsersScreen() {
       {
         text: 'Delete', style: 'destructive',
         onPress: async () => {
-          try {
-            const api = getApiClient();
-            await api.deleteUser(u.id);
-            fetchData();
-          } catch (e) {
-            Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
-          }
+          const api = getApiClient();
+          const ok = await mutateUsers(() => api.deleteUser(u.id));
+          if (ok) refreshPerms(true);
         },
       },
     ]);
@@ -126,13 +103,8 @@ export default function UsersScreen() {
       {
         text: 'Delete', style: 'destructive',
         onPress: async () => {
-          try {
-            const api = getApiClient();
-            await api.deletePermission(p.id);
-            fetchData();
-          } catch (e) {
-            Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
-          }
+          const api = getApiClient();
+          await mutatePerms(() => api.deletePermission(p.id));
         },
       },
     ]);
@@ -147,19 +119,16 @@ export default function UsersScreen() {
       Alert.alert('Error', 'Password must be at least 8 characters');
       return;
     }
-    try {
-      const api = getApiClient();
-      await api.createUser({
-        username: newUsername.trim(),
-        password: newUserPassword,
-        email: newUserEmail.trim() || null,
-        is_admin: newUserAdmin,
-      });
+    const api = getApiClient();
+    const ok = await mutateUsers(() => api.createUser({
+      username: newUsername.trim(),
+      password: newUserPassword,
+      email: newUserEmail.trim() || null,
+      is_admin: newUserAdmin,
+    }));
+    if (ok) {
       setNewUsername(''); setNewUserPassword(''); setNewUserEmail(''); setNewUserAdmin(false);
       setShowCreateUser(false);
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create user');
     }
   };
 
@@ -169,20 +138,17 @@ export default function UsersScreen() {
       Alert.alert('Error', 'User ID and pattern are required');
       return;
     }
-    try {
-      const api = getApiClient();
-      await api.createPermission({
-        user_id: userId,
-        topic_pattern: newPermPattern.trim(),
-        can_read: newPermRead,
-        can_write: newPermWrite,
-      });
+    const api = getApiClient();
+    const ok = await mutatePerms(() => api.createPermission({
+      user_id: userId,
+      topic_pattern: newPermPattern.trim(),
+      can_read: newPermRead,
+      can_write: newPermWrite,
+    }));
+    if (ok) {
       setNewPermUserId(''); setNewPermPattern('');
       setNewPermRead(true); setNewPermWrite(false);
       setShowCreatePerm(false);
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create');
     }
   };
 
@@ -280,7 +246,7 @@ export default function UsersScreen() {
             </View>
           </View>
         )}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchData} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refreshAll} />}
       />
 
       {/* Create Permission Modal */}

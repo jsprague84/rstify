@@ -1,62 +1,156 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { api } from '../api/client';
 import type { MqttBridge, MqttStatusResponse, CreateMqttBridge, UpdateMqttBridge } from 'shared';
 import DataTable from '../components/DataTable';
-import Modal from '../components/Modal';
+import { FormModal } from '../components/FormModal';
+import { FormField } from '../components/FormField';
 import ConfirmDialog from '../components/ConfirmDialog';
+import { useCrudResource } from '../hooks/useCrudResource';
 import { parseJsonArray } from '../utils/webhookHelpers';
 
 export default function Bridges() {
-  const [bridges, setBridges] = useState<MqttBridge[]>([]);
+  const fetchBridges = useCallback(() => api.listBridges(), []);
+  const crud = useCrudResource(fetchBridges);
+
   const [mqttStatus, setMqttStatus] = useState<MqttStatusResponse | null>(null);
-  const [error, setError] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [editBridge, setEditBridge] = useState<MqttBridge | null>(null);
   const [deleteBridge, setDeleteBridge] = useState<MqttBridge | null>(null);
 
-  const load = useCallback(() => {
-    api.listBridges().then(setBridges).catch(e => setError(e.message));
-    api.getMqttStatus().then(setMqttStatus).catch(() => {});
-  }, []);
+  // Form field state
+  const [name, setName] = useState('');
+  const [remoteUrl, setRemoteUrl] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [qos, setQos] = useState(0);
+  const [topicPrefix, setTopicPrefix] = useState('');
+  const [subTopics, setSubTopics] = useState<string[]>([]);
+  const [pubTopics, setPubTopics] = useState<string[]>([]);
+  const [autoCreate, setAutoCreate] = useState(true);
+  const [enabled, setEnabled] = useState(true);
+  const [newSubTopic, setNewSubTopic] = useState('');
+  const [newPubTopic, setNewPubTopic] = useState('');
 
-  useEffect(load, [load]);
+  // Load MQTT status (fire-and-forget, errors silently ignored like original)
+  const loadStatusRef = useRef(() => { api.getMqttStatus().then(setMqttStatus).catch(() => {}); });
+  const loadStatus = loadStatusRef.current;
 
-  const handleCreate = async (data: CreateMqttBridge) => {
-    try {
-      await api.createBridge(data);
-      setShowCreate(false);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to create bridge');
-    }
+  useEffect(() => { loadStatus(); }, [loadStatus]);
+
+  const resetForm = () => {
+    setName('');
+    setRemoteUrl('');
+    setUsername('');
+    setPassword('');
+    setQos(0);
+    setTopicPrefix('');
+    setSubTopics([]);
+    setPubTopics([]);
+    setAutoCreate(true);
+    setEnabled(true);
+    setNewSubTopic('');
+    setNewPubTopic('');
   };
 
-  const handleUpdate = async (id: number, data: UpdateMqttBridge) => {
-    try {
-      await api.updateBridge(id, data);
-      setEditBridge(null);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update bridge');
-    }
+  const openCreate = () => {
+    resetForm();
+    setShowCreate(true);
   };
+
+  const openEdit = (b: MqttBridge) => {
+    setName(b.name);
+    setRemoteUrl(b.remote_url);
+    setUsername('');
+    setPassword('');
+    setQos(b.qos ?? 0);
+    setTopicPrefix(b.topic_prefix ?? '');
+    setSubTopics(parseJsonArray(b.subscribe_topics));
+    setPubTopics(parseJsonArray(b.publish_topics));
+    setAutoCreate(b.auto_create_topics ?? true);
+    setEnabled(b.enabled ?? true);
+    setNewSubTopic('');
+    setNewPubTopic('');
+    setEditBridge(b);
+  };
+
+  const buildPayload = (): CreateMqttBridge | UpdateMqttBridge => ({
+    name,
+    remote_url: remoteUrl,
+    username: username || null,
+    password: password || null,
+    qos,
+    topic_prefix: topicPrefix || null,
+    subscribe_topics: subTopics,
+    publish_topics: pubTopics,
+    auto_create_topics: autoCreate,
+    enabled,
+  });
 
   const handleDelete = async () => {
     if (!deleteBridge) return;
-    try {
-      await api.deleteBridge(deleteBridge.id);
+    const ok = await crud.mutate(() => api.deleteBridge(deleteBridge.id));
+    if (ok) {
       setDeleteBridge(null);
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete bridge');
+      loadStatus();
     }
   };
+
+  const addSubTopic = () => {
+    if (newSubTopic.trim()) {
+      setSubTopics(prev => [...prev, newSubTopic.trim()]);
+      setNewSubTopic('');
+    }
+  };
+
+  const addPubTopic = () => {
+    if (newPubTopic.trim()) {
+      setPubTopics(prev => [...prev, newPubTopic.trim()]);
+      setNewPubTopic('');
+    }
+  };
+
+  const inputClass = "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
+
+  const arrayFieldsJsx = (
+    <>
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subscribe Topics</label>
+        <div className="flex gap-2 mb-2">
+          <input className={inputClass} value={newSubTopic} onChange={e => setNewSubTopic(e.target.value)} placeholder="sensors/#" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubTopic(); } }} />
+          <button type="button" onClick={addSubTopic} className="px-3 py-2 bg-gray-200 dark:bg-gray-600 rounded-md text-sm hover:bg-gray-300 dark:hover:bg-gray-500">Add</button>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {subTopics.map((t, i) => (
+            <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded text-xs">
+              {t}
+              <button type="button" onClick={() => setSubTopics(subTopics.filter((_, j) => j !== i))} className="hover:text-red-600">&times;</button>
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="mb-3">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Publish Topics</label>
+        <div className="flex gap-2 mb-2">
+          <input className={inputClass} value={newPubTopic} onChange={e => setNewPubTopic(e.target.value)} placeholder="commands/#" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPubTopic(); } }} />
+          <button type="button" onClick={addPubTopic} className="px-3 py-2 bg-gray-200 dark:bg-gray-600 rounded-md text-sm hover:bg-gray-300 dark:hover:bg-gray-500">Add</button>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {pubTopics.map((t, i) => (
+            <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 rounded text-xs">
+              {t}
+              <button type="button" onClick={() => setPubTopics(pubTopics.filter((_, j) => j !== i))} className="hover:text-red-600">&times;</button>
+            </span>
+          ))}
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold dark:text-white">MQTT Bridges</h2>
-        <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+        <button onClick={openCreate} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
           New Bridge
         </button>
       </div>
@@ -76,9 +170,9 @@ export default function Bridges() {
           </div>
         )
       )}
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{error}</div>}
+      {crud.error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{crud.error}</div>}
       <DataTable
-        data={bridges}
+        data={crud.items}
         keyField="id"
         columns={[
           { key: 'name', header: 'Name' },
@@ -103,174 +197,100 @@ export default function Bridges() {
           }},
           { key: 'subscribe_topics', header: 'Subscribe', render: b => (
             <span className="text-xs text-gray-600 dark:text-gray-400">
-              {parseJsonArray(b.subscribe_topics).join(', ') || '—'}
+              {parseJsonArray(b.subscribe_topics).join(', ') || '\u2014'}
             </span>
           )},
           { key: 'qos', header: 'QoS', render: b => `${b.qos ?? 0}` },
         ]}
         actions={b => (
           <div className="flex gap-2 justify-end">
-            <button onClick={() => setEditBridge(b)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
+            <button onClick={() => openEdit(b)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
             <button onClick={() => setDeleteBridge(b)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
           </div>
         )}
       />
-      {showCreate && (
-        <BridgeFormModal
-          title="New Bridge"
-          onClose={() => setShowCreate(false)}
-          onSubmit={data => handleCreate(data as CreateMqttBridge)}
-        />
-      )}
-      {editBridge && (
-        <BridgeFormModal
-          title="Edit Bridge"
-          bridge={editBridge}
-          onClose={() => setEditBridge(null)}
-          onSubmit={data => handleUpdate(editBridge.id, data as UpdateMqttBridge)}
-        />
-      )}
-      {deleteBridge && (
-        <ConfirmDialog
-          open
-          title="Delete Bridge"
-          message={`Delete bridge "${deleteBridge.name}"? This cannot be undone.`}
-          onConfirm={handleDelete}
-          onClose={() => setDeleteBridge(null)}
-        />
-      )}
-    </div>
-  );
-}
-
-function BridgeFormModal({
-  title,
-  bridge,
-  onClose,
-  onSubmit,
-}: {
-  title: string;
-  bridge?: MqttBridge;
-  onClose: () => void;
-  onSubmit: (data: CreateMqttBridge | UpdateMqttBridge) => void;
-}) {
-  const [name, setName] = useState(bridge?.name ?? '');
-  const [remoteUrl, setRemoteUrl] = useState(bridge?.remote_url ?? '');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [qos, setQos] = useState(bridge?.qos ?? 0);
-  const [topicPrefix, setTopicPrefix] = useState(bridge?.topic_prefix ?? '');
-  const [subTopics, setSubTopics] = useState<string[]>(parseJsonArray(bridge?.subscribe_topics));
-  const [pubTopics, setPubTopics] = useState<string[]>(parseJsonArray(bridge?.publish_topics));
-  const [autoCreate, setAutoCreate] = useState(bridge?.auto_create_topics ?? true);
-  const [enabled, setEnabled] = useState(bridge?.enabled ?? true);
-  const [newSubTopic, setNewSubTopic] = useState('');
-  const [newPubTopic, setNewPubTopic] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({
-      name,
-      remote_url: remoteUrl,
-      username: username || null,
-      password: password || null,
-      qos,
-      topic_prefix: topicPrefix || null,
-      subscribe_topics: subTopics,
-      publish_topics: pubTopics,
-      auto_create_topics: autoCreate,
-      enabled,
-    });
-  };
-
-  const addSubTopic = () => { if (newSubTopic.trim()) { setSubTopics([...subTopics, newSubTopic.trim()]); setNewSubTopic(''); } };
-  const addPubTopic = () => { if (newPubTopic.trim()) { setPubTopics([...pubTopics, newPubTopic.trim()]); setNewPubTopic(''); } };
-
-  const inputClass = "w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white";
-  const labelClass = "block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1";
-
-  return (
-    <Modal open onClose={onClose} title={title}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className={labelClass}>Name</label>
-          <input className={inputClass} value={name} onChange={e => setName(e.target.value)} required />
-        </div>
-        <div>
-          <label className={labelClass}>Broker URL</label>
-          <input className={inputClass} value={remoteUrl} onChange={e => setRemoteUrl(e.target.value)} placeholder="broker.example.com:1883" required />
+      <FormModal
+        title="New Bridge"
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onSubmit={async () => {
+          await api.createBridge(buildPayload() as CreateMqttBridge);
+          await crud.reload();
+          loadStatus();
+        }}
+        submitLabel="Create"
+      >
+        <FormField label="Name" required value={name} onChange={setName} />
+        <FormField label="Broker URL" required value={remoteUrl} onChange={setRemoteUrl} placeholder="broker.example.com:1883" />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Username" value={username} onChange={setUsername} placeholder="Optional" />
+          <FormField label="Password" type="password" value={password} onChange={setPassword} placeholder="Optional" />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>Username</label>
-            <input className={inputClass} value={username} onChange={e => setUsername(e.target.value)} placeholder="Optional" />
-          </div>
-          <div>
-            <label className={labelClass}>Password</label>
-            <input className={inputClass} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Optional" />
-          </div>
+          <FormField
+            label="QoS"
+            type="select"
+            value={String(qos)}
+            onChange={v => setQos(Number(v))}
+            options={[
+              { value: '0', label: '0 - At Most Once' },
+              { value: '1', label: '1 - At Least Once' },
+              { value: '2', label: '2 - Exactly Once' },
+            ]}
+          />
+          <FormField label="Topic Prefix" value={topicPrefix} onChange={setTopicPrefix} placeholder="Optional prefix" />
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>QoS</label>
-            <select className={inputClass} value={qos} onChange={e => setQos(Number(e.target.value))}>
-              <option value={0}>0 - At Most Once</option>
-              <option value={1}>1 - At Least Once</option>
-              <option value={2}>2 - Exactly Once</option>
-            </select>
-          </div>
-          <div>
-            <label className={labelClass}>Topic Prefix</label>
-            <input className={inputClass} value={topicPrefix} onChange={e => setTopicPrefix(e.target.value)} placeholder="Optional prefix" />
-          </div>
-        </div>
-        <div>
-          <label className={labelClass}>Subscribe Topics</label>
-          <div className="flex gap-2 mb-2">
-            <input className={inputClass} value={newSubTopic} onChange={e => setNewSubTopic(e.target.value)} placeholder="sensors/#" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addSubTopic(); } }} />
-            <button type="button" onClick={addSubTopic} className="px-3 py-2 bg-gray-200 dark:bg-gray-600 rounded-md text-sm hover:bg-gray-300 dark:hover:bg-gray-500">Add</button>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {subTopics.map((t, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300 rounded text-xs">
-                {t}
-                <button type="button" onClick={() => setSubTopics(subTopics.filter((_, j) => j !== i))} className="hover:text-red-600">&times;</button>
-              </span>
-            ))}
-          </div>
-        </div>
-        <div>
-          <label className={labelClass}>Publish Topics</label>
-          <div className="flex gap-2 mb-2">
-            <input className={inputClass} value={newPubTopic} onChange={e => setNewPubTopic(e.target.value)} placeholder="commands/#" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addPubTopic(); } }} />
-            <button type="button" onClick={addPubTopic} className="px-3 py-2 bg-gray-200 dark:bg-gray-600 rounded-md text-sm hover:bg-gray-300 dark:hover:bg-gray-500">Add</button>
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {pubTopics.map((t, i) => (
-              <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 rounded text-xs">
-                {t}
-                <button type="button" onClick={() => setPubTopics(pubTopics.filter((_, j) => j !== i))} className="hover:text-red-600">&times;</button>
-              </span>
-            ))}
-          </div>
-        </div>
+        {arrayFieldsJsx}
         <div className="flex gap-6">
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input type="checkbox" checked={autoCreate} onChange={e => setAutoCreate(e.target.checked)} className="rounded" />
-            Auto-create topics
-          </label>
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-            <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} className="rounded" />
-            Enabled
-          </label>
+          <FormField type="checkbox" label="Auto-create topics" checked={autoCreate} onChange={setAutoCreate} />
+          <FormField type="checkbox" label="Enabled" checked={enabled} onChange={setEnabled} />
         </div>
-        <div className="flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800">Cancel</button>
-          <button type="submit" className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-            {bridge ? 'Update' : 'Create'}
-          </button>
+      </FormModal>
+      <FormModal
+        title="Edit Bridge"
+        open={!!editBridge}
+        onClose={() => setEditBridge(null)}
+        onSubmit={async () => {
+          if (!editBridge) return;
+          await api.updateBridge(editBridge.id, buildPayload() as UpdateMqttBridge);
+          await crud.reload();
+          loadStatus();
+        }}
+        submitLabel="Update"
+      >
+        <FormField label="Name" required value={name} onChange={setName} />
+        <FormField label="Broker URL" required value={remoteUrl} onChange={setRemoteUrl} placeholder="broker.example.com:1883" />
+        <div className="grid grid-cols-2 gap-4">
+          <FormField label="Username" value={username} onChange={setUsername} placeholder="Optional" />
+          <FormField label="Password" type="password" value={password} onChange={setPassword} placeholder="Optional" />
         </div>
-      </form>
-    </Modal>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            label="QoS"
+            type="select"
+            value={String(qos)}
+            onChange={v => setQos(Number(v))}
+            options={[
+              { value: '0', label: '0 - At Most Once' },
+              { value: '1', label: '1 - At Least Once' },
+              { value: '2', label: '2 - Exactly Once' },
+            ]}
+          />
+          <FormField label="Topic Prefix" value={topicPrefix} onChange={setTopicPrefix} placeholder="Optional prefix" />
+        </div>
+        {arrayFieldsJsx}
+        <div className="flex gap-6">
+          <FormField type="checkbox" label="Auto-create topics" checked={autoCreate} onChange={setAutoCreate} />
+          <FormField type="checkbox" label="Enabled" checked={enabled} onChange={setEnabled} />
+        </div>
+      </FormModal>
+      <ConfirmDialog
+        open={!!deleteBridge}
+        title="Delete Bridge"
+        message={`Delete bridge "${deleteBridge?.name}"? This cannot be undone.`}
+        onConfirm={handleDelete}
+        onClose={() => setDeleteBridge(null)}
+      />
+    </div>
   );
 }

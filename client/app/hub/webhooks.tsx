@@ -19,12 +19,12 @@ import { AnimatedPressable } from '../../src/components/design/AnimatedPressable
 import { ConfirmSheet } from '../../src/components/design/ConfirmSheet';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormInput } from '../../src/components/design/FormInput';
+import { useHubData } from '../../src/hooks/useHubData';
 import { getApiClient } from '../../src/api';
 import type {
   WebhookConfig,
   WebhookConfigWithHealth,
   Topic,
-  UpdateWebhookConfig,
   WebhookDeliveryLog,
   WebhookTestResult,
 } from '../../src/api';
@@ -33,9 +33,7 @@ import * as Clipboard from 'expo-clipboard';
 type Direction = 'incoming' | 'outgoing';
 
 export default function WebhooksScreen() {
-  const [webhooks, setWebhooks] = useState<WebhookConfigWithHealth[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
 
   const [editWebhook, setEditWebhook] = useState<WebhookConfigWithHealth | null>(null);
@@ -83,24 +81,25 @@ export default function WebhooksScreen() {
   const [serverBase, setServerBase] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<WebhookConfigWithHealth | null>(null);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const api = getApiClient();
-      const [wh, tp] = await Promise.all([api.listWebhooks(), api.listTopics()]);
-      setWebhooks(wh);
-      setTopics(tp);
-      if (!serverBase) {
-        try { setServerBase(api.getBaseUrl() || ''); } catch { /* ignore */ }
-      }
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to load webhooks');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [serverBase]);
+  const fetchWebhooks = useCallback(() => {
+    const api = getApiClient();
+    return api.listWebhooks();
+  }, []);
+  const { items: webhooks, isLoading, refresh, mutate } = useHubData(fetchWebhooks);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  // Fetch topics separately (they're used in forms, not as the primary list)
+  useEffect(() => {
+    (async () => {
+      try {
+        const api = getApiClient();
+        const tp = await api.listTopics();
+        setTopics(tp);
+        if (!serverBase) {
+          try { setServerBase(api.getBaseUrl() || ''); } catch { /* ignore */ }
+        }
+      } catch { /* topics are optional, fail silently */ }
+    })();
+  }, [serverBase]);
 
   // --- Utility helpers ---
 
@@ -176,47 +175,40 @@ export default function WebhooksScreen() {
     if (direction === 'outgoing' && !targetUrl.trim()) {
       Alert.alert('Error', 'Target URL is required for outgoing webhooks'); return;
     }
-    try {
-      const api = getApiClient();
-      await api.createWebhook({
-        name: name.trim(), webhookType: webhookType, template: null, direction: direction,
-        targetTopicId: selectedTopicId ?? null,
-        targetApplicationId: null,
-        enabled: null,
-        targetUrl: direction === 'outgoing' ? targetUrl.trim() : null,
-        httpMethod: direction === 'outgoing' ? httpMethod : null,
-        headers: direction === 'outgoing' ? (() => {
-          const h = mergeAuthIntoHeaders(createHeaders, createAuthType, createAuthToken, createAuthUser, createAuthPass) || {};
-          h['Content-Type'] = createContentType;
-          return h;
-        })() : null,
-        bodyTemplate: direction === 'outgoing' && bodyTemplate.trim() ? bodyTemplate.trim() : null,
-        maxRetries: direction === 'outgoing' ? parseInt(createMaxRetries, 10) || 3 : null,
-        retryDelaySecs: direction === 'outgoing' ? parseInt(createRetryDelay, 10) || 60 : null,
-        timeoutSecs: direction === 'outgoing' ? parseInt(createTimeout, 10) || 15 : null,
-        followRedirects: direction === 'outgoing' ? createFollowRedirects : null,
-        groupName: createGroupName.trim() || null,
-        secret: null,
-      });
-      resetForm(); setShowCreate(false); fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create webhook');
+    const api = getApiClient();
+    const ok = await mutate(() => api.createWebhook({
+      name: name.trim(), webhookType: webhookType, template: null, direction: direction,
+      targetTopicId: selectedTopicId ?? null,
+      targetApplicationId: null,
+      enabled: null,
+      targetUrl: direction === 'outgoing' ? targetUrl.trim() : null,
+      httpMethod: direction === 'outgoing' ? httpMethod : null,
+      headers: direction === 'outgoing' ? (() => {
+        const h = mergeAuthIntoHeaders(createHeaders, createAuthType, createAuthToken, createAuthUser, createAuthPass) || {};
+        h['Content-Type'] = createContentType;
+        return h;
+      })() : null,
+      bodyTemplate: direction === 'outgoing' && bodyTemplate.trim() ? bodyTemplate.trim() : null,
+      maxRetries: direction === 'outgoing' ? parseInt(createMaxRetries, 10) || 3 : null,
+      retryDelaySecs: direction === 'outgoing' ? parseInt(createRetryDelay, 10) || 60 : null,
+      timeoutSecs: direction === 'outgoing' ? parseInt(createTimeout, 10) || 15 : null,
+      followRedirects: direction === 'outgoing' ? createFollowRedirects : null,
+      groupName: createGroupName.trim() || null,
+      secret: null,
+    }));
+    if (ok) {
+      resetForm(); setShowCreate(false);
     }
   };
 
   const handleToggleEnabled = async (webhook: WebhookConfigWithHealth) => {
-    try {
-      const api = getApiClient();
-      await api.updateWebhook(webhook.id, {
-        name: null, template: null, enabled: !webhook.enabled,
-        targetUrl: null, httpMethod: null, headers: null,
-        bodyTemplate: null, maxRetries: null, retryDelaySecs: null,
-        timeoutSecs: null, followRedirects: null, groupName: null, secret: null,
-      });
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update webhook');
-    }
+    const api = getApiClient();
+    await mutate(() => api.updateWebhook(webhook.id, {
+      name: null, template: null, enabled: !webhook.enabled,
+      targetUrl: null, httpMethod: null, headers: null,
+      bodyTemplate: null, maxRetries: null, retryDelaySecs: null,
+      timeoutSecs: null, followRedirects: null, groupName: null, secret: null,
+    }));
   };
 
   const handleDuplicate = (webhook: WebhookConfigWithHealth) => {
@@ -225,28 +217,23 @@ export default function WebhooksScreen() {
       {
         text: 'Duplicate',
         onPress: async () => {
-          try {
-            const api = getApiClient();
-            await api.createWebhook({
-              name: `${webhook.name} (copy)`, webhookType: webhook.webhook_type,
-              direction: webhook.direction,
-              targetTopicId: webhook.target_topic_id ?? null,
-              targetApplicationId: webhook.target_application_id ?? null,
-              template: webhook.template ? JSON.parse(webhook.template) : null,
-              enabled: webhook.enabled,
-              targetUrl: webhook.target_url ?? null,
-              httpMethod: webhook.http_method,
-              headers: webhook.headers ? JSON.parse(webhook.headers) : null,
-              bodyTemplate: webhook.body_template ?? null,
-              maxRetries: webhook.max_retries, retryDelaySecs: webhook.retry_delay_secs,
-              timeoutSecs: webhook.timeout_secs, followRedirects: webhook.follow_redirects,
-              groupName: webhook.group_name ?? null,
-              secret: null,
-            });
-            fetchData();
-          } catch (e) {
-            Alert.alert('Error', e instanceof Error ? e.message : 'Duplicate failed');
-          }
+          const api = getApiClient();
+          await mutate(() => api.createWebhook({
+            name: `${webhook.name} (copy)`, webhookType: webhook.webhook_type,
+            direction: webhook.direction,
+            targetTopicId: webhook.target_topic_id ?? null,
+            targetApplicationId: webhook.target_application_id ?? null,
+            template: webhook.template ? JSON.parse(webhook.template) : null,
+            enabled: webhook.enabled,
+            targetUrl: webhook.target_url ?? null,
+            httpMethod: webhook.http_method,
+            headers: webhook.headers ? JSON.parse(webhook.headers) : null,
+            bodyTemplate: webhook.body_template ?? null,
+            maxRetries: webhook.max_retries, retryDelaySecs: webhook.retry_delay_secs,
+            timeoutSecs: webhook.timeout_secs, followRedirects: webhook.follow_redirects,
+            groupName: webhook.group_name ?? null,
+            secret: null,
+          }));
         },
       },
     ]);
@@ -256,13 +243,9 @@ export default function WebhooksScreen() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
-    try {
-      const api = getApiClient();
-      await api.deleteWebhook(deleteTarget.id);
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
-    }
+    const api = getApiClient();
+    const ok = await mutate(() => api.deleteWebhook(deleteTarget.id));
+    if (ok) setDeleteTarget(null);
   };
 
   const handleTest = async (webhook: WebhookConfigWithHealth) => {
@@ -315,27 +298,23 @@ export default function WebhooksScreen() {
   const handleEdit = async () => {
     if (!editWebhook) return;
     const isOutgoing = editWebhook.direction === 'outgoing';
-    try {
-      const api = getApiClient();
-      await api.updateWebhook(editWebhook.id, {
-        name: editName.trim() || null, template: null, enabled: editEnabled,
-        groupName: editGroupName.trim() || null, secret: null,
-        targetUrl: isOutgoing ? (editTargetUrl.trim() || null) : null,
-        httpMethod: isOutgoing ? editHttpMethod : null,
-        headers: isOutgoing ? (() => {
-          const h = mergeAuthIntoHeaders(editHeaders, editAuthType, editAuthToken, editAuthUser, editAuthPass) || {};
-          h['Content-Type'] = editContentType; return h;
-        })() : null,
-        bodyTemplate: isOutgoing ? (editBodyTemplate.trim() || null) : null,
-        maxRetries: isOutgoing ? (parseInt(editMaxRetries, 10) || 3) : null,
-        retryDelaySecs: isOutgoing ? (parseInt(editRetryDelay, 10) || 60) : null,
-        timeoutSecs: isOutgoing ? (parseInt(editTimeout, 10) || 15) : null,
-        followRedirects: isOutgoing ? editFollowRedirects : null,
-      });
-      setEditWebhook(null); fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Update failed');
-    }
+    const api = getApiClient();
+    const ok = await mutate(() => api.updateWebhook(editWebhook.id, {
+      name: editName.trim() || null, template: null, enabled: editEnabled,
+      groupName: editGroupName.trim() || null, secret: null,
+      targetUrl: isOutgoing ? (editTargetUrl.trim() || null) : null,
+      httpMethod: isOutgoing ? editHttpMethod : null,
+      headers: isOutgoing ? (() => {
+        const h = mergeAuthIntoHeaders(editHeaders, editAuthType, editAuthToken, editAuthUser, editAuthPass) || {};
+        h['Content-Type'] = editContentType; return h;
+      })() : null,
+      bodyTemplate: isOutgoing ? (editBodyTemplate.trim() || null) : null,
+      maxRetries: isOutgoing ? (parseInt(editMaxRetries, 10) || 3) : null,
+      retryDelaySecs: isOutgoing ? (parseInt(editRetryDelay, 10) || 60) : null,
+      timeoutSecs: isOutgoing ? (parseInt(editTimeout, 10) || 15) : null,
+      followRedirects: isOutgoing ? editFollowRedirects : null,
+    }));
+    if (ok) setEditWebhook(null);
   };
 
   const openDeliveries = async (wh: WebhookConfigWithHealth) => {
@@ -537,7 +516,7 @@ export default function WebhooksScreen() {
             </View>
           </View>
         )}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchData} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
         ListEmptyComponent={
           isLoading ? null : (
             <EmptyState icon="link-outline" title="No webhooks" subtitle="Create a webhook to integrate with external services" />
@@ -694,13 +673,11 @@ export default function WebhooksScreen() {
                       {
                         text: 'Regenerate', style: 'destructive',
                         onPress: async () => {
-                          try {
-                            const api = getApiClient();
+                          const api = getApiClient();
+                          await mutate(async () => {
                             const updated = await api.regenerateWebhookToken(editWebhook.id);
-                            setEditWebhook({ ...editWebhook, ...updated }); fetchData();
-                          } catch (e) {
-                            Alert.alert('Error', e instanceof Error ? e.message : 'Failed to regenerate token');
-                          }
+                            setEditWebhook({ ...editWebhook, ...updated });
+                          });
                         },
                       },
                     ]);

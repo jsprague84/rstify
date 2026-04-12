@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { getApiClient } from "../api";
 import type { Topic } from "../api";
-import { storage } from "../storage/mmkv";
-
-const FOLDERS_KEY = "channel_folders";
-const PINNED_KEY = "channel_pinned";
+import { createCache } from "../utils/cache";
 
 // --- Types ---
 
@@ -40,34 +37,27 @@ interface ChannelsState {
   getFolderedTopics: () => FolderedTopics;
 }
 
+// --- Cache instances ---
+
+const foldersCache = createCache<Folder[]>("channel_folders");
+const pinnedCache = createCache<string[]>("channel_pinned");
+
 // --- Persistence helpers ---
 
 function loadFolders(): Folder[] {
-  try {
-    const raw = storage.getString(FOLDERS_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  return foldersCache.load() ?? [];
 }
 
 function saveFolders(folders: Folder[]) {
-  storage.set(FOLDERS_KEY, JSON.stringify(folders));
+  foldersCache.save(folders);
 }
 
 function loadPinned(): string[] {
-  try {
-    const raw = storage.getString(PINNED_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+  return pinnedCache.load() ?? [];
 }
 
 function savePinned(pinned: string[]) {
-  storage.set(PINNED_KEY, JSON.stringify(pinned));
+  pinnedCache.save(pinned);
 }
 
 function isMqtt(topic: Topic): boolean {
