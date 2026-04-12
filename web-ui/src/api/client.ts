@@ -66,6 +66,12 @@ export const api = {
   getCurrentUser(): Promise<UserResponse> {
     return request('/current/user');
   },
+  changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return request('/current/user/password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+  },
 
   // Applications
   listApplications(): Promise<Application[]> {
@@ -266,5 +272,14 @@ export const api = {
   },
   updateSetting(key: string, value: string): Promise<Setting> {
     return request(`/api/settings/${key}`, { method: 'PUT', body: JSON.stringify({ value }) });
+  },
+
+  // External actions — intentional exception: executes user-defined URLs, not rstify API endpoints
+  executeMessageAction(action: { url: string; method?: string; headers?: Record<string, string>; body?: string }): Promise<Response> {
+    return fetch(action.url, {
+      method: action.method || 'POST',
+      headers: action.headers || {},
+      body: action.body,
+    });
   },
 };
