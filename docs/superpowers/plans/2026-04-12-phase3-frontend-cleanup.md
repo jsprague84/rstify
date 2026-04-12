@@ -12,6 +12,15 @@
 
 **Deferred:** `CrudPageLayout` (spec 3b) is explicitly optional/opt-in. Skip it for now — if the pattern proves useful after migrating several pages, it can be added as a follow-up. Don't build a composition helper until we know the exact shape.
 
+### Execution Rules
+
+1. **No double reload:** `useCrudResource.mutate()` already reloads after success. Page-level `onSubmit` handlers inside `FormModal` must NOT call `crud.reload()` manually — let `mutate()` own the reload.
+2. **Stable `fetchAll` references:** The `fetchAll` argument to `useCrudResource` must be wrapped in `useCallback` or defined outside the render function. An inline arrow function creates a new reference every render, causing infinite reload loops via useEffect.
+3. **FormModal owns its own async state** internally rather than consuming `useAsyncAction`. This keeps form submission behavior self-contained and avoids prop-threading.
+4. **Error display locations:** Page-level errors (`crud.error`) display as a banner at the top of the page. Modal submission errors display inside the `FormModal`. These are separate concerns.
+5. **Each page migration committed independently.** Verify the build passes before proceeding to the next page. If a migration introduces regressions, revert that single page and continue with others.
+6. **Webhooks stopping condition:** If the Webhooks refactor (Task 10) becomes complex or unstable, stop after applying `useCrudResource` + removing try-catch duplication. Component extraction can be a follow-up.
+
 ---
 
 ## File Structure
@@ -165,7 +174,9 @@ interface CrudResource<T> {
  * Does NOT manage: modal state, selection state, filtering/sorting UI, form shape.
  *
  * Usage:
- *   const crud = useCrudResource(() => api.listClients());
+ *   // fetchAll must be stable — wrap in useCallback or define outside render
+ *   const fetchClients = useCallback(() => api.listClients(), []);
+ *   const crud = useCrudResource(fetchClients);
  *   // crud.items, crud.loading, crud.error, crud.reload
  *   // const ok = await crud.mutate(() => api.deleteClient(id));
  */
@@ -538,11 +549,10 @@ Key transformation — the old inline `ClientForm` (70 lines with its own try-ca
   onClose={() => { setShowCreate(false); setEditClient(null); resetForm(); }}
   onSubmit={async () => {
     if (editClient) {
-      await api.updateClient(editClient.id, { name: formName, scopes: formScopes });
+      await crud.mutate(() => api.updateClient(editClient.id, { name: formName, scopes: formScopes }));
     } else {
-      await api.createClient({ name: formName, scopes: formScopes });
+      await crud.mutate(() => api.createClient({ name: formName, scopes: formScopes }));
     }
-    await crud.reload();
     resetForm();
   }}
   submitLabel={editClient ? 'Update' : 'Create'}
@@ -551,6 +561,8 @@ Key transformation — the old inline `ClientForm` (70 lines with its own try-ca
   {/* scopes field */}
 </FormModal>
 ```
+
+**Important:** `crud.mutate()` handles both the API call and reload. Do NOT add a separate `crud.reload()` call — that causes double network requests.
 
 - [ ] **Step 2: Verify build and test manually**
 
@@ -766,6 +778,8 @@ async executeMessageAction(action: { url: string; method?: string; headers?: Rec
 
 Then replace the direct `fetch()` in Messages.tsx with `api.executeMessageAction(action)`.
 
+**Note:** `executeMessageAction` is an intentional exception to the API boundary rule — it executes user-defined external URLs rather than backend API endpoints. It lives in the API client for consistency (no raw `fetch()` in pages) but is architecturally distinct from rstify API methods.
+
 - [ ] **Step 4: Verify build**
 
 ```bash
@@ -871,8 +885,8 @@ interface HubData<T> {
   items: T[];
   /** True during load/reload. */
   isLoading: boolean;
-  /** Re-fetch from API. */
-  refresh: () => Promise<void>;
+  /** Re-fetch from API. Alerts on error unless silent=true. */
+  refresh: (silent?: boolean) => Promise<void>;
   /** Wrap a mutation: runs fn, refreshes on success, shows Alert on failure. Returns true on success. */
   mutate: (fn: () => Promise<void>) => Promise<boolean>;
 }
@@ -881,6 +895,9 @@ interface HubData<T> {
  * Shared fetch/error/loading lifecycle for mobile hub screens.
  * Replaces the duplicated useState + useCallback + try-catch + Alert.alert pattern.
  *
+ * Initial load is silent (no Alert popup on app open).
+ * Pull-to-refresh and mutations show Alerts on failure.
+ *
  * Usage:
  *   const { items, isLoading, refresh, mutate } = useHubData(() => api.listClients());
  */
@@ -888,20 +905,23 @@ export function useHubData<T>(fetchFn: () => Promise<T[]>): HubData<T> {
   const [items, setItems] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     setIsLoading(true);
     try {
       const data = await fetchFn();
       setItems(data);
     } catch (e) {
-      Alert.alert('Error', normalizeError(e));
+      if (!silent) {
+        Alert.alert('Error', normalizeError(e));
+      }
     } finally {
       setIsLoading(false);
     }
   }, [fetchFn]);
 
+  // Initial load is silent — no Alert popup if server is unreachable at startup
   useEffect(() => {
-    refresh();
+    refresh(true);
   }, [refresh]);
 
   const mutate = useCallback(
