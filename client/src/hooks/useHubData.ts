@@ -15,7 +15,7 @@ interface HubData<T> {
   /** Re-fetch from API. Alerts on error unless silent=true. */
   refresh: (silent?: boolean) => Promise<void>;
   /** Wrap a mutation: runs fn, refreshes on success, shows Alert on failure. Returns true on success. */
-  mutate: (fn: () => Promise<void>) => Promise<boolean>;
+  mutate: (fn: () => Promise<unknown>) => Promise<boolean>;
 }
 
 /**
@@ -52,7 +52,7 @@ export function useHubData<T>(fetchFn: () => Promise<T[]>): HubData<T> {
   }, [refresh]);
 
   const mutate = useCallback(
-    async (fn: () => Promise<void>): Promise<boolean> => {
+    async (fn: () => Promise<unknown>): Promise<boolean> => {
       try {
         await fn();
         await refresh();

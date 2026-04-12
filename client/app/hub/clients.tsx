@@ -16,6 +16,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
 import { SectionLabel } from '../../src/components/design/SectionLabel';
+import { useHubData } from '../../src/hooks/useHubData';
 import { getApiClient } from '../../src/api';
 import type { Client } from '../../src/api';
 import {
@@ -24,14 +25,18 @@ import {
 } from '../../src/services/notifications';
 
 export default function ClientsScreen() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [pushStatus, setPushStatus] = useState<string>('Checking...');
 
   // Create token form
   const [showCreate, setShowCreate] = useState(false);
   const [newTokenName, setNewTokenName] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
+
+  const fetchClients = useCallback(() => {
+    const api = getApiClient();
+    return api.listClients();
+  }, []);
+  const { items: clients, isLoading, refresh, mutate } = useHubData(fetchClients);
 
   useEffect(() => {
     (async () => {
@@ -44,29 +49,13 @@ export default function ClientsScreen() {
     })();
   }, []);
 
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const api = getApiClient();
-      const list = await api.listClients();
-      setClients(list);
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to load clients');
-    } finally { setIsLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
   const handleCreateToken = async () => {
     if (!newTokenName.trim()) return;
-    try {
-      const api = getApiClient();
-      await api.createClient({ name: newTokenName.trim(), scopes: null });
+    const api = getApiClient();
+    const ok = await mutate(() => api.createClient({ name: newTokenName.trim(), scopes: null }));
+    if (ok) {
       setNewTokenName('');
       setShowCreate(false);
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create');
     }
   };
 
@@ -74,13 +63,9 @@ export default function ClientsScreen() {
 
   const confirmDeleteClient = async () => {
     if (!deleteTarget) return;
-    try {
-      const api = getApiClient();
-      await api.deleteClient(deleteTarget.id);
-      fetchData();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
-    }
+    const api = getApiClient();
+    const ok = await mutate(() => api.deleteClient(deleteTarget.id));
+    if (ok) setDeleteTarget(null);
   };
 
   const handleRegisterPush = async (clientId: number) => {
@@ -145,7 +130,7 @@ export default function ClientsScreen() {
             </View>
           </View>
         )}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={fetchData} />}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
         ListEmptyComponent={
           isLoading ? null : (
             <EmptyState icon="key-outline" title="No client tokens" subtitle="Create a token to authenticate API clients" />

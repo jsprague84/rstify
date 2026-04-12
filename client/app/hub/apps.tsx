@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   FlatList,
@@ -16,6 +16,7 @@ import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 import { ConfirmSheet } from '../../src/components/design/ConfirmSheet';
+import { useHubData } from '../../src/hooks/useHubData';
 import { getApiClient } from '../../src/api';
 import type { Application } from '../../src/api';
 import * as Clipboard from 'expo-clipboard';
@@ -42,8 +43,6 @@ function AppIconView({ app }: { app: Application }) {
 }
 
 export default function AppsScreen() {
-  const [apps, setApps] = useState<Application[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [newAppName, setNewAppName] = useState('');
   const [newAppDesc, setNewAppDesc] = useState('');
@@ -56,38 +55,27 @@ export default function AppsScreen() {
   const { fetchApplications } = useApplicationsStore();
 
   const fetchApps = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const api = getApiClient();
-      const result = await api.listApplications();
-      setApps(result);
-      fetchApplications();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to load apps');
-    } finally {
-      setIsLoading(false);
-    }
+    const api = getApiClient();
+    const result = await api.listApplications();
+    fetchApplications();
+    return result;
   }, [fetchApplications]);
-
-  useEffect(() => {
-    fetchApps();
-  }, [fetchApps]);
+  const { items: apps, isLoading, refresh, mutate } = useHubData(fetchApps);
 
   const handleCreateApp = async () => {
     if (!newAppName.trim()) return;
-    try {
-      const api = getApiClient();
-      await api.createApplication({
+    const api = getApiClient();
+    const ok = await mutate(() =>
+      api.createApplication({
         name: newAppName.trim(),
         description: newAppDesc.trim() || null,
         default_priority: null,
-      });
+      }),
+    );
+    if (ok) {
       setNewAppName('');
       setNewAppDesc('');
       setShowCreate(false);
-      fetchApps();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create app');
     }
   };
 
@@ -109,32 +97,25 @@ export default function AppsScreen() {
 
   const handleEditApp = async () => {
     if (!editApp || !editName.trim()) return;
-    try {
-      const api = getApiClient();
-      await api.updateApplication(editApp.id, {
+    const api = getApiClient();
+    const ok = await mutate(() =>
+      api.updateApplication(editApp.id, {
         name: editName.trim(),
         description: editDesc.trim() || null,
         default_priority: parseInt(editPriority) || 5,
         retention_days: null,
-      });
-      setEditApp(null);
-      fetchApps();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Update failed');
-    }
+      }),
+    );
+    if (ok) setEditApp(null);
   };
 
   const handleDeleteApp = (app: Application) => setDeleteTarget(app);
 
   const confirmDeleteApp = async () => {
     if (!deleteTarget) return;
-    try {
-      const api = getApiClient();
-      await api.deleteApplication(deleteTarget.id);
-      fetchApps();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Delete failed');
-    }
+    const api = getApiClient();
+    const ok = await mutate(() => api.deleteApplication(deleteTarget.id));
+    if (ok) setDeleteTarget(null);
   };
 
   return (
@@ -177,7 +158,7 @@ export default function AppsScreen() {
           </View>
         )}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={fetchApps} />
+          <RefreshControl refreshing={isLoading} onRefresh={refresh} />
         }
         ListEmptyComponent={
           isLoading ? null : (
