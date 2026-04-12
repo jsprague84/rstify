@@ -1,6 +1,6 @@
-use axum::body::to_bytes;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use http_body_util::BodyExt;
 use rstify_api::error::ApiError;
 use rstify_core::error::CoreError;
 
@@ -106,9 +106,12 @@ fn internal_replaces_message_with_generic() {
 /// Helper: call `into_response()` and collect the full body as bytes.
 async fn body_bytes(err: ApiError) -> bytes::Bytes {
     let response = err.into_response();
-    to_bytes(response.into_body(), usize::MAX)
+    response
+        .into_body()
+        .collect()
         .await
         .expect("failed to read response body")
+        .to_bytes()
 }
 
 #[tokio::test]
@@ -207,9 +210,12 @@ async fn into_response_http_status_code_matches_json_error_code() {
         let expected_code = api_err.status.as_u16();
         let response = api_err.into_response();
         let http_status = response.status().as_u16();
-        let raw = to_bytes(response.into_body(), usize::MAX)
+        let raw = response
+            .into_body()
+            .collect()
             .await
-            .expect("body read failed");
+            .expect("body read failed")
+            .to_bytes();
         let value: serde_json::Value = serde_json::from_slice(&raw).unwrap();
         let json_code = value["errorCode"].as_u64().unwrap() as u16;
 

@@ -36,3 +36,4 @@ ts-rs = { workspace = true }
 tokio = { workspace = true }
 bytes = "1"
 serde_json = { workspace = true }
+http-body-util = "0.1"
