@@ -82,7 +82,7 @@ jobs:
           echo '// Auto-generated barrel export — do not hand-edit' > shared/generated/index.ts
           echo '// Re-run: just generate-types' >> shared/generated/index.ts
           echo '' >> shared/generated/index.ts
-          for f in shared/generated/*.ts; do
+          ls shared/generated/*.ts | LC_ALL=C sort | while read f; do
             name=$(basename "$f" .ts)
             [ "$name" = "index" ] && continue
             echo "export * from \"./$name\";" >> shared/generated/index.ts
