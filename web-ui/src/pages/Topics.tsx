@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
-import type { Topic, CreateTopic, MessageResponse } from '../api/types';
+import type { Topic, CreateTopic, MessageResponse } from 'shared';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import MessageContent from '../components/MessageContent';
 import { useToast } from '../components/Toast';
-import { formatLocalTime } from '../utils/time';
+import { formatLocalTime } from 'shared';
 import PriorityBadge from '../components/PriorityBadge';
 
 export default function Topics() {
@@ -163,7 +163,7 @@ function TopicForm({ onSubmit, onClose }: { onSubmit: (d: CreateTopic) => Promis
     try {
       await onSubmit({
         name: form.name,
-        description: form.description || undefined,
+        description: form.description || null,
         everyone_read: form.everyone_read,
         everyone_write: form.everyone_write,
       });

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
-import type { StatsResponse, HealthResponse, VersionResponse, MqttStatus } from '../api/types';
+import type { StatsResponse, HealthResponse, VersionResponse, MqttStatusResponse } from 'shared';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Dashboard() {
@@ -8,7 +8,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [version, setVersion] = useState<VersionResponse | null>(null);
-  const [mqttStatus, setMqttStatus] = useState<MqttStatus | null>(null);
+  const [mqttStatus, setMqttStatus] = useState<MqttStatusResponse | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function Dashboard() {
   );
 }
 
-function MqttStatusCard({ status }: { status: MqttStatus }) {
+function MqttStatusCard({ status }: { status: MqttStatusResponse }) {
   if (!status.enabled) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mt-4">

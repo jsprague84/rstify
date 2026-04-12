@@ -1,18 +1,18 @@
 import type {
-  User, CreateUser, UpdateUser,
+  UserResponse, CreateUser, UpdateUser,
   Application, CreateApplication, UpdateApplication,
   Client, CreateClient, UpdateClient,
   Topic, CreateTopic,
   TopicPermission, CreateTopicPermission,
   PagedMessages, MessageResponse, AttachmentInfo,
-  WebhookConfig, CreateWebhookConfig, UpdateWebhookConfig,
+  WebhookConfig, WebhookConfigWithHealth, CreateWebhookConfig, UpdateWebhookConfig,
   WebhookDeliveryLog, WebhookTestResult,
   WebhookVariable, CreateWebhookVariable, UpdateWebhookVariable,
-  MqttBridge, CreateMqttBridge, UpdateMqttBridge, MqttStatus,
+  MqttBridge, CreateMqttBridge, UpdateMqttBridge, MqttStatusResponse,
   StatsResponse, LoginResponse,
   HealthResponse, VersionResponse,
   Setting,
-} from './types';
+} from 'shared';
 
 const BASE = '';
 
@@ -51,19 +51,19 @@ export const api = {
   },
 
   // Users
-  listUsers(): Promise<User[]> {
+  listUsers(): Promise<UserResponse[]> {
     return request('/user');
   },
-  createUser(data: CreateUser): Promise<User> {
+  createUser(data: CreateUser): Promise<UserResponse> {
     return request('/user', { method: 'POST', body: JSON.stringify(data) });
   },
-  updateUser(id: number, data: UpdateUser): Promise<User> {
+  updateUser(id: number, data: UpdateUser): Promise<UserResponse> {
     return request(`/user/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },
   deleteUser(id: number): Promise<void> {
     return request(`/user/${id}`, { method: 'DELETE' });
   },
-  getCurrentUser(): Promise<User> {
+  getCurrentUser(): Promise<UserResponse> {
     return request('/current/user');
   },
 
@@ -150,7 +150,7 @@ export const api = {
   },
 
   // Webhooks
-  listWebhooks(): Promise<WebhookConfig[]> {
+  listWebhooks(): Promise<WebhookConfigWithHealth[]> {
     return request('/api/webhooks');
   },
   createWebhook(data: CreateWebhookConfig): Promise<WebhookConfig> {
@@ -239,7 +239,7 @@ export const api = {
   },
 
   // MQTT
-  getMqttStatus(): Promise<MqttStatus> {
+  getMqttStatus(): Promise<MqttStatusResponse> {
     return request('/api/mqtt/status');
   },
   listBridges(): Promise<MqttBridge[]> {

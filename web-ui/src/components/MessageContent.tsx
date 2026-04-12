@@ -1,16 +1,23 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
+import type { JsonValue } from 'shared';
 
 interface MessageContentProps {
   message: string;
-  extras?: Record<string, any>;
+  extras?: JsonValue | null;
   contentType?: string | null;
+}
+
+function extrasObj(extras: JsonValue | null | undefined): Record<string, any> | null {
+  if (extras && typeof extras === 'object' && !Array.isArray(extras)) return extras as Record<string, any>;
+  return null;
 }
 
 export default function MessageContent({ message, extras, contentType }: MessageContentProps) {
   // Check if message should be rendered as markdown
-  const isMarkdown = contentType === 'text/markdown' || extras?.['client::display']?.contentType === 'text/markdown';
+  const ex = extrasObj(extras);
+  const isMarkdown = contentType === 'text/markdown' || ex?.['client::display']?.contentType === 'text/markdown';
 
   if (isMarkdown) {
     return (
