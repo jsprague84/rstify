@@ -142,7 +142,9 @@ async fn list_messages_with_limit() {
 
     assert_eq!(resp.status(), StatusCode::OK);
     let body = common::body_json(resp).await;
-    let messages = body["messages"].as_array().expect("Expected messages array");
+    let messages = body["messages"]
+        .as_array()
+        .expect("Expected messages array");
     assert_eq!(messages.len(), 1, "limit=1 should return exactly 1 message");
     assert_eq!(body["paging"]["limit"], 1, "Paging limit should reflect 1");
 }
@@ -180,7 +182,9 @@ async fn delete_message() {
         .await
         .unwrap();
     let body = common::body_json(list_resp).await;
-    let messages = body["messages"].as_array().expect("Expected messages array");
+    let messages = body["messages"]
+        .as_array()
+        .expect("Expected messages array");
     assert!(
         !messages.iter().any(|m| m["id"] == msg_id),
         "Deleted message should not appear in list"
@@ -196,10 +200,8 @@ async fn delete_message_forbidden() {
     let app = common::setup().await;
 
     // Admin (user 1) owns this application and its message
-    let (admin_app_id, _) =
-        common::seed::create_application(&app.pool, 1, "admin-app").await;
-    let msg_id =
-        common::seed::create_message(&app.pool, admin_app_id, 1, "admin msg").await;
+    let (admin_app_id, _) = common::seed::create_application(&app.pool, 1, "admin-app").await;
+    let msg_id = common::seed::create_message(&app.pool, admin_app_id, 1, "admin msg").await;
 
     // Regular user (user 2) attempts to delete it
     let resp = app
@@ -231,10 +233,7 @@ async fn search_messages() {
     let resp = app
         .router
         .clone()
-        .oneshot(common::get(
-            "/message/search?q=uniqueterm",
-            &app.user_token,
-        ))
+        .oneshot(common::get("/message/search?q=uniqueterm", &app.user_token))
         .await
         .unwrap();
 

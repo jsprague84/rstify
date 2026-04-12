@@ -27,10 +27,7 @@ async fn login_with_valid_credentials() {
         body.get("token").is_some(),
         "Expected 'token' field in login response"
     );
-    assert!(
-        body["token"].is_string(),
-        "Expected 'token' to be a string"
-    );
+    assert!(body["token"].is_string(), "Expected 'token' to be a string");
     assert!(
         !body["token"].as_str().unwrap().is_empty(),
         "Expected non-empty token"
