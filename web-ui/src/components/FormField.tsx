@@ -12,6 +12,10 @@ interface TextFieldProps extends BaseProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  helpText?: string;
 }
 
 interface TextareaProps extends BaseProps {
@@ -20,6 +24,7 @@ interface TextareaProps extends BaseProps {
   onChange: (value: string) => void;
   placeholder?: string;
   rows?: number;
+  helpText?: string;
 }
 
 interface SelectProps extends BaseProps {
@@ -27,12 +32,14 @@ interface SelectProps extends BaseProps {
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
+  helpText?: string;
 }
 
 interface CheckboxProps extends BaseProps {
   type: 'checkbox';
   checked: boolean;
   onChange: (checked: boolean) => void;
+  helpText?: string;
 }
 
 export type FormFieldProps = TextFieldProps | TextareaProps | SelectProps | CheckboxProps;
@@ -43,6 +50,7 @@ export type FormFieldProps = TextFieldProps | TextareaProps | SelectProps | Chec
  */
 export function FormField(props: FormFieldProps) {
   const { label, error, required, className = '' } = props;
+  const helpText = 'helpText' in props ? props.helpText : undefined;
 
   const inputClasses =
     'w-full px-3 py-2 border rounded bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500';
@@ -91,6 +99,9 @@ export function FormField(props: FormFieldProps) {
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
         placeholder={props.placeholder}
+        min={props.min}
+        max={props.max}
+        step={props.step}
         className={inputClasses}
       />
     );
@@ -104,6 +115,7 @@ export function FormField(props: FormFieldProps) {
       </label>
       {input}
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      {helpText && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{helpText}</p>}
     </div>
   );
 }
