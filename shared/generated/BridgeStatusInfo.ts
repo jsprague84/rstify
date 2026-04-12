@@ -3,4 +3,4 @@
 /**
  * Status info for a single bridge.
  */
-export type BridgeStatusInfo = { id: bigint, name: string, connected: boolean, };
+export type BridgeStatusInfo = { id: number, name: string, connected: boolean, };

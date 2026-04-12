@@ -3,4 +3,4 @@
 /**
  * Lightweight attachment info included in message responses
  */
-export type AttachmentInfo = { id: bigint, name: string, type: string | null, size: bigint, url: string, };
+export type AttachmentInfo = { id: number, name: string, type: string | null, size: number, url: string, };
