@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../api/client';
+import type { Setting } from 'shared';
 import { useToast } from '../components/Toast';
+import { useAsyncAction } from '../hooks/useAsyncAction';
 
 const inputCls = "w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white";
 
 export default function Settings() {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
 
   return (
     <div>
@@ -25,7 +27,7 @@ export default function Settings() {
         {/* Password change */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 p-4">
           <h3 className="text-lg font-semibold dark:text-white mb-3">Change Password</h3>
-          <PasswordChangeForm token={token} />
+          <PasswordChangeForm />
         </div>
 
         {/* Admin: inbox threshold */}
@@ -38,7 +40,7 @@ export default function Settings() {
 function InboxThresholdForm() {
   const { toast } = useToast();
   const [threshold, setThreshold] = useState('5');
-  const [loading, setLoading] = useState(false);
+  const saveAction = useAsyncAction<Setting>();
 
   useEffect(() => {
     api.listSettings().then(settings => {
@@ -48,14 +50,11 @@ function InboxThresholdForm() {
   }, []);
 
   const handleSave = async () => {
-    setLoading(true);
-    try {
-      await api.updateSetting('inbox_priority_threshold', threshold);
+    const result = await saveAction.execute(() => api.updateSetting('inbox_priority_threshold', threshold));
+    if (result) {
       toast('Threshold updated', 'success');
-    } catch (err) {
-      toast(err instanceof Error ? err.message : 'Failed to update threshold', 'error');
-    } finally {
-      setLoading(false);
+    } else {
+      toast('Failed to update threshold', 'error');
     }
   };
 
@@ -77,71 +76,58 @@ function InboxThresholdForm() {
         </div>
         <button
           onClick={handleSave}
-          disabled={loading}
+          disabled={saveAction.loading}
           className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50 hover:bg-indigo-700"
         >
-          {loading ? 'Saving...' : 'Save'}
+          {saveAction.loading ? 'Saving...' : 'Save'}
         </button>
       </div>
     </div>
   );
 }
 
-function PasswordChangeForm({ token }: { token: string | null }) {
+function PasswordChangeForm() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
   const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
+  const passwordAction = useAsyncAction<true>();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setValidationError('');
     setSuccess('');
+    passwordAction.clearError();
 
     if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters');
+      setValidationError('New password must be at least 8 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setValidationError('Passwords do not match');
       return;
     }
 
-    setLoading(true);
-    try {
-      const res = await fetch('/current/user/password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: res.statusText }));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
+    const ok = await passwordAction.execute(async () => { await api.changePassword(currentPassword, newPassword); return true as const; });
+    if (ok) {
       setSuccess('Password changed successfully');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to change password');
-    } finally {
-      setLoading(false);
     }
   };
 
+  const displayError = validationError || passwordAction.error;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
+      {displayError && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{displayError}</div>}
       {success && <div className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-2 rounded text-sm">{success}</div>}
       <input type="password" placeholder="Current password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className={inputCls} />
       <input type="password" placeholder="New password (min 8 chars)" required value={newPassword} onChange={e => setNewPassword(e.target.value)} className={inputCls} />
       <input type="password" placeholder="Confirm new password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className={inputCls} />
-      <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50 hover:bg-indigo-700">
+      <button type="submit" disabled={passwordAction.loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50 hover:bg-indigo-700">
         Change Password
       </button>
     </form>
