@@ -1,1 +1,6 @@
-export { normalizeUtcDate, formatLocalTime, formatTimeAgo } from './time';
+export {
+  normalizeUtcDate,
+  formatLocalTime,
+  formatTimeAgo,
+  formatTimeAgoCompact,
+} from './time';
