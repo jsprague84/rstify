@@ -2623,6 +2623,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "tokio-stream",
+ "tower",
  "tower-http",
  "tracing",
  "ts-rs",

@@ -121,8 +121,7 @@ async fn into_response_not_found_json_shape() {
         message: "topic not found".into(),
     };
     let raw = body_bytes(err).await;
-    let value: serde_json::Value =
-        serde_json::from_slice(&raw).expect("body is not valid JSON");
+    let value: serde_json::Value = serde_json::from_slice(&raw).expect("body is not valid JSON");
 
     assert_eq!(value["error"], "topic not found");
     assert_eq!(value["errorCode"], 404u16);
