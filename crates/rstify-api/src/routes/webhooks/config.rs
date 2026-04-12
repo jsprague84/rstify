@@ -7,6 +7,7 @@ use rstify_core::error::CoreError;
 use rstify_core::models::{CreateWebhookConfig, UpdateWebhookConfig, WebhookConfig};
 use rstify_core::repositories::{MessageRepository, TopicRepository};
 use serde::Serialize;
+use ts_rs::TS;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
@@ -87,7 +88,8 @@ pub async fn create_webhook(
     Ok(Json(config))
 }
 
-#[derive(Serialize, utoipa::ToSchema)]
+#[derive(Debug, Serialize, utoipa::ToSchema, TS)]
+#[ts(export)]
 pub struct WebhookConfigWithHealth {
     #[serde(flatten)]
     pub config: WebhookConfig,

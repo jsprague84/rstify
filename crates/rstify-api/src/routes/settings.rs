@@ -1,19 +1,23 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
 use rstify_core::error::CoreError;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct Setting {
     pub key: String,
     pub value: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct UpdateSetting {
     pub value: String,
 }

@@ -5,18 +5,21 @@ use rstify_auth::tokens::create_jwt;
 use rstify_core::repositories::UserRepository;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 use crate::error::ApiError;
 use crate::state::AppState;
 
-#[derive(Debug, Deserialize, ToSchema)]
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[ts(export)]
 pub struct LoginRequest {
     pub username: String,
     pub password: String,
 }
 
-#[derive(Debug, Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct LoginResponse {
     pub token: String,
 }

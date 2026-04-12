@@ -4,13 +4,15 @@ use rstify_core::models::{CreateMqttBridge, MqttBridge, UpdateMqttBridge};
 use rstify_core::repositories::MqttBridgeRepository;
 use rstify_mqtt::bridge::BridgeStatusInfo;
 use serde::Serialize;
+use ts_rs::TS;
 use utoipa::ToSchema;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
 
-#[derive(Serialize, ToSchema)]
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
 pub struct MqttStatusResponse {
     pub enabled: bool,
     pub listen_addr: Option<String>,

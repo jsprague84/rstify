@@ -4,7 +4,9 @@ use axum::Json;
 use rstify_core::models::{MessageResponse, WebhookDeliveryLog};
 use rstify_core::repositories::MessageRepository;
 use rstify_jobs::outgoing_webhooks::fire_single_outgoing_webhook;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
@@ -81,7 +83,8 @@ pub async fn list_webhook_deliveries(
     Ok(Json(logs))
 }
 
-#[derive(Deserialize, Default, utoipa::ToSchema)]
+#[derive(Debug, Deserialize, Default, ToSchema, TS)]
+#[ts(export)]
 pub struct TestWebhookPayload {
     pub title: Option<String>,
     pub message: Option<String>,
@@ -89,15 +92,36 @@ pub struct TestWebhookPayload {
     pub topic: Option<String>,
 }
 
+#[derive(Debug, Serialize, ToSchema, TS)]
+#[ts(export)]
+pub struct WebhookTestResult {
+    pub success: bool,
+    pub direction: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_code: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_preview: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_headers: Option<std::collections::HashMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duration_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub webhook_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub curl_example: Option<String>,
+}
+
 /// POST /api/webhooks/{id}/test - Send a test delivery for a webhook
-#[utoipa::path(post, path = "/api/webhooks/{id}/test", responses((status = 200)))]
+#[utoipa::path(post, path = "/api/webhooks/{id}/test", responses((status = 200, body = WebhookTestResult)))]
 pub async fn test_webhook(
     State(state): State<AppState>,
     auth: AuthUser,
     headers: HeaderMap,
     Path(id): Path<i64>,
     payload: Option<Json<TestWebhookPayload>>,
-) -> Result<Json<serde_json::Value>, ApiError> {
+) -> Result<Json<WebhookTestResult>, ApiError> {
     let payload = payload.map(|p| p.0).unwrap_or_default();
     let host = headers
         .get("host")
@@ -150,20 +174,29 @@ pub async fn test_webhook(
         match result {
             Ok(detail) => {
                 let success = (200..300).contains(&(detail.status as i32));
-                Ok(Json(serde_json::json!({
-                    "success": success,
-                    "direction": "outgoing",
-                    "status_code": detail.status,
-                    "response_preview": detail.response_body,
-                    "response_headers": detail.response_headers,
-                    "duration_ms": detail.duration_ms,
-                })))
+                Ok(Json(WebhookTestResult {
+                    success,
+                    direction: "outgoing".to_string(),
+                    status_code: Some(detail.status),
+                    response_preview: detail.response_body,
+                    response_headers: Some(detail.response_headers),
+                    duration_ms: Some(detail.duration_ms),
+                    error: None,
+                    webhook_url: None,
+                    curl_example: None,
+                }))
             }
-            Err(err) => Ok(Json(serde_json::json!({
-                "success": false,
-                "direction": "outgoing",
-                "error": err,
-            }))),
+            Err(err) => Ok(Json(WebhookTestResult {
+                success: false,
+                direction: "outgoing".to_string(),
+                status_code: None,
+                response_preview: None,
+                response_headers: None,
+                duration_ms: None,
+                error: Some(err),
+                webhook_url: None,
+                curl_example: None,
+            })),
         }
     } else {
         // For incoming webhooks, return the URL and a sample curl command
@@ -172,11 +205,16 @@ pub async fn test_webhook(
             r#"curl -X POST {} -H "Content-Type: application/json" -d '{{"title":"Test","message":"Hello from webhook test"}}'"#,
             webhook_url
         );
-        Ok(Json(serde_json::json!({
-            "success": true,
-            "direction": "incoming",
-            "webhook_url": webhook_url,
-            "curl_example": curl_cmd,
-        })))
+        Ok(Json(WebhookTestResult {
+            success: true,
+            direction: "incoming".to_string(),
+            status_code: None,
+            response_preview: None,
+            response_headers: None,
+            duration_ms: None,
+            error: None,
+            webhook_url: Some(webhook_url),
+            curl_example: Some(curl_cmd),
+        }))
     }
 }
