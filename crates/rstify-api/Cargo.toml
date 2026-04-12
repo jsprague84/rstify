@@ -31,3 +31,14 @@ url = "2.5.8"
 hmac = "0.12"
 sha2 = "0.10"
 ts-rs = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+bytes = "1"
+serde_json = { workspace = true }
+http-body-util = "0.1"
+tower = { workspace = true }
+rstify-db = { workspace = true }
+rstify-auth = { workspace = true }
+uuid = { workspace = true }
+sqlx = { workspace = true }

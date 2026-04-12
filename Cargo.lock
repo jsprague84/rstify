@@ -2602,9 +2602,11 @@ name = "rstify-api"
 version = "0.1.0"
 dependencies = [
  "axum 0.8.8",
+ "bytes",
  "chrono",
  "futures",
  "hmac",
+ "http-body-util",
  "humantime",
  "jsonwebtoken",
  "mime_guess",
@@ -2621,6 +2623,7 @@ dependencies = [
  "sqlx",
  "tokio",
  "tokio-stream",
+ "tower",
  "tower-http",
  "tracing",
  "ts-rs",

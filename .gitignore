@@ -15,3 +15,5 @@ easKey
 .worktrees/
 # Superpowers brainstorming
 .superpowers/
+# ts-rs default bindings output (canonical output is in shared/generated/)
+crates/*/bindings/
