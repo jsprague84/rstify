@@ -55,7 +55,7 @@ The mobile app uses NativeWind v4.2.3. v5 is preview-only and incompatible.
 ### Backend → Frontend Field Naming
 - Backend uses `snake_case` with `#[serde(rename_all = "camelCase")]` and `#[serde(alias = "...")]`
 - Frontend TypeScript types must match the serialized JSON field names
-- When adding fields to backend models, update BOTH `web-ui/src/api/types.ts` AND `client/src/api/types.ts`
+- When adding fields to backend models, re-run `just generate-types` to update the shared TypeScript types
 
 ### New Migration Checklist
 1. Create `migrations/NNN_name.sql`
