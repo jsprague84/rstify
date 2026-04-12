@@ -61,7 +61,7 @@ The mobile app uses NativeWind v4.2.3. v5 is preview-only and incompatible.
 1. Create `migrations/NNN_name.sql`
 2. Register in `crates/rstify-db/src/pool.rs` migrations array
 3. Update Rust model structs
-4. Update TypeScript types (web UI + mobile)
+4. Re-run `just generate-types` and verify shared output
 5. Update API client methods if needed
 
 ## Tech Stack
