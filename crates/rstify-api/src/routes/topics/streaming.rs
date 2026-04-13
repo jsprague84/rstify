@@ -108,6 +108,7 @@ pub async fn publish_to_topic(
 }
 
 /// WebSocket for topic subscription
+#[utoipa::path(get, path = "/api/topics/{name}/ws", responses((status = 101, description = "WebSocket upgrade")))]
 pub async fn topic_websocket(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -165,6 +166,11 @@ pub async fn topic_websocket(
 }
 
 /// JSON stream for topic (long-polling style)
+#[utoipa::path(
+    get,
+    path = "/api/topics/{name}/json",
+    responses((status = 200, body = Vec<MessageResponse>))
+)]
 pub async fn topic_json_stream(
     State(state): State<AppState>,
     auth: AuthUser,

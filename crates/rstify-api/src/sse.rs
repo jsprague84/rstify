@@ -11,6 +11,7 @@ use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
 
+#[utoipa::path(get, path = "/api/topics/{name}/sse", responses((status = 200, description = "Server-Sent Events stream", content_type = "text/event-stream")))]
 pub async fn topic_sse(
     State(state): State<AppState>,
     auth: AuthUser,
