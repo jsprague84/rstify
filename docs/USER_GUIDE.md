@@ -3,7 +3,7 @@
 **Complete guide to using rstify - A Gotify-compatible notification server with enhanced features**
 
 Version: 0.1.0
-Last Updated: 2026-03-08
+Last Updated: 2026-04-08
 
 ---
 
@@ -769,6 +769,8 @@ alerts          # Exact match only
 
 ## API Reference
 
+Interactive API documentation is available via Swagger UI at `/docs` on your rstify instance (e.g., `https://your-rstify.com/docs`). The raw OpenAPI spec is at `/docs/openapi.json`.
+
 ### Authentication
 
 **JWT Login:**
@@ -1116,13 +1118,14 @@ curl -X POST https://rstify.com/api/webhooks \
 ### Environment Variables
 
 ```bash
-DATABASE_URL=sqlite://./rstify.db
-RUST_LOG=info
-HOST=0.0.0.0
-PORT=8080
+JWT_SECRET=your-secret-key-here     # Required, >= 32 bytes
+LISTEN_ADDR=0.0.0.0:8080
+DATABASE_URL=sqlite://rstify.db
 UPLOAD_DIR=./uploads
-JWT_SECRET=your-secret-key-here
+RUST_LOG=info
 ```
+
+See the [Configuration Reference](CONFIGURATION.md) for the full list including SMTP, FCM, MQTT, CORS, and rate limiting options.
 
 ### File Locations
 
@@ -1147,6 +1150,6 @@ JWT_SECRET=your-secret-key-here
 For more information:
 - GitHub: https://github.com/your-repo/rstify
 - Documentation: https://your-rstify.com/docs
-- API Docs: https://your-rstify.com/swagger-ui
+- API Docs: https://your-rstify.com/docs
 
 Happy notifying! 🚀

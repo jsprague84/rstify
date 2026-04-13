@@ -2,16 +2,28 @@
 
 All configuration is done via environment variables. Copy `.env.example` to `.env` for local development.
 
+All variables below are loaded by the centralized config module (`crates/rstify-server/src/config.rs`) at startup. Invalid values produce clear error messages instead of falling back to defaults silently.
+
 ## Server
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `LISTEN_ADDR` | `0.0.0.0:8080` | Address and port to bind the HTTP server |
-| `DATABASE_URL` | `sqlite://rstify.db` | SQLite database file path |
-| `JWT_SECRET` | `change-me-in-production` | Secret for signing JWT tokens. **Must be >= 32 bytes in production** |
 | `UPLOAD_DIR` | `./uploads` | Directory for uploaded files (icons, attachments) |
 | `RSTIFY_MAX_ATTACHMENT_SIZE` | `26214400` (25 MiB) | Maximum upload size in bytes for file attachments |
-| `RUST_LOG` | `info` | Log level filter (trace, debug, info, warn, error) |
+| `RUST_LOG` | `info` | Log level filter (trace, debug, info, warn, error). Not part of the centralized config but used by the tracing subscriber |
+
+## Database
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `sqlite://rstify.db` | SQLite database file path |
+
+## Authentication
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `JWT_SECRET` | *(required)* | Secret for signing JWT tokens. **Must be >= 32 bytes.** The server will refuse to start if this is missing or too short |
 
 ## CORS
 

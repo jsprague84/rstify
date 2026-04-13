@@ -56,6 +56,7 @@ pub async fn version() -> Json<VersionResponse> {
 }
 
 /// GET /metrics - Prometheus-format metrics
+#[utoipa::path(get, path = "/metrics", responses((status = 200, description = "Prometheus metrics", content_type = "text/plain")))]
 pub async fn metrics(State(state): State<AppState>) -> impl IntoResponse {
     let requests = state.metrics.http_requests_total.load(Ordering::Relaxed);
     let messages = state.metrics.messages_created_total.load(Ordering::Relaxed);

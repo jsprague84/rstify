@@ -43,8 +43,17 @@ Key variables:
 |----------|---------|-------------|
 | `LISTEN_ADDR` | `0.0.0.0:8080` | HTTP server bind address |
 | `DATABASE_URL` | `sqlite://rstify.db` | SQLite database path |
-| `JWT_SECRET` | *(insecure default)* | JWT signing secret (>= 32 bytes) |
+| `JWT_SECRET` | *(required)* | JWT signing secret (>= 32 bytes) |
+| `UPLOAD_DIR` | `./uploads` | Directory for uploaded files |
+| `RSTIFY_MAX_ATTACHMENT_SIZE` | `26214400` (25 MiB) | Maximum upload size in bytes |
 | `MQTT_ENABLED` | `false` | Enable integrated MQTT broker |
+| `CORS_ORIGINS` | *(unset)* | Comma-separated allowed origins |
+| `RATE_LIMIT_BURST` | `60` | Max burst capacity per IP |
+| `RATE_LIMIT_RPS` | `10.0` | Token refill rate per second |
+| `SMTP_HOST` | *(unset)* | SMTP host (enables email notifications) |
+| `FCM_PROJECT_ID` | *(unset)* | Firebase project ID (with `FCM_SERVICE_ACCOUNT_PATH` enables push) |
+
+See the [Configuration Reference](docs/CONFIGURATION.md) for the complete list including SMTP, FCM, MQTT, and CORS options.
 
 ## Documentation
 
@@ -62,20 +71,27 @@ Documentation is also available in the web UI under the **Documentation** sectio
 
 ```
 crates/
-  rstify-server/    # Binary entry point, config, telemetry
-  rstify-api/       # Axum HTTP handlers, WebSocket, SSE
+  rstify-server/    # Binary entry point, centralized config, telemetry
+  rstify-api/       # Axum HTTP handlers, WebSocket, SSE, OpenAPI spec
   rstify-core/      # Models, traits, domain logic
   rstify-db/        # SQLite repositories, migrations
   rstify-auth/      # Password hashing, JWT
   rstify-jobs/      # Background jobs, outgoing webhooks, email
   rstify-mqtt/      # MQTT broker, bridges, ingest
+shared/             # Cross-frontend TypeScript types (ts-rs codegen) + utils
 web-ui/             # React 19 + TypeScript + Vite + Tailwind
 client/             # React Native + Expo mobile app
 ```
 
+The `shared/` package contains TypeScript types auto-generated from Rust DTOs via [ts-rs](https://github.com/Aleph-Alpha/ts-rs), ensuring type safety across both frontends. Regenerate with `just generate-types`.
+
+The backend includes 230+ handler-level integration tests covering all API endpoints.
+
 ## API
 
-rstify exposes a Gotify-compatible REST API plus extensions:
+rstify exposes a Gotify-compatible REST API plus extensions.
+
+**Interactive API docs** are available at [`/docs`](http://localhost:8080/docs) (Swagger UI) with the OpenAPI spec at [`/docs/openapi.json`](http://localhost:8080/docs/openapi.json).
 
 ```bash
 # Send a message
@@ -88,6 +104,30 @@ curl -X POST http://localhost:8080/api/topics/alerts/publish \
   -H "Authorization: Bearer JWT" \
   -d '{"title": "Alert", "message": "CPU high", "priority": 8}'
 ```
+
+## Development
+
+```bash
+# Run all tests (230+ handler-level integration tests)
+cargo test --workspace
+
+# Regenerate TypeScript types from Rust DTOs
+just generate-types
+
+# Build web UI
+cd web-ui && npm run build
+
+# Run dev server (Rust backend)
+just dev
+
+# Run web UI dev server (with API proxy)
+just dev-web
+
+# Full release build (web UI + Rust binary)
+just build
+```
+
+Swagger UI is available at `/docs` when the server is running -- useful for exploring and testing the API interactively.
 
 ## License
 

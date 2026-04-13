@@ -405,6 +405,7 @@ pub async fn delete_message(
 }
 
 /// GET /stream - WebSocket stream for authenticated user (Gotify compat)
+#[utoipa::path(get, path = "/stream", responses((status = 101, description = "WebSocket upgrade")))]
 pub async fn websocket_stream(
     State(state): State<AppState>,
     ws: WebSocketUpgrade,

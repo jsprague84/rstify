@@ -22,6 +22,7 @@ pub struct UpdateSetting {
     pub value: String,
 }
 
+#[utoipa::path(get, path = "/api/settings", responses((status = 200, body = Vec<Setting>)))]
 pub async fn list_settings(
     State(state): State<AppState>,
     auth: AuthUser,
@@ -38,6 +39,12 @@ pub async fn list_settings(
     Ok(Json(settings))
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/settings/{key}",
+    request_body = UpdateSetting,
+    responses((status = 200, body = Setting))
+)]
 pub async fn update_setting(
     State(state): State<AppState>,
     auth: AuthUser,
