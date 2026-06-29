@@ -38,7 +38,7 @@ export default function MqttScreen() {
     if (!user?.is_admin) return [];
     const api = getApiClient();
     // Fetch MQTT status as a side-effect alongside the bridges list
-    api.getMqttStatus().then(setMqttStatus).catch(() => {});
+    api.getMqttStatus().then(setMqttStatus).catch(e => console.warn('Failed to load MQTT status', e));
     return api.listBridges();
   }, [user?.is_admin]);
   const { items: bridges, isLoading, refresh, mutate } = useHubData(fetchBridges);

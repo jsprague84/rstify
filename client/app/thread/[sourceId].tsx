@@ -38,7 +38,7 @@ export default function ThreadScreen() {
       getApiClient()
         .getTopicMessages(topicName, 100, 0)
         .then(setServerMessages)
-        .catch(() => {})
+        .catch(e => console.warn('Failed to load topic messages', e))
         .finally(() => setIsFetching(false));
     }
   }, [decodedSourceId, groupedMessages]);

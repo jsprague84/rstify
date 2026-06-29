@@ -46,7 +46,7 @@ function InboxThresholdForm() {
     api.listSettings().then(settings => {
       const t = settings.find(s => s.key === 'inbox_priority_threshold');
       if (t) setThreshold(t.value);
-    }).catch(() => {});
+    }).catch(e => console.error('Failed to load inbox threshold setting', e));
   }, []);
 
   const handleSave = async () => {

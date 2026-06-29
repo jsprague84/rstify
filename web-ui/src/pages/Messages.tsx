@@ -44,7 +44,7 @@ export default function Messages() {
 
   useEffect(() => {
     load(PAGE_SIZE);
-    api.listApplications().then(setApps).catch(() => {});
+    api.listApplications().then(setApps).catch(e => console.error('Failed to load applications', e));
   }, [load]);
 
   // Real-time: prepend new messages from WebSocket
