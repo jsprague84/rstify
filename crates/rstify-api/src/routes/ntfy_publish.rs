@@ -149,10 +149,13 @@ pub async fn ntfy_publish(
             if let Some(expires) = chrono::Utc::now().checked_add_signed(
                 chrono::Duration::from_std(duration).unwrap_or(chrono::Duration::hours(24)),
             ) {
-                let _ = state
+                if let Err(e) = state
                     .message_repo
                     .set_expires_at(msg.id, &expires.format("%Y-%m-%d %H:%M:%S").to_string())
-                    .await;
+                    .await
+                {
+                    tracing::warn!("Failed to set expiry on message {}: {}", msg.id, e);
+                }
             }
         }
     }

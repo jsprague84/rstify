@@ -135,11 +135,7 @@ impl Message {
             source: self.source.clone(),
             inbox: self.inbox,
             attachments: None,
-            date: if self.created_at.ends_with('Z') || self.created_at.contains('+') {
-                self.created_at.clone()
-            } else {
-                format!("{}Z", self.created_at)
-            },
+            date: crate::models::to_utc_z(&self.created_at),
         }
     }
 

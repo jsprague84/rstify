@@ -4,6 +4,20 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use tracing::{error, info, warn};
 
+/// Substitute `{{env.KEY}}` placeholders using the given key/value pairs.
+/// Only declared variables are substituted — unknown placeholders are left
+/// verbatim (no access to process environment).
+fn substitute_vars(text: &str, vars: &[(String, String)]) -> String {
+    if !text.contains("{{env.") {
+        return text.to_string();
+    }
+    let mut result = text.to_string();
+    for (key, value) in vars {
+        result = result.replace(&format!("{{{{env.{}}}}}", key), value);
+    }
+    result
+}
+
 /// Load user-defined webhook variables and apply {{env.KEY}} substitution.
 async fn apply_env_vars(pool: &SqlitePool, user_id: i64, text: &str) -> String {
     if !text.contains("{{env.") {
@@ -18,11 +32,7 @@ async fn apply_env_vars(pool: &SqlitePool, user_id: i64, text: &str) -> String {
     .await
     .unwrap_or_default();
 
-    let mut result = text.to_string();
-    for (key, value) in &vars {
-        result = result.replace(&format!("{{{{env.{}}}}}", key), value);
-    }
-    result
+    substitute_vars(text, &vars)
 }
 
 /// Fire outgoing webhooks for a given topic when a message is published.
@@ -53,7 +63,13 @@ pub async fn fire_outgoing_webhooks(
         }
     };
 
-    let message_json = serde_json::to_string(message).unwrap_or_default();
+    let message_json = serde_json::to_string(message).unwrap_or_else(|e| {
+        error!(
+            "Failed to serialize message {} for outgoing webhooks: {}",
+            message.id, e
+        );
+        "{}".to_string()
+    });
 
     for config in configs {
         let redirect_policy = if config.follow_redirects {
@@ -67,7 +83,13 @@ pub async fn fire_outgoing_webhooks(
             ))
             .redirect(redirect_policy)
             .build()
-            .unwrap_or_default();
+            .unwrap_or_else(|e| {
+                warn!(
+                    "Failed to build webhook client for {} (timeout/redirect settings lost): {}",
+                    config.id, e
+                );
+                reqwest::Client::new()
+            });
         let Some(ref target_url) = config.target_url else {
             warn!("Outgoing webhook {} has no target_url", config.id);
             continue;
@@ -130,8 +152,15 @@ pub async fn fire_outgoing_webhooks(
 
         tokio::spawn(async move {
             for attempt in 0..=max_retries {
+                let Some(attempt_req) = req.try_clone() else {
+                    error!(
+                        "Outgoing webhook {} to {} has a non-cloneable request body; aborting",
+                        id, url
+                    );
+                    return;
+                };
                 let start = std::time::Instant::now();
-                let result = req.try_clone().unwrap().send().await;
+                let result = attempt_req.send().await;
                 let duration_ms = start.elapsed().as_millis() as i64;
 
                 match result {
@@ -260,9 +289,21 @@ pub async fn fire_single_outgoing_webhook(
         ))
         .redirect(redirect_policy)
         .build()
-        .unwrap_or_default();
+        .unwrap_or_else(|e| {
+            warn!(
+                "Failed to build webhook client for {} (timeout/redirect settings lost): {}",
+                config.id, e
+            );
+            reqwest::Client::new()
+        });
 
-    let message_json = serde_json::to_string(message).unwrap_or_default();
+    let message_json = serde_json::to_string(message).unwrap_or_else(|e| {
+        error!(
+            "Failed to serialize message {} for webhook test fire: {}",
+            message.id, e
+        );
+        "{}".to_string()
+    });
 
     let body = if let Some(ref tmpl) = config.body_template {
         let substituted = tmpl
@@ -365,7 +406,10 @@ pub async fn fire_single_outgoing_webhook(
 fn json_escape(s: &str) -> String {
     // serde_json::to_string produces `"escaped"` — strip the surrounding quotes
     let quoted = serde_json::to_string(s).unwrap_or_else(|_| format!("\"{}\"", s));
-    quoted[1..quoted.len() - 1].to_string()
+    quoted
+        .get(1..quoted.len().saturating_sub(1))
+        .unwrap_or("")
+        .to_string()
 }
 
 /// Check if a headers JSON string contains a Content-Type header (case-insensitive).
@@ -434,5 +478,36 @@ mod tests {
         assert!(headers_contain_content_type(Some(
             r#"{"Authorization": "Bearer token123", "Content-Type": "text/xml"}"#
         )));
+    }
+
+    #[test]
+    fn substitutes_declared_env_vars() {
+        let vars = vec![
+            ("API_KEY".to_string(), "secret123".to_string()),
+            ("BASE".to_string(), "https://hooks.example".to_string()),
+        ];
+        assert_eq!(
+            substitute_vars("Bearer {{env.API_KEY}}", &vars),
+            "Bearer secret123"
+        );
+        assert_eq!(
+            substitute_vars("{{env.BASE}}/notify", &vars),
+            "https://hooks.example/notify"
+        );
+    }
+
+    #[test]
+    fn leaves_unknown_or_absent_placeholders_untouched() {
+        let vars = vec![("KNOWN".to_string(), "v".to_string())];
+        // Unknown key is not substituted (no leaking of process env or blanks).
+        assert_eq!(substitute_vars("{{env.MISSING}}", &vars), "{{env.MISSING}}");
+        // No placeholder at all → returned verbatim, no work done.
+        assert_eq!(substitute_vars("plain text", &vars), "plain text");
+    }
+
+    #[test]
+    fn json_escape_handles_quotes_and_short_input() {
+        assert_eq!(json_escape(r#"a"b"#), r#"a\"b"#);
+        assert_eq!(json_escape(""), ""); // must not panic on empty input
     }
 }

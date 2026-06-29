@@ -11,6 +11,7 @@ pub struct Topic {
     pub description: Option<String>,
     pub everyone_read: bool,
     pub everyone_write: bool,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
     pub created_at: String,
     pub notify_policy: String,
     #[serde(skip_serializing_if = "Option::is_none")]

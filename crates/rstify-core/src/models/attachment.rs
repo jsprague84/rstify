@@ -12,7 +12,9 @@ pub struct Attachment {
     pub size_bytes: i64,
     pub storage_type: String,
     pub storage_path: String,
+    #[serde(serialize_with = "crate::models::ser_utc_z_opt")]
     pub expires_at: Option<String>,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
     pub created_at: String,
 }
 
@@ -28,6 +30,7 @@ pub struct WebhookConfig {
     pub target_application_id: Option<i64>,
     pub template: String,
     pub enabled: bool,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
     pub created_at: String,
     // Outgoing webhook fields
     pub direction: String,

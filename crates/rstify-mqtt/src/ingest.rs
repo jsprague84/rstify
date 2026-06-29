@@ -54,6 +54,16 @@ pub fn parse_mqtt_payload(payload: &[u8], topic_name: &str) -> (Option<String>, 
     (None, text, 5)
 }
 
+/// Anti-loop guard: true if this payload was published to MQTT by rstify itself
+/// (its JSON carries `source: "webhook"` or `source: "api"`), so ingest must skip it
+/// to avoid re-ingesting our own outbound messages. Non-JSON / no `source` → false.
+fn is_self_published(payload: &[u8]) -> bool {
+    serde_json::from_slice::<serde_json::Value>(payload)
+        .ok()
+        .and_then(|v| v.get("source").and_then(|s| s.as_str()).map(str::to_owned))
+        .is_some_and(|s| s == "webhook" || s == "api")
+}
+
 /// Run the MQTT ingest loop. Receives all MQTT publishes via link_rx
 /// and creates rstify messages.
 ///
@@ -87,12 +97,8 @@ pub fn run_mqtt_ingest(
 
                 // Anti-loop: skip messages that were published to MQTT by rstify itself
                 // (e.g., webhook-received messages broadcast to MQTT via the publisher)
-                if let Ok(val) = serde_json::from_slice::<serde_json::Value>(&payload) {
-                    if let Some(source) = val.get("source").and_then(|s| s.as_str()) {
-                        if source == "webhook" || source == "api" {
-                            continue;
-                        }
-                    }
+                if is_self_published(&payload) {
+                    continue;
                 }
 
                 let topic_name = mqtt_topic.replace('/', ".");
@@ -276,5 +282,18 @@ mod tests {
         let (title, msg, _) = parse_mqtt_payload(payload, "binary.topic");
         assert_eq!(title.unwrap(), "binary.topic");
         assert!(msg.contains("binary payload"));
+    }
+
+    #[test]
+    fn skips_rstify_self_published_sources() {
+        assert!(is_self_published(br#"{"source":"webhook","message":"x"}"#));
+        assert!(is_self_published(br#"{"source":"api","message":"x"}"#));
+    }
+
+    #[test]
+    fn ingests_external_and_sourceless_payloads() {
+        assert!(!is_self_published(br#"{"source":"mqtt","message":"x"}"#));
+        assert!(!is_self_published(br#"{"message":"no source field"}"#));
+        assert!(!is_self_published(b"plain text, not json"));
     }
 }

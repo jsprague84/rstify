@@ -94,7 +94,7 @@ pub async fn rate_limit_middleware(req: Request<Body>, next: Next) -> Response {
             StatusCode::TOO_MANY_REQUESTS,
             [(
                 axum::http::header::RETRY_AFTER,
-                "1".parse::<axum::http::HeaderValue>().unwrap(),
+                axum::http::HeaderValue::from_static("1"),
             )],
             "Rate limit exceeded",
         )
@@ -102,4 +102,39 @@ pub async fn rate_limit_middleware(req: Request<Body>, next: Next) -> Response {
     }
 
     next.run(req).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn blocks_after_burst_is_exhausted() {
+        // 2-token bucket, no refill: 3rd request is the one that 429s.
+        let rl = RateLimiter::new(2, 0.0);
+        assert!(rl.check("ip").await);
+        assert!(rl.check("ip").await);
+        assert!(!rl.check("ip").await);
+    }
+
+    #[tokio::test]
+    async fn buckets_are_per_key() {
+        let rl = RateLimiter::new(1, 0.0);
+        assert!(rl.check("a").await);
+        assert!(!rl.check("a").await); // a exhausted
+        assert!(rl.check("b").await); // b unaffected
+    }
+
+    #[tokio::test]
+    async fn refills_over_time() {
+        // 1-token bucket refilling at 1000/s: after exhaustion, a few ms restores it.
+        let rl = RateLimiter::new(1, 1000.0);
+        assert!(rl.check("ip").await);
+        assert!(!rl.check("ip").await);
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        assert!(
+            rl.check("ip").await,
+            "bucket should refill after elapsed time"
+        );
+    }
 }

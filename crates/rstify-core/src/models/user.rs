@@ -56,8 +56,8 @@ impl From<User> for UserResponse {
             username: u.username,
             email: u.email,
             is_admin: u.is_admin,
-            created_at: u.created_at,
-            updated_at: u.updated_at,
+            created_at: crate::models::to_utc_z(&u.created_at),
+            updated_at: crate::models::to_utc_z(&u.updated_at),
         }
     }
 }

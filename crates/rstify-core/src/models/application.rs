@@ -12,7 +12,9 @@ pub struct Application {
     pub token: String,
     pub default_priority: i32,
     pub image: Option<String>,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
     pub created_at: String,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
     pub updated_at: String,
     pub retention_days: Option<i32>,
 }

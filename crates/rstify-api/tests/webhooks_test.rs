@@ -225,6 +225,76 @@ async fn incoming_webhook() {
 }
 
 // ---------------------------------------------------------------------------
+// Incoming webhook — bad/missing HMAC signature is rejected (403)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn incoming_github_webhook_rejects_bad_signature() {
+    let app = common::setup().await;
+    let topic_id = common::seed::create_topic(&app.pool, 2, "gh-sig-topic").await;
+
+    // Seed a github webhook WITH a secret — signature verification is now required.
+    let wh_token = format!("WH_{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
+    sqlx::query(
+        "INSERT INTO webhook_configs (user_id, name, token, webhook_type, template, enabled, target_topic_id, secret, created_at) \
+         VALUES (?, ?, ?, 'github', '{{message}}', TRUE, ?, 'topsecret', datetime('now'))",
+    )
+    .bind(2_i64)
+    .bind("gh-sig-webhook")
+    .bind(&wh_token)
+    .bind(topic_id)
+    .execute(&app.pool)
+    .await
+    .expect("Failed to seed github webhook with secret");
+
+    let body = br#"{"action":"opened"}"#;
+    let uri = format!("/api/wh/{}", wh_token);
+
+    // Wrong signature → 403
+    let resp = app
+        .router
+        .clone()
+        .oneshot(
+            axum::http::Request::builder()
+                .method("POST")
+                .uri(&uri)
+                .header("content-type", "application/json")
+                .header("X-GitHub-Event", "push")
+                .header("X-Hub-Signature-256", "sha256=deadbeef")
+                .body(axum::body::Body::from(body.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        resp.status(),
+        StatusCode::FORBIDDEN,
+        "wrong signature must be rejected"
+    );
+
+    // Missing signature → 403
+    let resp = app
+        .router
+        .clone()
+        .oneshot(
+            axum::http::Request::builder()
+                .method("POST")
+                .uri(&uri)
+                .header("content-type", "application/json")
+                .header("X-GitHub-Event", "push")
+                .body(axum::body::Body::from(body.to_vec()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        resp.status(),
+        StatusCode::FORBIDDEN,
+        "missing signature must be rejected"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Incoming webhook — invalid token returns 404
 // ---------------------------------------------------------------------------
 

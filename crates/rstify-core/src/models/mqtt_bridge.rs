@@ -20,6 +20,7 @@ pub struct MqttBridge {
     pub topic_prefix: Option<String>,
     pub auto_create_topics: bool,
     pub enabled: bool,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
     pub created_at: String,
 }
 

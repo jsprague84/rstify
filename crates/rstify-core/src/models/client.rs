@@ -13,6 +13,7 @@ pub struct Client {
     pub fcm_token: Option<String>,
     /// JSON array of scopes: "read", "write", "admin", "app:<id>"
     pub scopes: String,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
     pub created_at: String,
 }
 

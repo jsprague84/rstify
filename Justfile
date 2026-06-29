@@ -31,8 +31,12 @@ docker-build:
 
 # Generate TypeScript types from Rust DTOs
 generate-types:
+    # ts-rs 10 emits `bigint` for i64/u64; here they're SQLite row IDs & counts (all < 2^53)
+    # consumed as `number` via fetch().json(). ts-rs's TS_RS_LARGE_INT isn't honored by the
+    # #[ts(export)] test path, so normalize after generation. \b = whole-token only, so a
+    # field/type whose name merely contains "bigint" is left untouched.
     TS_RS_EXPORT_DIR={{justfile_directory()}}/shared/generated cargo test --workspace 2>&1 | tail -5
-    find shared/generated -name '*.ts' -exec sed -i 's/bigint/number/g' {} +
+    find shared/generated -name '*.ts' -exec sed -i 's/\bbigint\b/number/g' {} +
     @echo '// Auto-generated barrel export — do not hand-edit' > shared/generated/index.ts
     @echo '// Re-run: just generate-types' >> shared/generated/index.ts
     @echo '' >> shared/generated/index.ts

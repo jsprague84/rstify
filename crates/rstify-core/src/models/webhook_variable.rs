@@ -10,6 +10,7 @@ pub struct WebhookVariable {
     pub user_id: i64,
     pub key: String,
     pub value: String,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
     pub created_at: String,
 }
 

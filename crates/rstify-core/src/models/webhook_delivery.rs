@@ -14,6 +14,7 @@ pub struct WebhookDeliveryLog {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_body_preview: Option<String>,
     pub duration_ms: i64,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
     pub attempted_at: String,
     pub success: bool,
 }
