@@ -47,6 +47,20 @@ impl RateLimiter {
     /// Derive the rate-limit bucket key for a request.
     fn request_key(&self, req: &Request<Body>) -> String {
         if self.trust_forwarded_for {
+            // Cloudflare (and similar) set the true client IP here even when
+            // several proxies are chained, so prefer it over X-Forwarded-For
+            // whose rightmost value would be the nearest edge, not the client.
+            if let Some(ip) = req
+                .headers()
+                .get("cf-connecting-ip")
+                .and_then(|v| v.to_str().ok())
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+            {
+                return ip;
+            }
+            // Otherwise the rightmost X-Forwarded-For value — set by the nearest
+            // trusted proxy; leftmost values are client-supplied and spoofable.
             if let Some(ip) = req
                 .headers()
                 .get("x-forwarded-for")

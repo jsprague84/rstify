@@ -35,8 +35,19 @@ All variables below are loaded by the centralized config module (`crates/rstify-
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RATE_LIMIT_BURST` | `60` | Maximum burst capacity per IP (token bucket size) |
+| `RATE_LIMIT_BURST` | `60` | Maximum burst capacity per client (token bucket size) |
 | `RATE_LIMIT_RPS` | `10.0` | Token refill rate per second |
+| `RATE_LIMIT_TRUST_PROXY` | `false` | Key rate limiting on the rightmost `X-Forwarded-For` value instead of the TCP peer IP. Enable **only** behind a trusted reverse proxy (Traefik/nginx/Caddy) — otherwise clients can spoof the header. **Behind a proxy you must enable this**, or every user collapses into the proxy's single shared bucket. |
+
+## Outbound Webhook SSRF Policy
+
+Outgoing webhooks and `X-Attach` attachment fetches are validated against SSRF: by
+default they may not target private, loopback, link-local, or reserved addresses,
+and the target IP is pinned to defeat DNS rebinding.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WEBHOOK_ALLOW_PRIVATE_TARGETS` | `false` | Allow outgoing webhooks / fetches to reach private/LAN/reserved addresses (e.g. a same-host or docker-network automation endpoint). Enable **only** on a trusted single-user instance — on a multi-user server this is an SSRF risk. |
 
 ## FCM Push Notifications
 
