@@ -6,6 +6,7 @@ use std::sync::atomic::Ordering;
 use ts_rs::TS;
 use utoipa::ToSchema;
 
+use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, ToSchema, TS)]
@@ -55,9 +56,10 @@ pub async fn version() -> Json<VersionResponse> {
     })
 }
 
-/// GET /metrics - Prometheus-format metrics
-#[utoipa::path(get, path = "/metrics", responses((status = 200, description = "Prometheus metrics", content_type = "text/plain")))]
-pub async fn metrics(State(state): State<AppState>) -> impl IntoResponse {
+/// GET /metrics - Prometheus-format metrics (requires authentication; scrape with
+/// a bearer token so counts aren't exposed to anonymous callers).
+#[utoipa::path(get, path = "/metrics", responses((status = 200, description = "Prometheus metrics", content_type = "text/plain"), (status = 401, description = "Authentication required")))]
+pub async fn metrics(State(state): State<AppState>, _auth: AuthUser) -> impl IntoResponse {
     let requests = state.metrics.http_requests_total.load(Ordering::Relaxed);
     let messages = state.metrics.messages_created_total.load(Ordering::Relaxed);
     let ws_connections = state.connections.active_count().await;

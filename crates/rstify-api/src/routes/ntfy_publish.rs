@@ -92,27 +92,26 @@ pub async fn ntfy_publish(
 
     let msg = state
         .message_repo
-        .create(
-            None,
-            Some(topic.id),
-            Some(auth.user.id),
-            h.title.as_deref(),
-            if message_text.is_empty() {
+        .create(rstify_core::repositories::NewMessage {
+            topic_id: Some(topic.id),
+            user_id: Some(auth.user.id),
+            title: h.title.as_deref(),
+            message: if message_text.is_empty() {
                 "Attachment"
             } else {
                 &message_text
             },
-            h.priority.unwrap_or(3),
-            tags_json.as_deref(),
-            h.click_url.as_deref(),
-            h.icon_url.as_deref(),
-            h.actions.as_deref(),
-            None,
-            h.content_type.as_deref(),
-            h.scheduled_for.as_deref(),
-            Some("ntfy"),
+            priority: h.priority.unwrap_or(3),
+            tags: tags_json.as_deref(),
+            click_url: h.click_url.as_deref(),
+            icon_url: h.icon_url.as_deref(),
+            actions: h.actions.as_deref(),
+            content_type: h.content_type.as_deref(),
+            scheduled_for: h.scheduled_for.as_deref(),
+            source: Some("ntfy"),
             inbox,
-        )
+            ..Default::default()
+        })
         .await
         .map_err(ApiError::from)?;
 
@@ -121,17 +120,19 @@ pub async fn ntfy_publish(
 
     if let Some(data) = file_data {
         // PUT with body as file
-        if let Some(att) = save_attachment(
-            &state,
-            msg.id,
-            &h.filename
-                .clone()
-                .unwrap_or_else(|| "attachment".to_string()),
-            &data,
-        )
-        .await?
-        {
-            attachment_infos.push(att);
+        let filename = h
+            .filename
+            .clone()
+            .unwrap_or_else(|| "attachment".to_string());
+        match save_attachment(&state, msg.id, &filename, &data).await {
+            Ok(Some(att)) => attachment_infos.push(att),
+            Ok(None) => {}
+            Err(e) => {
+                // Roll back the message so a failed attachment save doesn't leave a
+                // message advertising an attachment that was never stored.
+                let _ = state.message_repo.delete_by_id(msg.id).await;
+                return Err(e);
+            }
         }
     } else if let Some(ref url) = h.attach_url {
         // X-Attach: download from URL and attach

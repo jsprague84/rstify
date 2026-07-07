@@ -81,23 +81,16 @@ pub async fn create_app_message(
 
     let msg = state
         .message_repo
-        .create(
-            Some(auth.application.id),
-            None,
-            Some(auth.user.id),
-            req.title.as_deref(),
-            &req.message,
-            req.priority.unwrap_or(auth.application.default_priority),
-            None,
-            None,
-            None,
-            None,
-            extras_json.as_deref(),
-            None,
-            None,
-            None, // source: API
-            true, // app messages always go to inbox
-        )
+        .create(rstify_core::repositories::NewMessage {
+            application_id: Some(auth.application.id),
+            user_id: Some(auth.user.id),
+            title: req.title.as_deref(),
+            message: &req.message,
+            priority: req.priority.unwrap_or(auth.application.default_priority),
+            extras: extras_json.as_deref(),
+            inbox: true, // app messages always go to inbox
+            ..Default::default()
+        })
         .await
         .map_err(ApiError::from)?;
 

@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use rstify_core::error::CoreError;
 use rstify_core::models::{Attachment, Message, WebhookConfig};
-use rstify_core::repositories::MessageRepository;
+use rstify_core::repositories::{MessageRepository, NewMessage};
 use sqlx::SqlitePool;
 
 /// Turn a user search string into a safe FTS5 MATCH expression: each
@@ -28,45 +28,28 @@ impl SqliteMessageRepo {
 
 #[async_trait]
 impl MessageRepository for SqliteMessageRepo {
-    async fn create(
-        &self,
-        application_id: Option<i64>,
-        topic_id: Option<i64>,
-        user_id: Option<i64>,
-        title: Option<&str>,
-        message: &str,
-        priority: i32,
-        tags: Option<&str>,
-        click_url: Option<&str>,
-        icon_url: Option<&str>,
-        actions: Option<&str>,
-        extras: Option<&str>,
-        content_type: Option<&str>,
-        scheduled_for: Option<&str>,
-        source: Option<&str>,
-        inbox: bool,
-    ) -> Result<Message, CoreError> {
+    async fn create(&self, msg: NewMessage<'_>) -> Result<Message, CoreError> {
         sqlx::query_as::<_, Message>(
             r#"INSERT INTO messages
                 (application_id, topic_id, user_id, title, message, priority, tags, click_url, icon_url, actions, extras, content_type, scheduled_for, source, inbox)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 RETURNING *"#,
         )
-        .bind(application_id)
-        .bind(topic_id)
-        .bind(user_id)
-        .bind(title)
-        .bind(message)
-        .bind(priority)
-        .bind(tags)
-        .bind(click_url)
-        .bind(icon_url)
-        .bind(actions)
-        .bind(extras)
-        .bind(content_type)
-        .bind(scheduled_for)
-        .bind(source)
-        .bind(inbox)
+        .bind(msg.application_id)
+        .bind(msg.topic_id)
+        .bind(msg.user_id)
+        .bind(msg.title)
+        .bind(msg.message)
+        .bind(msg.priority)
+        .bind(msg.tags)
+        .bind(msg.click_url)
+        .bind(msg.icon_url)
+        .bind(msg.actions)
+        .bind(msg.extras)
+        .bind(msg.content_type)
+        .bind(msg.scheduled_for)
+        .bind(msg.source)
+        .bind(msg.inbox)
         .fetch_one(&self.pool)
         .await
         .map_err(crate::map_sqlx_err)

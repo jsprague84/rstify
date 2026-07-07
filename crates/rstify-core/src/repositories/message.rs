@@ -2,27 +2,33 @@ use crate::error::CoreError;
 use crate::models::{Attachment, Message, WebhookConfig};
 use async_trait::async_trait;
 
+/// Parameters for creating a message. A parameter struct (vs 15 positional args)
+/// so call sites read clearly and adjacent `Option<&str>` fields can't be swapped
+/// silently. Build with e.g. `NewMessage { message, topic_id: Some(id), inbox,
+/// source: Some("ntfy"), ..Default::default() }`.
+#[derive(Debug, Default, Clone)]
+pub struct NewMessage<'a> {
+    pub application_id: Option<i64>,
+    pub topic_id: Option<i64>,
+    pub user_id: Option<i64>,
+    pub title: Option<&'a str>,
+    pub message: &'a str,
+    pub priority: i32,
+    pub tags: Option<&'a str>,
+    pub click_url: Option<&'a str>,
+    pub icon_url: Option<&'a str>,
+    pub actions: Option<&'a str>,
+    pub extras: Option<&'a str>,
+    pub content_type: Option<&'a str>,
+    pub scheduled_for: Option<&'a str>,
+    pub source: Option<&'a str>,
+    pub inbox: bool,
+}
+
 #[allow(clippy::too_many_arguments)]
 #[async_trait]
 pub trait MessageRepository: Send + Sync {
-    async fn create(
-        &self,
-        application_id: Option<i64>,
-        topic_id: Option<i64>,
-        user_id: Option<i64>,
-        title: Option<&str>,
-        message: &str,
-        priority: i32,
-        tags: Option<&str>,
-        click_url: Option<&str>,
-        icon_url: Option<&str>,
-        actions: Option<&str>,
-        extras: Option<&str>,
-        content_type: Option<&str>,
-        scheduled_for: Option<&str>,
-        source: Option<&str>,
-        inbox: bool,
-    ) -> Result<Message, CoreError>;
+    async fn create(&self, msg: NewMessage<'_>) -> Result<Message, CoreError>;
 
     async fn find_by_id(&self, id: i64) -> Result<Option<Message>, CoreError>;
     async fn list_by_application(

@@ -49,23 +49,20 @@ pub async fn publish_to_topic(
 
     let msg = state
         .message_repo
-        .create(
-            None,
-            Some(topic.id),
-            Some(auth.user.id),
-            req.title.as_deref(),
-            &req.message,
-            req.priority.unwrap_or(5),
-            tags_json.as_deref(),
-            req.click_url.as_deref(),
-            req.icon_url.as_deref(),
-            actions_json.as_deref(),
-            None,
-            None,
-            req.scheduled_for.as_deref(),
-            None, // source: API
+        .create(rstify_core::repositories::NewMessage {
+            topic_id: Some(topic.id),
+            user_id: Some(auth.user.id),
+            title: req.title.as_deref(),
+            message: &req.message,
+            priority: req.priority.unwrap_or(5),
+            tags: tags_json.as_deref(),
+            click_url: req.click_url.as_deref(),
+            icon_url: req.icon_url.as_deref(),
+            actions: actions_json.as_deref(),
+            scheduled_for: req.scheduled_for.as_deref(),
             inbox,
-        )
+            ..Default::default()
+        })
         .await
         .map_err(ApiError::from)?;
 

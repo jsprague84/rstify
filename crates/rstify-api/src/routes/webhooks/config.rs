@@ -491,23 +491,21 @@ pub async fn receive_webhook(
     // Create message targeting topic or application
     let msg = state
         .message_repo
-        .create(
-            config.target_application_id,
-            config.target_topic_id,
-            Some(config.user_id),
-            title.as_deref(),
-            &message,
+        .create(rstify_core::repositories::NewMessage {
+            application_id: config.target_application_id,
+            topic_id: config.target_topic_id,
+            user_id: Some(config.user_id),
+            title: title.as_deref(),
+            message: &message,
             priority,
-            tags_json.as_deref(),
-            click_url.as_deref(),
-            None,
-            None,
-            extras_json.as_deref(),
+            tags: tags_json.as_deref(),
+            click_url: click_url.as_deref(),
+            extras: extras_json.as_deref(),
             content_type,
-            None,
-            Some("webhook"),
+            source: Some("webhook"),
             inbox,
-        )
+            ..Default::default()
+        })
         .await
         .map_err(ApiError::from)?;
 

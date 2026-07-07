@@ -36,7 +36,10 @@ async fn main() -> anyhow::Result<()> {
         .fetch_one(&pool)
         .await?;
     if user_count.0 == 0 {
-        let password_hash = hash_password("admin".to_string())
+        // Generate a random initial password instead of the well-known admin/admin,
+        // and print it once so the operator can log in and change it.
+        let initial_password = uuid::Uuid::new_v4().simple().to_string();
+        let password_hash = hash_password(initial_password.clone())
             .await
             .map_err(|e| anyhow::anyhow!("Failed to hash default password: {}", e))?;
         sqlx::query("INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)")
@@ -45,7 +48,11 @@ async fn main() -> anyhow::Result<()> {
             .bind(true)
             .execute(&pool)
             .await?;
-        warn!("Created default admin user (username: admin, password: admin) — change the password immediately!");
+        warn!(
+            "Created initial admin user — username: admin, password: {} — \
+             log in and change it now (shown only once).",
+            initial_password
+        );
     }
 
     // Load inbox_priority_threshold setting from DB (default 5)
