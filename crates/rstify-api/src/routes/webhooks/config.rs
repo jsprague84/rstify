@@ -469,16 +469,19 @@ pub async fn receive_webhook(
         None
     };
 
+    // Resolve the target topic once (topic-targeted webhooks only).
+    let topic = if let Some(topic_id) = config.target_topic_id {
+        state.topic_repo.find_by_id(topic_id).await.ok().flatten()
+    } else {
+        None
+    };
+
     // Determine inbox flag
-    let inbox = if let Some(topic_id) = config.target_topic_id {
-        if let Ok(Some(topic)) = state.topic_repo.find_by_id(topic_id).await {
-            let threshold = state
-                .inbox_threshold
-                .load(std::sync::atomic::Ordering::Relaxed);
-            rstify_core::policy::should_inbox(&topic, priority, threshold)
-        } else {
-            true
-        }
+    let inbox = if let Some(ref topic) = topic {
+        let threshold = state
+            .inbox_threshold
+            .load(std::sync::atomic::Ordering::Relaxed);
+        rstify_core::policy::should_inbox(topic, priority, threshold)
     } else {
         true // app-targeted webhooks always go to inbox
     };
@@ -506,13 +509,27 @@ pub async fn receive_webhook(
         .await
         .map_err(ApiError::from)?;
 
-    // Broadcast to appropriate channel
-    if let Some(topic_id) = config.target_topic_id {
-        if let Ok(Some(topic)) = state.topic_repo.find_by_id(topic_id).await {
-            state
-                .connections
-                .broadcast_to_topic(&topic.name, msg.to_response(Some(topic.name.clone())))
-                .await;
+    // Deliver through the shared path so an incoming webhook broadcasts, pushes,
+    // and chains to outgoing webhooks exactly like a normal publish. Previously
+    // topic-targeted webhooks only broadcast (no push, no outgoing chain) and
+    // app-targeted webhooks reached nobody.
+    let response = msg.to_response(topic.as_ref().map(|t| t.name.clone()));
+    match &topic {
+        Some(topic) => {
+            crate::helpers::publish::deliver_message(
+                &state,
+                &response,
+                crate::helpers::publish::DeliveryTarget::Topic(topic),
+            )
+            .await;
+        }
+        None => {
+            crate::helpers::publish::deliver_message(
+                &state,
+                &response,
+                crate::helpers::publish::DeliveryTarget::User(config.user_id),
+            )
+            .await;
         }
     }
 
