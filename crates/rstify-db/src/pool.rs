@@ -164,6 +164,10 @@ impl Database {
                 "029_settings_table",
                 include_str!("../../../migrations/029_settings_table.sql"),
             ),
+            (
+                "030_index_optimizations",
+                include_str!("../../../migrations/030_index_optimizations.sql"),
+            ),
         ];
 
         for (name, sql) in migrations {

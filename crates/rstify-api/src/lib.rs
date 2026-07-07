@@ -21,6 +21,11 @@ use tower_http::compression::CompressionLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 
 pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
+    // Global request-body cap must accommodate the largest attachment (plus a
+    // little multipart overhead); otherwise uploads are rejected here before the
+    // per-attachment size check ever runs.
+    let max_body = state.max_upload_size.saturating_add(1024 * 1024);
+
     let api_routes = routes::api_routes(state.clone());
     let gotify_routes = routes::gotify_routes(state.clone());
     let ntfy_routes = routes::ntfy_routes(state.clone());
@@ -39,7 +44,7 @@ pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
         // requests are served by the web UI instead.
         .method_not_allowed_fallback(web_ui::web_ui_handler)
         .layer(CompressionLayer::new().gzip(true).br(true))
-        .layer(RequestBodyLimitLayer::new(1024 * 1024))
+        .layer(RequestBodyLimitLayer::new(max_body))
         .layer(axum::middleware::from_fn_with_state(
             state.clone(),
             security_headers_middleware,

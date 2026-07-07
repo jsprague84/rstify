@@ -4,6 +4,17 @@ use rstify_core::models::{Attachment, Message, WebhookConfig};
 use rstify_core::repositories::MessageRepository;
 use sqlx::SqlitePool;
 
+/// Turn a user search string into a safe FTS5 MATCH expression: each
+/// whitespace-separated term becomes a quoted string literal (embedded quotes
+/// doubled), joined by spaces (implicit AND). Quoting means the input can never
+/// be interpreted as FTS5 operator syntax, so malformed queries can't error.
+fn sanitize_fts5_query(q: &str) -> String {
+    q.split_whitespace()
+        .map(|t| format!("\"{}\"", t.replace('"', "\"\"")))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 #[derive(Clone)]
 pub struct SqliteMessageRepo {
     pool: SqlitePool,
@@ -184,9 +195,15 @@ impl MessageRepository for SqliteMessageRepo {
         qb.push(")");
 
         if let Some(q) = query {
-            qb.push(" AND m.id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ");
-            qb.push_bind(q.to_string());
-            qb.push(")");
+            // Sanitize into FTS5 string-literal terms so malformed input (a lone
+            // `"`, trailing `AND`, `col:` filters, …) yields empty results instead
+            // of an `fts5: syntax error` → 500.
+            let sanitized = sanitize_fts5_query(q);
+            if !sanitized.is_empty() {
+                qb.push(" AND m.id IN (SELECT rowid FROM messages_fts WHERE messages_fts MATCH ");
+                qb.push_bind(sanitized);
+                qb.push(")");
+            }
         }
         if let Some(t) = tag {
             qb.push(" AND m.tags LIKE ");
@@ -594,5 +611,28 @@ impl MessageRepository for SqliteMessageRepo {
         self.find_webhook_config_by_id(id)
             .await?
             .ok_or_else(|| CoreError::NotFound(format!("Webhook config {} not found", id)))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_fts5_query;
+
+    #[test]
+    fn quotes_terms_and_neutralizes_operators() {
+        assert_eq!(sanitize_fts5_query("hello world"), "\"hello\" \"world\"");
+        // Bare operators/columns become literal terms, not FTS5 syntax.
+        assert_eq!(sanitize_fts5_query("foo AND"), "\"foo\" \"AND\"");
+        assert_eq!(sanitize_fts5_query("col:"), "\"col:\"");
+    }
+
+    #[test]
+    fn escapes_embedded_quotes_and_handles_empty() {
+        // A lone quote (which would be an FTS5 syntax error unescaped) is doubled.
+        assert_eq!(sanitize_fts5_query("\""), "\"\"\"\"");
+        assert_eq!(sanitize_fts5_query("a\"b"), "\"a\"\"b\"");
+        // All-whitespace / empty yields empty (caller skips the MATCH clause).
+        assert_eq!(sanitize_fts5_query("   "), "");
+        assert_eq!(sanitize_fts5_query(""), "");
     }
 }
