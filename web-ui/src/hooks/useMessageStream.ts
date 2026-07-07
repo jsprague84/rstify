@@ -7,15 +7,24 @@ export type WsStatus = 'connected' | 'reconnecting' | 'disconnected';
  * Hook that connects to the Gotify-compatible /stream WebSocket endpoint.
  * Calls onMessage for each new message received.
  * Automatically reconnects with exponential backoff on disconnect.
+ * onReconnect fires when the socket reopens after a drop, so the caller can
+ * refetch messages published while it was disconnected (otherwise they are lost
+ * silently — the stream only pushes messages sent while connected).
  * Returns connection status.
  */
-export function useMessageStream(onMessage: (msg: MessageResponse) => void): WsStatus {
+export function useMessageStream(
+  onMessage: (msg: MessageResponse) => void,
+  onReconnect?: () => void,
+): WsStatus {
   const [status, setStatus] = useState<WsStatus>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const backoff = useRef(1000);
+  const hasConnected = useRef(false);
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
+  const onReconnectRef = useRef(onReconnect);
+  onReconnectRef.current = onReconnect;
 
   const connect = useCallback(() => {
     const token = localStorage.getItem('rstify_token');
@@ -31,6 +40,11 @@ export function useMessageStream(onMessage: (msg: MessageResponse) => void): WsS
     ws.onopen = () => {
       backoff.current = 1000;
       setStatus('connected');
+      // Catch up on anything published while disconnected (skip the first open).
+      if (hasConnected.current) {
+        onReconnectRef.current?.();
+      }
+      hasConnected.current = true;
     };
 
     ws.onmessage = (event) => {

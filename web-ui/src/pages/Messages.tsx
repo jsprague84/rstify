@@ -53,14 +53,31 @@ export default function Messages() {
     api.listApplications().then(setApps).catch(e => console.error('Failed to load applications', e));
   }, [load]);
 
-  // Real-time: prepend new messages from WebSocket
-  const wsStatus = useMessageStream(useCallback((msg: MessageResponse) => {
-    setMessages(prev => {
-      if (prev.some(m => m.id === msg.id)) return prev;
-      return [msg, ...prev];
-    });
-    setLiveCount(c => c + 1);
-  }, []));
+  // Keep the active search query in a ref so the (stable) reconnect handler can
+  // avoid clobbering search results with a refetch.
+  const searchQueryRef = useRef('');
+  searchQueryRef.current = searchQuery;
+
+  const handleReconnect = useCallback(() => {
+    // A dropped connection may have missed messages (the stream only pushes while
+    // connected). Refetch the current page — unless the user is viewing search
+    // results. New/missed ids dedupe against what's already shown.
+    if (!searchQueryRef.current.trim()) {
+      load(fetchLimit.current);
+    }
+  }, [load]);
+
+  // Real-time: prepend new messages from WebSocket; catch up on reconnect.
+  const wsStatus = useMessageStream(
+    useCallback((msg: MessageResponse) => {
+      setMessages(prev => {
+        if (prev.some(m => m.id === msg.id)) return prev;
+        return [msg, ...prev];
+      });
+      setLiveCount(c => c + 1);
+    }, []),
+    handleReconnect,
+  );
 
   // Reset live count when filter changes
   useEffect(() => setLiveCount(0), [filter]);
