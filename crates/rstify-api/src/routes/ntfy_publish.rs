@@ -165,37 +165,15 @@ pub async fn ntfy_publish(
         response.attachments = Some(attachment_infos);
     }
 
-    // Broadcast to topic subscribers (only if not scheduled)
+    // Immediate messages deliver now (broadcast + push + outgoing webhooks via the
+    // shared path); scheduled messages are delivered later by the scheduled job.
     if h.scheduled_for.is_none() {
-        state
-            .connections
-            .broadcast_to_topic(&topic_name, msg.to_response(Some(topic_name.clone())))
-            .await;
-    }
-
-    // Fire outgoing webhooks
-    {
-        let pool = state.pool.clone();
-        let topic = topic_name.clone();
-        let resp = response.clone();
-        tokio::spawn(async move {
-            rstify_jobs::outgoing_webhooks::fire_outgoing_webhooks(&pool, &topic, &resp).await;
-        });
-    }
-
-    // Send FCM push notifications to topic owner (respecting notification policy)
-    if h.scheduled_for.is_none() && inbox && rstify_core::policy::should_notify(&topic, &response) {
-        if let Some(ref fcm) = state.fcm {
-            if let Some(owner_id) = topic.owner_id {
-                let fcm = fcm.clone();
-                let client_repo = state.client_repo.clone();
-                let resp = response.clone();
-                tokio::spawn(async move {
-                    fcm.notify_user(&client_repo, owner_id, &resp, resp.icon_url.as_deref())
-                        .await;
-                });
-            }
-        }
+        crate::helpers::publish::deliver_message(
+            &state,
+            &response,
+            crate::helpers::publish::DeliveryTarget::Topic(&topic),
+        )
+        .await;
     }
 
     // Send email notification if Email header present and SMTP configured

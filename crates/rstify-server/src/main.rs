@@ -117,19 +117,26 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    // Create broadcast callback for scheduled message delivery
+    // Create broadcast callback for scheduled message delivery. This runs at SEND
+    // time (not creation), so it fires the full delivery — broadcast + outgoing
+    // webhooks + push — mirroring the immediate path's deliver_message().
     let connections = state.connections.clone();
     let fcm_for_scheduled = state.fcm.clone();
     let client_repo_for_scheduled = state.client_repo.clone();
     let topic_repo_for_scheduled = state.topic_repo.clone();
+    let pool_for_scheduled = pool.clone();
     let broadcast_fn: rstify_jobs::scheduled::BroadcastFn = Arc::new(move |msg, topic_name| {
         let connections = connections.clone();
         let fcm = fcm_for_scheduled.clone();
         let client_repo = client_repo_for_scheduled.clone();
         let topic_repo = topic_repo_for_scheduled.clone();
+        let pool = pool_for_scheduled.clone();
         Box::pin(async move {
             if let Some(ref name) = topic_name {
                 connections.broadcast_to_topic(name, msg.clone()).await;
+
+                // Outgoing webhooks fire now (delivery time), matching immediate sends.
+                rstify_jobs::outgoing_webhooks::fire_outgoing_webhooks(&pool, name, &msg).await;
 
                 // FCM for scheduled topic messages (respecting notification policy)
                 if let Some(ref fcm) = fcm {

@@ -71,38 +71,16 @@ pub async fn publish_to_topic(
 
     let response = msg.to_response(Some(name.clone()));
 
-    // Broadcast to topic subscribers (only if not scheduled)
+    // Immediate messages deliver now (broadcast + push + outgoing webhooks via the
+    // shared path); scheduled messages are delivered later by the scheduled job, so
+    // firing anything here would push/webhook at creation time instead of send time.
     if req.scheduled_for.is_none() {
-        state
-            .connections
-            .broadcast_to_topic(&name, msg.to_response(Some(name.clone())))
-            .await;
-    }
-
-    // Fire outgoing webhooks
-    {
-        let pool = state.pool.clone();
-        let topic = name.clone();
-        let resp = response.clone();
-        tokio::spawn(async move {
-            rstify_jobs::outgoing_webhooks::fire_outgoing_webhooks(&pool, &topic, &resp).await;
-        });
-    }
-
-    // Send FCM push notifications to topic owner (respecting notification policy)
-    if req.scheduled_for.is_none() && inbox && rstify_core::policy::should_notify(&topic, &response)
-    {
-        if let Some(ref fcm) = state.fcm {
-            if let Some(owner_id) = topic.owner_id {
-                let fcm = fcm.clone();
-                let client_repo = state.client_repo.clone();
-                let resp = response.clone();
-                tokio::spawn(async move {
-                    fcm.notify_user(&client_repo, owner_id, &resp, resp.icon_url.as_deref())
-                        .await;
-                });
-            }
-        }
+        crate::helpers::publish::deliver_message(
+            &state,
+            &response,
+            crate::helpers::publish::DeliveryTarget::Topic(&topic),
+        )
+        .await;
     }
 
     Ok(Json(response))
