@@ -1,9 +1,19 @@
 use sqlx::SqlitePool;
+use std::collections::HashSet;
+use std::time::{Duration, SystemTime};
 use tokio_util::sync::CancellationToken;
 use tracing::{error, info, warn};
 
-/// Background task that cleans up expired attachments
-pub async fn run_attachment_cleanup(pool: SqlitePool, cancel: CancellationToken) {
+/// Grace period before an unreferenced file is treated as an orphan. Protects an
+/// in-flight upload (file written just before its DB row is inserted).
+const ORPHAN_GRACE: Duration = Duration::from_secs(3600);
+
+/// Background task that cleans up expired and orphaned attachments.
+pub async fn run_attachment_cleanup(
+    pool: SqlitePool,
+    upload_dir: Option<String>,
+    cancel: CancellationToken,
+) {
     info!("Attachment cleanup worker started");
 
     loop {
@@ -16,9 +26,96 @@ pub async fn run_attachment_cleanup(pool: SqlitePool, cancel: CancellationToken)
                 if let Err(e) = cleanup_expired(&pool).await {
                     error!("Attachment cleanup error: {}", e);
                 }
+                // Sweep files left on disk when a message (and its attachment
+                // rows via ON DELETE CASCADE) was deleted.
+                if let Some(ref dir) = upload_dir {
+                    match cleanup_orphan_files(&pool, dir, ORPHAN_GRACE).await {
+                        Ok(n) if n > 0 => info!("Removed {} orphaned attachment file(s)", n),
+                        Err(e) => error!("Orphan file sweep error: {}", e),
+                        _ => {}
+                    }
+                }
             }
         }
     }
+}
+
+/// Remove attachment files on disk no longer referenced by any `local` row.
+async fn cleanup_orphan_files(
+    pool: &SqlitePool,
+    upload_dir: &str,
+    grace: Duration,
+) -> Result<u64, sqlx::Error> {
+    let rows: Vec<(String,)> =
+        sqlx::query_as("SELECT storage_path FROM attachments WHERE storage_type = 'local'")
+            .fetch_all(pool)
+            .await?;
+    let referenced: HashSet<String> = rows
+        .into_iter()
+        .filter_map(|(p,)| {
+            std::path::Path::new(&p)
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+        })
+        .collect();
+
+    Ok(sweep_orphan_files(upload_dir, &referenced, grace).await)
+}
+
+/// Delete top-level files in `dir` whose name is not in `referenced` and that are
+/// older than `grace`. Subdirectories (e.g. `icons/`) are skipped. Never fails —
+/// per-file errors are logged so one bad file can't abort the sweep.
+async fn sweep_orphan_files(dir: &str, referenced: &HashSet<String>, grace: Duration) -> u64 {
+    let mut read_dir = match tokio::fs::read_dir(dir).await {
+        Ok(d) => d,
+        Err(e) => {
+            warn!("Orphan sweep: cannot read upload dir {}: {}", dir, e);
+            return 0;
+        }
+    };
+
+    let now = SystemTime::now();
+    let mut removed = 0u64;
+
+    loop {
+        let entry = match read_dir.next_entry().await {
+            Ok(Some(e)) => e,
+            Ok(None) => break,
+            Err(e) => {
+                warn!("Orphan sweep: error reading dir entry: {}", e);
+                break;
+            }
+        };
+        // Only top-level files; skip subdirectories like icons/.
+        match entry.file_type().await {
+            Ok(ft) if ft.is_file() => {}
+            _ => continue,
+        }
+        // Grace period: skip anything recently written (possible in-flight upload)
+        // or with a future mtime (clock skew).
+        if let Ok(meta) = entry.metadata().await {
+            if let Ok(modified) = meta.modified() {
+                if now
+                    .duration_since(modified)
+                    .map(|a| a < grace)
+                    .unwrap_or(true)
+                {
+                    continue;
+                }
+            }
+        }
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if !referenced.contains(&name) {
+            match tokio::fs::remove_file(entry.path()).await {
+                Ok(()) => {
+                    removed += 1;
+                    info!("Removed orphaned attachment file {}", name);
+                }
+                Err(e) => warn!("Failed to remove orphan file {}: {}", name, e),
+            }
+        }
+    }
+    removed
 }
 
 /// Background task that cleans up expired messages
@@ -139,4 +236,63 @@ async fn cleanup_expired(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn sweep_removes_orphans_keeps_referenced_and_subdirs() {
+        let dir = std::env::temp_dir().join(format!("rstify-orphan-sweep-{}", std::process::id()));
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+
+        // Two top-level files: one referenced, one orphaned.
+        tokio::fs::write(dir.join("keep.bin"), b"x").await.unwrap();
+        tokio::fs::write(dir.join("orphan.bin"), b"y")
+            .await
+            .unwrap();
+        // A subdirectory (like icons/) must be left entirely alone.
+        let icons = dir.join("icons");
+        tokio::fs::create_dir_all(&icons).await.unwrap();
+        tokio::fs::write(icons.join("icon.png"), b"i")
+            .await
+            .unwrap();
+
+        let mut referenced = HashSet::new();
+        referenced.insert("keep.bin".to_string());
+
+        // grace = ZERO so the freshly written files are eligible.
+        let removed = sweep_orphan_files(dir.to_str().unwrap(), &referenced, Duration::ZERO).await;
+
+        assert_eq!(removed, 1, "exactly the orphan should be removed");
+        assert!(dir.join("keep.bin").exists(), "referenced file kept");
+        assert!(!dir.join("orphan.bin").exists(), "orphan removed");
+        assert!(icons.join("icon.png").exists(), "subdirectory untouched");
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
+
+    #[tokio::test]
+    async fn sweep_respects_grace_period() {
+        let dir = std::env::temp_dir().join(format!("rstify-orphan-grace-{}", std::process::id()));
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+        tokio::fs::write(dir.join("fresh.bin"), b"y").await.unwrap();
+
+        // Large grace: the just-written file is within the window, so it is kept
+        // even though it is unreferenced (guards against racing an in-flight upload).
+        let removed = sweep_orphan_files(
+            dir.to_str().unwrap(),
+            &HashSet::new(),
+            Duration::from_secs(3600),
+        )
+        .await;
+
+        assert_eq!(removed, 0);
+        assert!(dir.join("fresh.bin").exists());
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+    }
 }

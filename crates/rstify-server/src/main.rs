@@ -146,7 +146,9 @@ async fn main() -> anyhow::Result<()> {
         })
     });
 
-    let job_runner = JobRunner::new(pool).with_broadcast(broadcast_fn);
+    let job_runner = JobRunner::new(pool)
+        .with_broadcast(broadcast_fn)
+        .with_upload_dir(config.server.upload_dir.clone());
 
     // Build rate limiter. Keys on the real TCP peer IP unless a trusted proxy is
     // declared (RATE_LIMIT_TRUST_PROXY), preventing X-Forwarded-For spoofing.
