@@ -15,7 +15,6 @@ export interface Folder {
 interface FolderedTopics {
   pinned: Topic[];
   folders: (Folder & { topics: Topic[] })[];
-  mqtt: Topic[];
   other: Topic[];
 }
 
@@ -33,7 +32,6 @@ interface ChannelsState {
   pinTopic: (topicName: string) => void;
   unpinTopic: (topicName: string) => void;
   isPinned: (topicName: string) => boolean;
-  isMqttTopic: (topic: Topic) => boolean;
   getFolderedTopics: () => FolderedTopics;
 }
 
@@ -58,12 +56,6 @@ function loadPinned(): string[] {
 
 function savePinned(pinned: string[]) {
   pinnedCache.save(pinned);
-}
-
-function isMqtt(topic: Topic): boolean {
-  const name = topic.name.toLowerCase();
-  // Slash paths (standard MQTT), contains "mqtt", or dot-hierarchical (2+ dots = bridged MQTT)
-  return name.includes("/") || name.includes("mqtt") || (name.split(".").length > 2);
 }
 
 // --- Store ---
@@ -157,10 +149,6 @@ export const useChannelsStore = create<ChannelsState>((set, get) => ({
     return get().pinnedTopics.includes(topicName);
   },
 
-  isMqttTopic: (topic: Topic) => {
-    return isMqtt(topic);
-  },
-
   getFolderedTopics: () => {
     const { topics, folders, pinnedTopics } = get();
     const topicByName = new Map(topics.map((t) => [t.name, t]));
@@ -187,10 +175,8 @@ export const useChannelsStore = create<ChannelsState>((set, get) => ({
     }));
 
     // Remaining topics not in any folder
-    const remaining = topics.filter((t) => !inFolder.has(t.name));
-    const mqtt = remaining.filter((t) => isMqtt(t));
-    const other = remaining.filter((t) => !isMqtt(t));
+    const other = topics.filter((t) => !inFolder.has(t.name));
 
-    return { pinned, folders: foldersWithTopics, mqtt, other };
+    return { pinned, folders: foldersWithTopics, other };
   },
 }));

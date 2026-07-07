@@ -25,15 +25,15 @@ SQLite `datetime('now')` → `"2026-03-29 04:31:12"` (no zone). Any model with `
 if !date.ends_with('Z') && !date.contains('+') { format!("{}Z", date) }
 ```
 
-Models serializing dates directly must do the same. MQTT ingest uses
-`chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ")` — NEVER `to_rfc3339()` (emits `+00:00`).
+Models serializing dates directly must do the same (use
+`chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ")` — NEVER `to_rfc3339()`, which emits `+00:00`).
 SQL datetime comparisons use `"%Y-%m-%d %H:%M:%S"`.
 
 ## Config — single env layer
 
 `std::env::var` is allowed ONLY in `crates/rstify-server/src/config.rs`. Everything else reads config
 from sub-structs threaded through `AppState` (`ServerConfig`, `DatabaseConfig`, `AuthConfig`,
-`MqttConfig`, `FcmConfig`, `SmtpConfig`, `RateLimitConfig`, `CorsConfig`).
+`FcmConfig`, `SmtpConfig`, `RateLimitConfig`, `CorsConfig`).
 
 ## sqlx 0.8 (SQLite)
 
@@ -52,8 +52,8 @@ from sub-structs threaded through `AppState` (`ServerConfig`, `DatabaseConfig`, 
 
 Incoming `/api/wh/{token}` uses the `Bytes` extractor so HMAC is verified before JSON parsing. Markdown
 parsers return `WebhookMessageOutput { content_type: Some("text/markdown"), .. }` and set
-`extras_json` `{"client::display":{"contentType":"text/markdown"}}`. Anti-loop: ingest skips
-`source: "webhook"`/`"api"`; publisher skips `source: "mqtt"`; internal topics use the `rstify/` prefix.
+`extras_json` `{"client::display":{"contentType":"text/markdown"}}`. Outgoing webhooks are SSRF-validated
+at delivery time (`rstify-jobs/src/ssrf.rs`); `WEBHOOK_ALLOW_PRIVATE_TARGETS=true` allows private targets.
 
 ## Auth
 

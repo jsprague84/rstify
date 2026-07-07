@@ -1125,7 +1125,7 @@ UPLOAD_DIR=./uploads
 RUST_LOG=info
 ```
 
-See the [Configuration Reference](CONFIGURATION.md) for the full list including SMTP, FCM, MQTT, CORS, and rate limiting options.
+See the [Configuration Reference](CONFIGURATION.md) for the full list including SMTP, FCM, CORS, and rate limiting options.
 
 ### File Locations
 

@@ -4,7 +4,6 @@ import type {
   Client,
   CreateApplication,
   CreateClient,
-  CreateMqttBridge,
   CreateTopic,
   CreateTopicMessage,
   CreateTopicPermission,
@@ -15,14 +14,11 @@ import type {
   LoginRequest,
   LoginResponse,
   MessageResponse,
-  MqttBridge,
-  MqttStatusResponse,
   PagedMessages,
   StatsResponse,
   Topic,
   TopicPermission,
   UpdateApplication,
-  UpdateMqttBridge,
   UpdateTopic,
   UpdateUser,
   UpdateWebhookConfig,
@@ -436,27 +432,6 @@ export class RstifyClient {
 
   async regenerateWebhookToken(id: number): Promise<WebhookConfig> {
     return this.request("POST", `/api/webhooks/${id}/regenerate-token`);
-  }
-
-  // MQTT
-  async getMqttStatus(): Promise<MqttStatusResponse> {
-    return this.request("GET", "/api/mqtt/status");
-  }
-
-  async listBridges(): Promise<MqttBridge[]> {
-    return this.request("GET", "/api/mqtt/bridges");
-  }
-
-  async createBridge(req: CreateMqttBridge): Promise<MqttBridge> {
-    return this.request("POST", "/api/mqtt/bridges", req);
-  }
-
-  async updateBridge(id: number, req: UpdateMqttBridge): Promise<MqttBridge> {
-    return this.request("PUT", `/api/mqtt/bridges/${id}`, req);
-  }
-
-  async deleteBridge(id: number): Promise<void> {
-    await this.request("DELETE", `/api/mqtt/bridges/${id}`);
   }
 
   // Stats (admin)

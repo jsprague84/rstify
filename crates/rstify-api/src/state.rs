@@ -1,12 +1,10 @@
 use rstify_db::repositories::{
-    SqliteApplicationRepo, SqliteClientRepo, SqliteMessageRepo, SqliteMqttBridgeRepo,
-    SqliteTopicRepo, SqliteUserRepo, SqliteWebhookVariableRepo,
+    SqliteApplicationRepo, SqliteClientRepo, SqliteMessageRepo, SqliteTopicRepo, SqliteUserRepo,
+    SqliteWebhookVariableRepo,
 };
-use rstify_mqtt::bridge::BridgeManager;
 use sqlx::SqlitePool;
 use std::sync::atomic::{AtomicI32, AtomicU64, Ordering};
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 use crate::fcm::FcmClient;
 use crate::websocket::manager::ConnectionManager;
@@ -27,19 +25,12 @@ impl Metrics {
 }
 
 #[derive(Clone)]
-pub struct MqttStatusConfig {
-    pub listen_addr: String,
-    pub ws_listen_addr: Option<String>,
-}
-
-#[derive(Clone)]
 pub struct AppState {
     pub user_repo: SqliteUserRepo,
     pub app_repo: SqliteApplicationRepo,
     pub client_repo: SqliteClientRepo,
     pub topic_repo: SqliteTopicRepo,
     pub message_repo: SqliteMessageRepo,
-    pub mqtt_bridge_repo: SqliteMqttBridgeRepo,
     pub webhook_variable_repo: SqliteWebhookVariableRepo,
     pub jwt_secret: String,
     pub upload_dir: String,
@@ -48,9 +39,7 @@ pub struct AppState {
     pub pool: SqlitePool,
     pub fcm: Option<Arc<FcmClient>>,
     pub metrics: Arc<Metrics>,
-    pub bridge_manager: Option<Arc<Mutex<BridgeManager>>>,
     pub inbox_threshold: Arc<AtomicI32>,
-    pub mqtt_config: Option<MqttStatusConfig>,
     pub email_config: Option<rstify_jobs::email::EmailConfig>,
 }
 
@@ -67,7 +56,6 @@ impl AppState {
             client_repo: SqliteClientRepo::new(pool.clone()),
             topic_repo: SqliteTopicRepo::new(pool.clone()),
             message_repo: SqliteMessageRepo::new(pool.clone()),
-            mqtt_bridge_repo: SqliteMqttBridgeRepo::new(pool.clone()),
             webhook_variable_repo: SqliteWebhookVariableRepo::new(pool.clone()),
             jwt_secret,
             upload_dir,
@@ -76,25 +64,13 @@ impl AppState {
             pool,
             fcm: None,
             metrics: Arc::new(Metrics::default()),
-            bridge_manager: None,
             inbox_threshold: Arc::new(AtomicI32::new(5)),
-            mqtt_config: None,
             email_config: None,
         }
     }
 
     pub fn with_fcm(mut self, fcm: FcmClient) -> Self {
         self.fcm = Some(Arc::new(fcm));
-        self
-    }
-
-    pub fn with_bridge_manager(mut self, bm: Arc<Mutex<BridgeManager>>) -> Self {
-        self.bridge_manager = Some(bm);
-        self
-    }
-
-    pub fn with_mqtt_status(mut self, config: MqttStatusConfig) -> Self {
-        self.mqtt_config = Some(config);
         self
     }
 

@@ -20,7 +20,6 @@ const navSections = [
     label: 'Integrations',
     items: [
       { to: '/webhooks', label: 'Webhooks' },
-      { to: '/bridges', label: 'MQTT Bridges' },
     ],
   },
   {

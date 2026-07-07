@@ -35,7 +35,6 @@ Timestamps are stored as UTC in SQLite via `datetime('now')`, which yields `"202
 - **Backend:** any model with `to_response()` MUST append `Z` to bare date fields:
   `if !date.ends_with('Z') && !date.contains('+') { format!("{}Z", date) }`. Models serializing dates
   directly (no `to_response()`) must still append `Z`.
-- **MQTT ingest:** `chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ")` — NOT `to_rfc3339()` (emits `+00:00`).
 - **SQL datetime comparisons:** use `"%Y-%m-%d %H:%M:%S"` (SQLite's internal format).
 - **Frontends:** NEVER render raw date strings. Always `formatLocalTime()` / `formatTimeAgo()` /
   `formatTimeAgoCompact()` from `shared/utils/time.ts`. DataTable date columns need a `render` fn.
@@ -44,7 +43,7 @@ Timestamps are stored as UTC in SQLite via `datetime('now')`, which yields `"202
 
 All env vars are read in `crates/rstify-server/src/config.rs` at startup. **Hard rule:** `std::env::var`
 is allowed ONLY in that config bootstrap layer — no other crate/module reads env directly. Sub-configs
-(`ServerConfig`, `DatabaseConfig`, `AuthConfig`, `MqttConfig`, `FcmConfig`, `SmtpConfig`, `RateLimitConfig`,
+(`ServerConfig`, `DatabaseConfig`, `AuthConfig`, `FcmConfig`, `SmtpConfig`, `RateLimitConfig`,
 `CorsConfig`) flow through `AppState`.
 
 ## Shared Types & Utilities (`shared/`)
@@ -63,9 +62,8 @@ API types are generated from Rust DTOs via ts-rs; both frontends import from the
   Markdown parsers return `WebhookMessageOutput` with `content_type: Some("text/markdown")` and set
   `extras_json` `{"client::display":{"contentType":"text/markdown"}}`.
 - **Outgoing:** `{{env.KEY}}` substitution works in `body_template`, `target_url`, AND `headers`. Store
-  secrets as webhook variables, never hardcoded.
-- **Anti-loop:** MQTT ingest skips `source: "webhook"`/`"api"`; publisher skips `source: "mqtt"`; internal
-  topics use the `rstify/` prefix the ingest ignores.
+  secrets as webhook variables, never hardcoded. Outgoing webhooks are validated for SSRF at delivery
+  time and pinned (see `rstify-jobs/src/ssrf.rs`).
 
 ## API Documentation
 
@@ -88,13 +86,12 @@ rstify is 100% Gotify-API compatible. Message extras namespaces: `client::displa
 ## Folder conventions
 
 ```
-crates/            Rust workspace (8 crates)
+crates/            Rust workspace (7 crates)
   rstify-core/     models, domain types
   rstify-db/       sqlx pool + migrations registry
   rstify-auth/     JWT / Argon2
   rstify-api/      Axum handlers + openapi.rs;  tests/ = handler integration tests
   rstify-jobs/     background jobs
-  rstify-mqtt/     MQTT ingest/publish
   rstify-server/   binary entrypoint + config.rs (the ONLY env-reading layer)
   rstify-cli/      CLI
 web-ui/            React 19 + Vite 6 + Tailwind 3  → skill: web-ui-tasks
@@ -125,7 +122,6 @@ migrations/        NNN_name.sql (UTC datetime('now'))
 | Don't | Do |
 |---|---|
 | Render `{m.date}` raw | `formatLocalTime(m.date)` |
-| `to_rfc3339()` in MQTT | `format("%Y-%m-%dT%H:%M:%SZ")` |
 | `std::env::var` outside config.rs | thread config through `AppState` |
 | Hand-edit `shared/generated/*.ts` | fix the Rust struct + `just generate-types` |
 | `Pressable className` (RN) | `ThemedPressable` / `AnimatedPressable` |

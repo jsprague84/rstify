@@ -41,15 +41,6 @@ pub struct AuthConfig {
 }
 
 #[derive(Debug, Clone)]
-pub struct MqttConfig {
-    pub listen_addr: String,
-    pub ws_listen_addr: Option<String>,
-    pub require_auth: bool,
-    pub max_payload_size: usize,
-    pub max_connections: usize,
-}
-
-#[derive(Debug, Clone)]
 pub struct FcmConfig {
     pub project_id: String,
     pub service_account_path: String,
@@ -87,7 +78,6 @@ pub struct Config {
     pub server: ServerConfig,
     pub database: DatabaseConfig,
     pub auth: AuthConfig,
-    pub mqtt: Option<MqttConfig>,
     pub fcm: Option<FcmConfig>,
     pub smtp: Option<SmtpConfig>,
     pub rate_limit: RateLimitConfig,
@@ -155,34 +145,6 @@ impl Config {
             })
             .unwrap_or_default();
 
-        // --- MQTT (optional, enabled when MQTT_ENABLED=true/1) ---
-        let mqtt = {
-            let enabled = lookup("MQTT_ENABLED")
-                .map(|v| v == "true" || v == "1")
-                .unwrap_or(false);
-            if enabled {
-                let mqtt_listen_addr =
-                    lookup("MQTT_LISTEN_ADDR").unwrap_or_else(|| "0.0.0.0:1883".into());
-                let ws_listen_addr = lookup("MQTT_WS_LISTEN_ADDR");
-                let require_auth = lookup("MQTT_REQUIRE_AUTH")
-                    .map(|v| v != "false" && v != "0")
-                    .unwrap_or(true);
-                let max_payload_size = parse_optional::<usize>(&lookup, "MQTT_MAX_PAYLOAD", 20480)?;
-                let max_connections =
-                    parse_optional::<usize>(&lookup, "MQTT_MAX_CONNECTIONS", 1000)?;
-
-                Some(MqttConfig {
-                    listen_addr: mqtt_listen_addr,
-                    ws_listen_addr,
-                    require_auth,
-                    max_payload_size,
-                    max_connections,
-                })
-            } else {
-                None
-            }
-        };
-
         // --- FCM (optional, present when both FCM_PROJECT_ID and FCM_SERVICE_ACCOUNT_PATH set) ---
         let fcm = match (lookup("FCM_PROJECT_ID"), lookup("FCM_SERVICE_ACCOUNT_PATH")) {
             (Some(project_id), Some(service_account_path)) => Some(FcmConfig {
@@ -217,7 +179,6 @@ impl Config {
             },
             database: DatabaseConfig { url: database_url },
             auth: AuthConfig { jwt_secret },
-            mqtt,
             fcm,
             smtp,
             rate_limit: RateLimitConfig {
@@ -288,7 +249,6 @@ mod tests {
             config.auth.jwt_secret,
             "this-is-a-secret-that-is-at-least-32-bytes!"
         );
-        assert!(config.mqtt.is_none());
         assert!(config.fcm.is_none());
         assert!(config.smtp.is_none());
         assert_eq!(config.rate_limit.burst, 60);
@@ -322,36 +282,6 @@ mod tests {
         let err = Config::from_map(make_lookup(m)).unwrap_err();
         assert_eq!(err.field, "RATE_LIMIT_BURST");
         assert!(err.message.contains("invalid value"));
-    }
-
-    // --- MQTT config present when enabled ---
-    #[test]
-    fn test_mqtt_config_present_when_enabled() {
-        let mut m = minimal_valid_map();
-        m.insert("MQTT_ENABLED", "true");
-        let config = Config::from_map(make_lookup(m)).unwrap();
-        let mqtt = config.mqtt.unwrap();
-        assert_eq!(mqtt.listen_addr, "0.0.0.0:1883");
-        assert!(mqtt.ws_listen_addr.is_none());
-        assert!(mqtt.require_auth);
-        assert_eq!(mqtt.max_payload_size, 20480);
-        assert_eq!(mqtt.max_connections, 1000);
-    }
-
-    // --- MQTT config absent when disabled (default) ---
-    #[test]
-    fn test_mqtt_config_absent_when_disabled() {
-        let config = Config::from_map(make_lookup(minimal_valid_map())).unwrap();
-        assert!(config.mqtt.is_none());
-    }
-
-    // --- MQTT enabled with "1" ---
-    #[test]
-    fn test_mqtt_enabled_with_1() {
-        let mut m = minimal_valid_map();
-        m.insert("MQTT_ENABLED", "1");
-        let config = Config::from_map(make_lookup(m)).unwrap();
-        assert!(config.mqtt.is_some());
     }
 
     // --- CORS origins parsing with whitespace trimming ---
@@ -463,16 +393,6 @@ mod tests {
         assert_eq!(err.field, "SMTP_PORT");
     }
 
-    // --- Invalid MQTT_MAX_PAYLOAD fails ---
-    #[test]
-    fn test_invalid_mqtt_max_payload_fails() {
-        let mut m = minimal_valid_map();
-        m.insert("MQTT_ENABLED", "true");
-        m.insert("MQTT_MAX_PAYLOAD", "abc");
-        let err = Config::from_map(make_lookup(m)).unwrap_err();
-        assert_eq!(err.field, "MQTT_MAX_PAYLOAD");
-    }
-
     // --- Invalid RSTIFY_MAX_ATTACHMENT_SIZE fails ---
     #[test]
     fn test_invalid_max_attachment_size_fails() {
@@ -490,25 +410,6 @@ mod tests {
             message: "is broken".into(),
         };
         assert_eq!(format!("{}", err), "config error for `FOO`: is broken");
-    }
-
-    // --- MQTT custom values ---
-    #[test]
-    fn test_mqtt_custom_values() {
-        let mut m = minimal_valid_map();
-        m.insert("MQTT_ENABLED", "true");
-        m.insert("MQTT_LISTEN_ADDR", "127.0.0.1:1884");
-        m.insert("MQTT_WS_LISTEN_ADDR", "127.0.0.1:8083");
-        m.insert("MQTT_REQUIRE_AUTH", "false");
-        m.insert("MQTT_MAX_PAYLOAD", "65536");
-        m.insert("MQTT_MAX_CONNECTIONS", "500");
-        let config = Config::from_map(make_lookup(m)).unwrap();
-        let mqtt = config.mqtt.unwrap();
-        assert_eq!(mqtt.listen_addr, "127.0.0.1:1884");
-        assert_eq!(mqtt.ws_listen_addr.as_deref(), Some("127.0.0.1:8083"));
-        assert!(!mqtt.require_auth);
-        assert_eq!(mqtt.max_payload_size, 65536);
-        assert_eq!(mqtt.max_connections, 500);
     }
 
     // --- Webhook SSRF policy defaults off; enabled via env ---

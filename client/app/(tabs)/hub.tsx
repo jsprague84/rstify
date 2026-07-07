@@ -81,12 +81,6 @@ export default function HubScreen() {
           </View>
           <View className="flex-row gap-3">
             <IntegrationTile
-              icon="🔌"
-              title="MQTT"
-              subtitle="Bridges"
-              href="/hub/mqtt"
-            />
-            <IntegrationTile
               icon="🔑"
               title="Clients"
               subtitle="API tokens"

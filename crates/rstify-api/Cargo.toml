@@ -8,7 +8,6 @@ rstify-core = { workspace = true }
 rstify-db = { workspace = true }
 rstify-auth = { workspace = true }
 rstify-jobs = { workspace = true }
-rstify-mqtt = { workspace = true }
 axum = { workspace = true }
 tower-http = { workspace = true }
 tokio = { workspace = true }

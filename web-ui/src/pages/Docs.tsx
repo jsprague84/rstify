@@ -1,13 +1,12 @@
 import { useState } from 'react';
 
-type Section = 'quickstart' | 'messages' | 'webhooks' | 'topics' | 'mqtt' | 'api' | 'config';
+type Section = 'quickstart' | 'messages' | 'webhooks' | 'topics' | 'api' | 'config';
 
 const sections: { key: Section; label: string }[] = [
   { key: 'quickstart', label: 'Quick Start' },
   { key: 'messages', label: 'Messages' },
   { key: 'webhooks', label: 'Webhooks' },
   { key: 'topics', label: 'Topics' },
-  { key: 'mqtt', label: 'MQTT' },
   { key: 'api', label: 'API Reference' },
   { key: 'config', label: 'Configuration' },
 ];
@@ -43,7 +42,6 @@ export default function Docs() {
             {active === 'messages' && <MessagesDoc />}
             {active === 'webhooks' && <WebhooksDoc />}
             {active === 'topics' && <TopicsDoc />}
-            {active === 'mqtt' && <MqttDoc />}
             {active === 'api' && <ApiDoc />}
             {active === 'config' && <ConfigDoc />}
           </div>
@@ -92,7 +90,6 @@ function QuickStart() {
       <ul>
         <li><strong>Topics</strong> -- publish/subscribe messaging for multi-subscriber broadcasts</li>
         <li><strong>Webhooks</strong> -- receive notifications from GitHub, GitLab, Jenkins, and more</li>
-        <li><strong>MQTT</strong> -- bridge IoT devices and home automation systems</li>
         <li><strong>Attachments</strong> -- include files up to 25 MiB with messages</li>
       </ul>
     </DocSection>
@@ -255,51 +252,6 @@ function TopicsDoc() {
   );
 }
 
-function MqttDoc() {
-  return (
-    <DocSection title="MQTT Integration">
-      <h4>Overview</h4>
-      <p>rstify includes an integrated MQTT broker for IoT devices and home automation. Enable it by setting <code>MQTT_ENABLED=true</code>.</p>
-
-      <h4>Connecting</h4>
-      <Code>{`# Using mosquitto client with a client token
-mosquitto_sub -h your-server -p 1883 \\
-  -u "client-token" -P "CLIENT_TOKEN_HERE" \\
-  -t "sensors/#"
-
-# Publishing
-mosquitto_pub -h your-server -p 1883 \\
-  -u "client-token" -P "CLIENT_TOKEN_HERE" \\
-  -t "sensors/temperature" \\
-  -m '{"title": "Temp", "message": "22.5C", "priority": 3}'`}</Code>
-
-      <h4>Topic Mapping</h4>
-      <p>MQTT topics with <code>/</code> separators are mapped to rstify topics with <code>.</code> separators:</p>
-      <ul>
-        <li><code>home/sensors/temp</code> becomes <code>home.sensors.temp</code></li>
-        <li>Topics are auto-created when messages arrive</li>
-      </ul>
-
-      <h4>MQTT Bridges</h4>
-      <p>Bridges connect rstify to external MQTT brokers. Messages received on subscribed topics are ingested as rstify messages.</p>
-      <ol>
-        <li>Go to <strong>MQTT Bridges</strong> and click <strong>"New Bridge"</strong></li>
-        <li>Enter the remote broker URL (e.g. <code>broker.hivemq.com:1883</code>)</li>
-        <li>Configure subscribe and publish topics</li>
-        <li>Optionally set credentials, QoS, and topic prefix</li>
-      </ol>
-
-      <h4>Bridge Status</h4>
-      <p>The bridge list shows connection status for each bridge:</p>
-      <ul>
-        <li><strong>Green (Connected)</strong> -- bridge is running and connected</li>
-        <li><strong>Red (Disconnected)</strong> -- bridge is enabled but the connection failed</li>
-        <li><strong>Gray (Disabled)</strong> -- bridge is not enabled</li>
-      </ul>
-    </DocSection>
-  );
-}
-
 function ApiDoc() {
   return (
     <DocSection title="API Reference">
@@ -350,18 +302,6 @@ function ApiDoc() {
         </tbody>
       </table>
 
-      <h4>MQTT Endpoints</h4>
-      <table className="w-full text-left">
-        <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td>GET</td><td><code>/api/mqtt/status</code></td><td>Broker status and bridge info</td></tr>
-          <tr><td>GET</td><td><code>/api/mqtt/bridges</code></td><td>List bridges</td></tr>
-          <tr><td>POST</td><td><code>/api/mqtt/bridges</code></td><td>Create bridge</td></tr>
-          <tr><td>PUT</td><td><code>/api/mqtt/bridges/:id</code></td><td>Update bridge</td></tr>
-          <tr><td>DELETE</td><td><code>/api/mqtt/bridges/:id</code></td><td>Delete bridge</td></tr>
-        </tbody>
-      </table>
-
       <h4>Real-time Streams</h4>
       <table className="w-full text-left">
         <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
@@ -409,19 +349,6 @@ function ConfigDoc() {
           <tr><td><code>CORS_ORIGINS</code></td><td><em>unset</em></td><td>Comma-separated allowed origins</td></tr>
           <tr><td><code>RATE_LIMIT_BURST</code></td><td><code>60</code></td><td>Token bucket burst size per IP</td></tr>
           <tr><td><code>RATE_LIMIT_RPS</code></td><td><code>10</code></td><td>Token refill rate per second</td></tr>
-        </tbody>
-      </table>
-
-      <h4>MQTT Broker</h4>
-      <table className="w-full text-left">
-        <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
-        <tbody>
-          <tr><td><code>MQTT_ENABLED</code></td><td><code>false</code></td><td>Enable the integrated MQTT broker</td></tr>
-          <tr><td><code>MQTT_LISTEN_ADDR</code></td><td><code>0.0.0.0:1883</code></td><td>MQTT TCP listen address</td></tr>
-          <tr><td><code>MQTT_WS_LISTEN_ADDR</code></td><td><em>unset</em></td><td>MQTT WebSocket listen address</td></tr>
-          <tr><td><code>MQTT_REQUIRE_AUTH</code></td><td><code>true</code></td><td>Require MQTT authentication</td></tr>
-          <tr><td><code>MQTT_MAX_PAYLOAD</code></td><td><code>20480</code></td><td>Max MQTT payload bytes</td></tr>
-          <tr><td><code>MQTT_MAX_CONNECTIONS</code></td><td><code>1000</code></td><td>Max concurrent connections</td></tr>
         </tbody>
       </table>
 

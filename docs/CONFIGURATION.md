@@ -58,19 +58,6 @@ Both variables must be set to enable Firebase Cloud Messaging.
 | `FCM_PROJECT_ID` | *(unset)* | Firebase project ID |
 | `FCM_SERVICE_ACCOUNT_PATH` | *(unset)* | Path to Firebase service account JSON key file |
 
-## MQTT Broker
-
-The integrated MQTT broker is disabled by default. Set `MQTT_ENABLED=true` to activate it.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MQTT_ENABLED` | `false` | Enable the integrated MQTT broker |
-| `MQTT_LISTEN_ADDR` | `0.0.0.0:1883` | TCP listen address for MQTT connections |
-| `MQTT_WS_LISTEN_ADDR` | *(unset)* | WebSocket listen address (e.g. `0.0.0.0:8083`) |
-| `MQTT_REQUIRE_AUTH` | `true` | Require authentication for MQTT connections |
-| `MQTT_MAX_PAYLOAD` | `20480` | Maximum MQTT message payload size in bytes |
-| `MQTT_MAX_CONNECTIONS` | `1000` | Maximum concurrent MQTT connections |
-
 ## SMTP Email Notifications
 
 All SMTP variables must be set to enable email notifications.
@@ -90,4 +77,3 @@ All SMTP variables must be set to enable email notifications.
 - Use `RUST_LOG=warn` for production (reduce log volume)
 - Mount `/data` and `/uploads` as persistent Docker volumes
 - Set `RATE_LIMIT_BURST=30` and `RATE_LIMIT_RPS=5` for public-facing instances
-- Enable MQTT authentication (`MQTT_REQUIRE_AUTH=true`) if the broker is exposed

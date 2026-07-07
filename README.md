@@ -1,13 +1,12 @@
 # rstify
 
-A self-hosted notification server built with Rust. 100% compatible with Gotify clients, with additional features like topics, webhooks, MQTT, and file attachments.
+A self-hosted notification server built with Rust. 100% compatible with Gotify clients, with additional features like topics, webhooks, and file attachments.
 
 ## Features
 
 - **Gotify API compatible** -- works with existing Gotify mobile apps and clients
 - **Topics** -- publish/subscribe messaging with fine-grained permissions
 - **Webhooks** -- incoming (GitHub, GitLab, etc.) and outgoing with health monitoring
-- **MQTT broker** -- integrated broker with external bridge support
 - **File attachments** -- upload files up to 25 MiB per message
 - **Markdown** -- full GitHub Flavored Markdown rendering in web UI
 - **Dark mode** -- web UI with light/dark theme support
@@ -46,21 +45,20 @@ Key variables:
 | `JWT_SECRET` | *(required)* | JWT signing secret (>= 32 bytes) |
 | `UPLOAD_DIR` | `./uploads` | Directory for uploaded files |
 | `RSTIFY_MAX_ATTACHMENT_SIZE` | `26214400` (25 MiB) | Maximum upload size in bytes |
-| `MQTT_ENABLED` | `false` | Enable integrated MQTT broker |
 | `CORS_ORIGINS` | *(unset)* | Comma-separated allowed origins |
+| `RATE_LIMIT_TRUST_PROXY` | `false` | Trust `X-Forwarded-For` (enable behind a reverse proxy) |
 | `RATE_LIMIT_BURST` | `60` | Max burst capacity per IP |
 | `RATE_LIMIT_RPS` | `10.0` | Token refill rate per second |
 | `SMTP_HOST` | *(unset)* | SMTP host (enables email notifications) |
 | `FCM_PROJECT_ID` | *(unset)* | Firebase project ID (with `FCM_SERVICE_ACCOUNT_PATH` enables push) |
 
-See the [Configuration Reference](docs/CONFIGURATION.md) for the complete list including SMTP, FCM, MQTT, and CORS options.
+See the [Configuration Reference](docs/CONFIGURATION.md) for the complete list including SMTP, FCM, and CORS options.
 
 ## Documentation
 
 - [Quick Start Guide](QUICKSTART.md)
 - [User Guide](docs/USER_GUIDE.md)
 - [Configuration Reference](docs/CONFIGURATION.md)
-- [MQTT Guide](MQTT_GUIDE.md)
 - [API Authentication](docs/API_AUTHENTICATION.md)
 - [Message Features](docs/MESSAGE_FEATURES.md)
 - [Backup & Restore](docs/BACKUP.md)
@@ -77,7 +75,6 @@ crates/
   rstify-db/        # SQLite repositories, migrations
   rstify-auth/      # Password hashing, JWT
   rstify-jobs/      # Background jobs, outgoing webhooks, email
-  rstify-mqtt/      # MQTT broker, bridges, ingest
 shared/             # Cross-frontend TypeScript types (ts-rs codegen) + utils
 web-ui/             # React 19 + TypeScript + Vite + Tailwind
 client/             # React Native + Expo mobile app

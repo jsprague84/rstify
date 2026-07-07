@@ -1,6 +1,5 @@
 use axum::Router;
 use rstify_core::models::*;
-use rstify_mqtt::bridge::BridgeStatusInfo;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -87,12 +86,6 @@ use crate::state::AppState;
         routes::webhook_variables::create_variable,
         routes::webhook_variables::update_variable,
         routes::webhook_variables::delete_variable,
-        // MQTT
-        routes::mqtt::mqtt_status,
-        routes::mqtt::list_bridges,
-        routes::mqtt::create_bridge,
-        routes::mqtt::update_bridge,
-        routes::mqtt::delete_bridge,
         // Settings
         routes::settings::list_settings,
         routes::settings::update_setting,
@@ -134,9 +127,6 @@ use crate::state::AppState;
         WebhookVariable,
         CreateWebhookVariable,
         UpdateWebhookVariable,
-        MqttBridge,
-        CreateMqttBridge,
-        UpdateMqttBridge,
         routes::auth::LoginRequest,
         routes::auth::LoginResponse,
         routes::stats::StatsResponse,
@@ -144,12 +134,10 @@ use crate::state::AppState;
         routes::health::VersionResponse,
         routes::settings::Setting,
         routes::settings::UpdateSetting,
-        routes::mqtt::MqttStatusResponse,
         routes::webhooks::WebhookConfigWithHealth,
         routes::webhooks::TestWebhookPayload,
         routes::webhooks::WebhookTestResult,
         routes::messages::BatchDeleteRequest,
-        BridgeStatusInfo,
     ))
 )]
 struct ApiDoc;

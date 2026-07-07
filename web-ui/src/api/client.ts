@@ -8,7 +8,6 @@ import type {
   WebhookConfig, WebhookConfigWithHealth, CreateWebhookConfig, UpdateWebhookConfig,
   WebhookDeliveryLog, WebhookTestResult,
   WebhookVariable, CreateWebhookVariable, UpdateWebhookVariable,
-  MqttBridge, CreateMqttBridge, UpdateMqttBridge, MqttStatusResponse,
   StatsResponse, LoginResponse,
   HealthResponse, VersionResponse,
   Setting,
@@ -242,23 +241,6 @@ export const api = {
   },
   getVersion(): Promise<VersionResponse> {
     return request('/version');
-  },
-
-  // MQTT
-  getMqttStatus(): Promise<MqttStatusResponse> {
-    return request('/api/mqtt/status');
-  },
-  listBridges(): Promise<MqttBridge[]> {
-    return request('/api/mqtt/bridges');
-  },
-  createBridge(data: CreateMqttBridge): Promise<MqttBridge> {
-    return request('/api/mqtt/bridges', { method: 'POST', body: JSON.stringify(data) });
-  },
-  updateBridge(id: number, data: UpdateMqttBridge): Promise<MqttBridge> {
-    return request(`/api/mqtt/bridges/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-  },
-  deleteBridge(id: number): Promise<void> {
-    return request(`/api/mqtt/bridges/${id}`, { method: 'DELETE' });
   },
 
   // Stats

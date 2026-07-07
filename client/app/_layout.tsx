@@ -49,7 +49,6 @@ function RootNavigator() {
         <Stack.Screen name="hub/settings" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="hub/server" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="hub/users" options={{ headerShown: false, animation: 'slide_from_right' }} />
-        <Stack.Screen name="hub/mqtt" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="hub/clients" options={{ headerShown: false, animation: 'slide_from_right' }} />
       </Stack.Protected>
 

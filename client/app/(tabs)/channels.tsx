@@ -241,9 +241,6 @@ export default function ChannelsScreen() {
   const [publishTopic, setPublishTopic] = useState<Topic | null>(null);
   const [deleteTopic, setDeleteTopic] = useState<Topic | null>(null);
 
-  // MQTT section collapsed by default
-  const [mqttCollapsed, setMqttCollapsed] = useState(true);
-
   useEffect(() => {
     fetchTopics();
   }, [fetchTopics]);
@@ -252,7 +249,7 @@ export default function ChannelsScreen() {
     fetchTopics();
   }, [fetchTopics]);
 
-  const { pinned, folders, mqtt, other } = folderedTopics;
+  const { pinned, folders, other } = folderedTopics;
 
   const handleDeleteFolder = (folderId: string, folderName: string) => {
     Alert.alert(
@@ -290,7 +287,6 @@ export default function ChannelsScreen() {
   );
 
   const filteredPinned = useMemo(() => filterTopics(pinned), [filterTopics, pinned]);
-  const filteredMqtt = useMemo(() => filterTopics(mqtt), [filterTopics, mqtt]);
   const filteredOther = useMemo(() => filterTopics(other), [filterTopics, other]);
   const filteredFolders = useMemo(
     () =>
@@ -303,7 +299,6 @@ export default function ChannelsScreen() {
 
   const totalVisible =
     filteredPinned.length +
-    filteredMqtt.length +
     filteredOther.length +
     filteredFolders.reduce((sum, f) => sum + f.filteredTopics.length, 0);
 
@@ -398,19 +393,6 @@ export default function ChannelsScreen() {
                 onPublishTopic={setPublishTopic}
               />
             ))}
-
-            {/* MQTT Topics */}
-            <FolderSection
-              title="MQTT Topics"
-              icon="🔌"
-              color="#f59e0b"
-              topics={filteredMqtt}
-              collapsed={mqttCollapsed}
-              onToggle={() => setMqttCollapsed((c) => !c)}
-              onEditTopic={setEditTopic}
-              onDeleteTopic={setDeleteTopic}
-              onPublishTopic={setPublishTopic}
-            />
 
             {/* Other / ungrouped */}
             <FolderSection
