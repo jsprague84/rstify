@@ -68,6 +68,9 @@ pub struct SmtpConfig {
 pub struct RateLimitConfig {
     pub burst: u32,
     pub rps: f64,
+    /// Honor `X-Forwarded-For` for rate-limit keying. Enable ONLY when a trusted
+    /// reverse proxy fronts the server; otherwise clients can spoof the header.
+    pub trust_proxy: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -89,6 +92,10 @@ pub struct Config {
     pub smtp: Option<SmtpConfig>,
     pub rate_limit: RateLimitConfig,
     pub cors: CorsConfig,
+    /// Allow outgoing webhooks / attachment fetches to target private/LAN/reserved
+    /// addresses. Off by default (SSRF-safe); enable only on a trusted, single-user
+    /// instance that fires webhooks at internal services.
+    pub webhook_allow_private_targets: bool,
 }
 
 impl Config {
@@ -129,6 +136,14 @@ impl Config {
         // --- Rate limit ---
         let burst = parse_optional::<u32>(&lookup, "RATE_LIMIT_BURST", 60)?;
         let rps = parse_optional::<f64>(&lookup, "RATE_LIMIT_RPS", 10.0)?;
+        let trust_proxy = lookup("RATE_LIMIT_TRUST_PROXY")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false);
+
+        // --- Webhook SSRF policy ---
+        let webhook_allow_private_targets = lookup("WEBHOOK_ALLOW_PRIVATE_TARGETS")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false);
 
         // --- CORS ---
         let origins: Vec<String> = lookup("CORS_ORIGINS")
@@ -205,8 +220,13 @@ impl Config {
             mqtt,
             fcm,
             smtp,
-            rate_limit: RateLimitConfig { burst, rps },
+            rate_limit: RateLimitConfig {
+                burst,
+                rps,
+                trust_proxy,
+            },
             cors: CorsConfig { origins },
+            webhook_allow_private_targets,
         })
     }
 }
@@ -489,6 +509,30 @@ mod tests {
         assert!(!mqtt.require_auth);
         assert_eq!(mqtt.max_payload_size, 65536);
         assert_eq!(mqtt.max_connections, 500);
+    }
+
+    // --- Webhook SSRF policy defaults off; enabled via env ---
+    #[test]
+    fn test_webhook_allow_private_targets() {
+        let config = Config::from_map(make_lookup(minimal_valid_map())).unwrap();
+        assert!(!config.webhook_allow_private_targets);
+
+        let mut m = minimal_valid_map();
+        m.insert("WEBHOOK_ALLOW_PRIVATE_TARGETS", "true");
+        let config = Config::from_map(make_lookup(m)).unwrap();
+        assert!(config.webhook_allow_private_targets);
+    }
+
+    // --- Rate-limit proxy trust defaults off; enabled via env ---
+    #[test]
+    fn test_rate_limit_trust_proxy() {
+        let config = Config::from_map(make_lookup(minimal_valid_map())).unwrap();
+        assert!(!config.rate_limit.trust_proxy);
+
+        let mut m = minimal_valid_map();
+        m.insert("RATE_LIMIT_TRUST_PROXY", "1");
+        let config = Config::from_map(make_lookup(m)).unwrap();
+        assert!(config.rate_limit.trust_proxy);
     }
 
     // --- Invalid RATE_LIMIT_RPS fails ---

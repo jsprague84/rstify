@@ -2585,7 +2585,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "ts-rs",
- "url",
  "utoipa",
  "utoipa-swagger-ui",
  "uuid",
@@ -2663,6 +2662,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+ "url",
 ]
 
 [[package]]

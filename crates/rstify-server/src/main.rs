@@ -20,6 +20,12 @@ async fn main() -> anyhow::Result<()> {
     let config = config::Config::from_env().expect("Failed to load configuration");
     info!("Starting rstify server on {}", config.server.listen_addr);
 
+    // Apply the outbound-URL SSRF policy for outgoing webhooks / attachment fetches.
+    rstify_jobs::ssrf::set_allow_private_targets(config.webhook_allow_private_targets);
+    if config.webhook_allow_private_targets {
+        warn!("WEBHOOK_ALLOW_PRIVATE_TARGETS=true — outgoing webhooks and attachment fetches may reach private/LAN/reserved addresses. Enable only on a trusted single-user instance.");
+    }
+
     let db = Database::connect(&config.database.url).await?;
     db.migrate().await?;
 
@@ -142,8 +148,10 @@ async fn main() -> anyhow::Result<()> {
 
     let job_runner = JobRunner::new(pool).with_broadcast(broadcast_fn);
 
-    // Build rate limiter
-    let limiter = RateLimiter::new(config.rate_limit.burst, config.rate_limit.rps);
+    // Build rate limiter. Keys on the real TCP peer IP unless a trusted proxy is
+    // declared (RATE_LIMIT_TRUST_PROXY), preventing X-Forwarded-For spoofing.
+    let limiter = RateLimiter::new(config.rate_limit.burst, config.rate_limit.rps)
+        .trust_forwarded_for(config.rate_limit.trust_proxy);
 
     // Periodic rate limiter cleanup
     let limiter_cleanup = limiter.clone();
@@ -267,9 +275,13 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(&config.server.listen_addr).await?;
     info!("Listening on {}", config.server.listen_addr);
 
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    // Serve with connection info so the rate limiter can key on the real peer IP.
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
 
     info!("Shutting down background jobs...");
     job_runner.shutdown();

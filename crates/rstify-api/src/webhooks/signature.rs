@@ -27,6 +27,23 @@ pub fn verify_github_signature(secret: &str, body: &[u8], header_value: &str) ->
     constant_time_eq(computed_hex.as_bytes(), provided_hex.as_bytes())
 }
 
+/// Verify a generic HMAC-SHA256 signature over `body` for webhook types without
+/// a vendor-specific scheme (grafana, generic). `provided` is a hex digest,
+/// optionally `sha256=`-prefixed.
+pub fn verify_hmac_hex(secret: &str, body: &[u8], provided: &str) -> bool {
+    let provided_hex = provided.strip_prefix("sha256=").unwrap_or(provided).trim();
+    if provided_hex.is_empty() {
+        return false;
+    }
+    let Ok(mut mac) = HmacSha256::new_from_slice(secret.as_bytes()) else {
+        return false;
+    };
+    mac.update(body);
+    let computed = mac.finalize().into_bytes();
+    let computed_hex: String = computed.iter().map(|b| format!("{:02x}", b)).collect();
+    constant_time_eq(computed_hex.as_bytes(), provided_hex.as_bytes())
+}
+
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
     if a.len() != b.len() {
         return false;

@@ -11,6 +11,12 @@ import { formatLocalTime } from 'shared';
 
 const PAGE_SIZE = 50;
 
+/** Defense in depth: only render http(s)/mailto links; drop javascript:/data: URLs. */
+function safeHref(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  return /^(https?:|mailto:)/i.test(url.trim()) ? url : undefined;
+}
+
 export default function Messages() {
   const { toast } = useToast();
   const [messages, setMessages] = useState<MessageResponse[]>([]);
@@ -201,9 +207,9 @@ export default function Messages() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     {m.title && (
-                      m.click_url ? (
+                      safeHref(m.click_url) ? (
                         <a
-                          href={m.click_url}
+                          href={safeHref(m.click_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="font-semibold text-gray-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1"

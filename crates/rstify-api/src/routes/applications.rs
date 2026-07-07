@@ -18,14 +18,9 @@ use crate::utils::sanitize_filename;
 /// Maximum icon size: 1 MiB
 const MAX_ICON_SIZE: usize = 1024 * 1024;
 
-/// Allowed content types for icons
-const ALLOWED_ICON_TYPES: &[&str] = &[
-    "image/png",
-    "image/jpeg",
-    "image/gif",
-    "image/svg+xml",
-    "image/webp",
-];
+/// Allowed content types for icons. SVG is intentionally excluded: it can carry
+/// executable `<script>`, and icons are served to unauthenticated viewers.
+const ALLOWED_ICON_TYPES: &[&str] = &["image/png", "image/jpeg", "image/gif", "image/webp"];
 
 #[utoipa::path(get, path = "/application", responses((status = 200, body = Vec<Application>)))]
 pub async fn list_applications(
@@ -154,14 +149,19 @@ pub async fn upload_icon(
             ))
         })?;
 
+    // Require a content type and enforce the allowlist (a missing content type
+    // must not skip the check).
     let content_type = field.content_type().map(|s| s.to_string());
-    if let Some(ref ct) = content_type {
-        if !ALLOWED_ICON_TYPES.contains(&ct.as_str()) {
+    match content_type.as_deref() {
+        Some(ct) if ALLOWED_ICON_TYPES.contains(&ct) => {}
+        Some(ct) => {
             return Err(ApiError::from(rstify_core::error::CoreError::Validation(
-                format!(
-                    "Invalid content type: {}. Allowed: PNG, JPEG, GIF, SVG, WebP",
-                    ct
-                ),
+                format!("Invalid content type: {ct}. Allowed: PNG, JPEG, GIF, WebP"),
+            )));
+        }
+        None => {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                "Missing content type for icon upload".to_string(),
             )));
         }
     }
@@ -245,14 +245,30 @@ pub async fn get_icon(
         )))
     })?;
 
-    let content_type = mime_guess::from_path(&image)
+    let guessed = mime_guess::from_path(&image)
         .first_or_octet_stream()
         .to_string();
+
+    // Never serve active content (e.g. a legacy SVG icon uploaded before SVG was
+    // disallowed) inline: force a download and lock the response down with CSP so
+    // an embedded <script> cannot execute in this origin.
+    let is_active =
+        guessed == "image/svg+xml" || guessed.starts_with("text/") || guessed.contains("html");
+    let (content_type, disposition) = if is_active {
+        ("application/octet-stream".to_string(), "attachment")
+    } else {
+        (guessed, "inline")
+    };
 
     Ok((
         [
             (header::CONTENT_TYPE, content_type),
+            (header::CONTENT_DISPOSITION, disposition.to_string()),
             (header::CACHE_CONTROL, "public, max-age=86400".to_string()),
+            (
+                header::CONTENT_SECURITY_POLICY,
+                "default-src 'none'; sandbox".to_string(),
+            ),
         ],
         data,
     ))

@@ -12,7 +12,6 @@ use ts_rs::TS;
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
-use crate::utils::validate_webhook_url;
 
 #[utoipa::path(
     post,
@@ -25,10 +24,15 @@ pub async fn create_webhook(
     auth: AuthUser,
     Json(req): Json<CreateWebhookConfig>,
 ) -> Result<Json<WebhookConfig>, ApiError> {
-    // SSRF protection: validate outgoing webhook target URLs
+    // SSRF protection: validate outgoing webhook target URLs. Templated URLs
+    // (`{{env.KEY}}`) are validated at delivery time once substituted; a literal
+    // URL is validated here for early feedback.
     if let Some(ref url) = req.target_url {
-        validate_webhook_url(url)
-            .map_err(|e| ApiError::from(rstify_core::error::CoreError::Validation(e)))?;
+        if !url.contains("{{") {
+            rstify_jobs::ssrf::validate_outbound_url(url)
+                .await
+                .map_err(|e| ApiError::from(CoreError::Validation(e.0)))?;
+        }
     }
 
     let token = generate_webhook_token();
@@ -236,10 +240,14 @@ pub async fn update_webhook(
         )));
     }
 
-    // SSRF protection: validate outgoing webhook target URLs
+    // SSRF protection: validate outgoing webhook target URLs. Templated URLs
+    // (`{{env.KEY}}`) are validated at delivery time once substituted.
     if let Some(ref url) = req.target_url {
-        validate_webhook_url(url)
-            .map_err(|e| ApiError::from(rstify_core::error::CoreError::Validation(e)))?;
+        if !url.contains("{{") {
+            rstify_jobs::ssrf::validate_outbound_url(url)
+                .await
+                .map_err(|e| ApiError::from(CoreError::Validation(e.0)))?;
+        }
     }
 
     let template_json = req
@@ -349,106 +357,110 @@ pub async fn receive_webhook(
         )));
     }
 
+    // Enforce the webhook signature BEFORE parsing the body, for ANY webhook type
+    // that has a secret configured (an empty secret is treated as unset). This
+    // closes the fail-open gap where grafana/generic webhooks accepted a stored
+    // secret but never verified it.
+    let secret = config.secret.as_deref().filter(|s| !s.is_empty());
+    if let Some(secret) = secret {
+        let verified = match config.webhook_type.as_str() {
+            "forgejo" | "gitea" => headers
+                .get("X-Gitea-Signature")
+                .or_else(|| headers.get("X-Forgejo-Signature"))
+                .and_then(|v| v.to_str().ok())
+                .map(|sig| crate::webhooks::signature::verify_gitea_signature(secret, &body, sig))
+                .unwrap_or(false),
+            "github" => headers
+                .get("X-Hub-Signature-256")
+                .and_then(|v| v.to_str().ok())
+                .map(|sig| crate::webhooks::signature::verify_github_signature(secret, &body, sig))
+                .unwrap_or(false),
+            // grafana / generic: accept a hex HMAC in any common signature header.
+            _ => [
+                "X-Signature-256",
+                "X-Hub-Signature-256",
+                "X-Signature",
+                "X-Webhook-Signature",
+            ]
+            .iter()
+            .find_map(|h| headers.get(*h).and_then(|v| v.to_str().ok()))
+            .map(|sig| crate::webhooks::signature::verify_hmac_hex(secret, &body, sig))
+            .unwrap_or(false),
+        };
+        if !verified {
+            return Err(ApiError::from(CoreError::Forbidden(
+                "Invalid or missing webhook signature".to_string(),
+            )));
+        }
+    }
+
     let payload: serde_json::Value = serde_json::from_slice(&body)
         .map_err(|_| ApiError::from(CoreError::Validation("Invalid JSON body".to_string())))?;
 
     // Extract message from payload based on webhook type
-    let (title, message, priority, click_url, tags_json, extras_json) = match config
-        .webhook_type
-        .as_str()
-    {
-        "forgejo" | "gitea" => {
-            if let Some(ref secret) = config.secret {
-                if !secret.is_empty() {
-                    let sig = headers
-                        .get("X-Gitea-Signature")
-                        .or_else(|| headers.get("X-Forgejo-Signature"))
-                        .and_then(|v| v.to_str().ok())
-                        .unwrap_or("");
-                    if sig.is_empty()
-                        || !crate::webhooks::signature::verify_gitea_signature(secret, &body, sig)
-                    {
-                        return Err(ApiError::from(CoreError::Forbidden(
-                            "Invalid webhook signature".to_string(),
-                        )));
-                    }
-                }
+    let (title, message, priority, click_url, tags_json, extras_json) =
+        match config.webhook_type.as_str() {
+            "forgejo" | "gitea" => {
+                let event = headers
+                    .get("X-Gitea-Event")
+                    .or_else(|| headers.get("X-Forgejo-Event"))
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("unknown");
+                let output = crate::webhooks::forgejo::parse_forgejo_event(event, &body);
+                let tags = output.tags_json();
+                let extras = output.extras_json();
+                (
+                    Some(output.title),
+                    output.message,
+                    output.priority,
+                    output.click_url,
+                    tags,
+                    extras,
+                )
             }
-            let event = headers
-                .get("X-Gitea-Event")
-                .or_else(|| headers.get("X-Forgejo-Event"))
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or("unknown");
-            let output = crate::webhooks::forgejo::parse_forgejo_event(event, &body);
-            let tags = output.tags_json();
-            let extras = output.extras_json();
-            (
-                Some(output.title),
-                output.message,
-                output.priority,
-                output.click_url,
-                tags,
-                extras,
-            )
-        }
-        "github" => {
-            if let Some(ref secret) = config.secret {
-                if !secret.is_empty() {
-                    let sig = headers
-                        .get("X-Hub-Signature-256")
-                        .and_then(|v| v.to_str().ok())
-                        .unwrap_or("");
-                    if sig.is_empty()
-                        || !crate::webhooks::signature::verify_github_signature(secret, &body, sig)
-                    {
-                        return Err(ApiError::from(CoreError::Forbidden(
-                            "Invalid webhook signature".to_string(),
-                        )));
-                    }
-                }
+            "github" => {
+                let event = headers
+                    .get("X-GitHub-Event")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("unknown");
+                let output = crate::webhooks::github::parse_github_event(event, &body);
+                let tags = output.tags_json();
+                let extras = output.extras_json();
+                (
+                    Some(output.title),
+                    output.message,
+                    output.priority,
+                    output.click_url,
+                    tags,
+                    extras,
+                )
             }
-            let event = headers
-                .get("X-GitHub-Event")
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or("unknown");
-            let output = crate::webhooks::github::parse_github_event(event, &body);
-            let tags = output.tags_json();
-            let extras = output.extras_json();
-            (
-                Some(output.title),
-                output.message,
-                output.priority,
-                output.click_url,
-                tags,
-                extras,
-            )
-        }
-        "grafana" => {
-            let title = payload
-                .get("title")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let message = payload
-                .get("message")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Grafana alert")
-                .to_string();
-            (title, message, 5i32, None, None, None)
-        }
-        _ => {
-            let title = payload
-                .get("title")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let message = payload
-                .get("message")
-                .and_then(|v| v.as_str())
-                .or_else(|| payload.get("text").and_then(|v| v.as_str()))
-                .unwrap_or("Webhook received")
-                .to_string();
-            (title, message, 5i32, None, None, None)
-        }
-    };
+            "grafana" => {
+                let title = payload
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
+                let message = payload
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Grafana alert")
+                    .to_string();
+                (title, message, 5i32, None, None, None)
+            }
+            _ => {
+                let title = payload
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .map(String::from);
+                let message = payload
+                    .get("message")
+                    .and_then(|v| v.as_str())
+                    .or_else(|| payload.get("text").and_then(|v| v.as_str()))
+                    .unwrap_or("Webhook received")
+                    .to_string();
+                (title, message, 5i32, None, None, None)
+            }
+        };
 
     // Determine content_type from extras
     let content_type = if extras_json.is_some() {

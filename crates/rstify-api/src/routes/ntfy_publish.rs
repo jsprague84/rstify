@@ -289,14 +289,32 @@ async fn download_and_attach(
     url: &str,
     filename_override: Option<&str>,
 ) -> Result<AttachmentInfo, ApiError> {
-    // SSRF protection: validate URL does not target internal/private addresses
-    crate::utils::validate_webhook_url(url).map_err(|e| {
-        ApiError::from(rstify_core::error::CoreError::Validation(format!(
-            "Attachment URL blocked: {e}"
-        )))
-    })?;
+    // SSRF protection: validate the URL and pin the resolved address so the
+    // fetch cannot be redirected or DNS-rebound to an internal service.
+    let validated = rstify_jobs::ssrf::validate_outbound_url(url)
+        .await
+        .map_err(|e| {
+            ApiError::from(rstify_core::error::CoreError::Validation(format!(
+                "Attachment URL blocked: {e}"
+            )))
+        })?;
 
-    let response = reqwest::get(url).await.map_err(|e| {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(20))
+        .redirect(rstify_jobs::ssrf::safe_redirect_policy(
+            true,
+            validated.host.clone(),
+            4,
+        ))
+        .resolve_to_addrs(&validated.host, &validated.addrs)
+        .build()
+        .map_err(|e| {
+            ApiError::from(rstify_core::error::CoreError::Internal(format!(
+                "Failed to build download client: {e}"
+            )))
+        })?;
+
+    let response = client.get(url).send().await.map_err(|e| {
         ApiError::from(rstify_core::error::CoreError::Internal(format!(
             "Failed to download attachment: {e}"
         )))
@@ -309,6 +327,19 @@ async fn download_and_attach(
                 response.status()
             ),
         )));
+    }
+
+    // Reject oversized downloads up front via Content-Length so a huge remote
+    // body isn't buffered into memory before the post-read size check.
+    if let Some(len) = response.content_length() {
+        if len as usize > state.max_upload_size {
+            return Err(ApiError::from(rstify_core::error::CoreError::Validation(
+                format!(
+                    "Attachment too large: {len} bytes (max {} bytes)",
+                    state.max_upload_size
+                ),
+            )));
+        }
     }
 
     // Derive filename from override, Content-Disposition, or URL path

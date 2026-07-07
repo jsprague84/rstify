@@ -44,10 +44,14 @@ pub fn build_router(state: AppState, limiter: RateLimiter) -> Router {
             state.clone(),
             security_headers_middleware,
         ))
-        .layer(axum::Extension(limiter))
+        // NOTE: order matters. The last layer added is the outermost (runs
+        // first), so `Extension(limiter)` must be added AFTER the rate-limit
+        // middleware — otherwise the middleware runs before the extension is
+        // inserted, reads `None`, and silently skips rate limiting entirely.
         .layer(axum::middleware::from_fn(
             middleware::rate_limit::rate_limit_middleware,
         ))
+        .layer(axum::Extension(limiter))
         .fallback(web_ui::web_ui_handler)
         .with_state(state)
 }
@@ -58,6 +62,16 @@ async fn security_headers_middleware(
     next: axum::middleware::Next,
 ) -> axum::response::Response {
     state.metrics.inc_requests();
+
+    // Capture request-derived signals before the body is consumed.
+    let path = request.uri().path().to_string();
+    let is_https = request
+        .headers()
+        .get("x-forwarded-proto")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.eq_ignore_ascii_case("https"))
+        .unwrap_or(false);
+
     let mut response = next.run(request).await;
     let headers = response.headers_mut();
     headers.insert(
@@ -65,10 +79,9 @@ async fn security_headers_middleware(
         HeaderValue::from_static("nosniff"),
     );
     headers.insert("x-frame-options", HeaderValue::from_static("DENY"));
-    headers.insert(
-        "x-xss-protection",
-        HeaderValue::from_static("1; mode=block"),
-    );
+    // Disable the legacy XSS auditor: it's deprecated and can introduce its own
+    // vulnerabilities. CSP below is the real defense.
+    headers.insert("x-xss-protection", HeaderValue::from_static("0"));
     headers.insert(
         "referrer-policy",
         HeaderValue::from_static("strict-origin-when-cross-origin"),
@@ -77,5 +90,29 @@ async fn security_headers_middleware(
         "permissions-policy",
         HeaderValue::from_static("camera=(), microphone=(), geolocation=()"),
     );
+
+    // Content-Security-Policy. The app shell has no inline scripts, so it gets a
+    // strict `script-src 'self'` that blocks injected <script> (the token-theft
+    // vector). Swagger UI at /docs needs inline scripts/styles, so it gets a
+    // looser policy. Don't clobber a stricter CSP a handler already set (icons).
+    if !headers.contains_key("content-security-policy") {
+        let csp = if path.starts_with("/docs") {
+            "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+        } else {
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: http:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        };
+        headers.insert("content-security-policy", HeaderValue::from_static(csp));
+    }
+
+    // HSTS only when the request arrived over HTTPS (behind a TLS-terminating
+    // proxy). Never sent over plain HTTP, so http-only homelab access isn't
+    // locked out.
+    if is_https {
+        headers.insert(
+            "strict-transport-security",
+            HeaderValue::from_static("max-age=31536000"),
+        );
+    }
+
     response
 }

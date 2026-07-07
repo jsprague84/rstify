@@ -1,8 +1,34 @@
-use reqwest::redirect::Policy;
+use crate::ssrf;
 use rstify_core::models::MessageResponse;
 use sqlx::SqlitePool;
 use std::collections::HashMap;
 use tracing::{error, info, warn};
+
+/// Maximum redirect hops for an outgoing webhook (same-host only; see [`ssrf`]).
+const MAX_REDIRECTS: usize = 8;
+
+/// Validate the (already env-substituted) URL for SSRF, then build a reqwest
+/// client pinned to the validated address with a same-host-only redirect policy.
+/// Returns an error if the URL targets an internal/reserved address.
+async fn build_pinned_client(
+    substituted_url: &str,
+    follow_redirects: bool,
+    timeout_secs: i32,
+) -> Result<reqwest::Client, ssrf::SsrfError> {
+    let target = ssrf::validate_outbound_url(substituted_url).await?;
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(timeout_secs.max(1) as u64))
+        .redirect(ssrf::safe_redirect_policy(
+            follow_redirects,
+            target.host.clone(),
+            MAX_REDIRECTS,
+        ))
+        // Pin the validated IP(s) so DNS cannot be rebound to an internal address
+        // between validation and connect.
+        .resolve_to_addrs(&target.host, &target.addrs)
+        .build()
+        .map_err(|e| ssrf::SsrfError(format!("failed to build HTTP client: {e}")))
+}
 
 /// Substitute `{{env.KEY}}` placeholders using the given key/value pairs.
 /// Only declared variables are substituted — unknown placeholders are left
@@ -72,28 +98,38 @@ pub async fn fire_outgoing_webhooks(
     });
 
     for config in configs {
-        let redirect_policy = if config.follow_redirects {
-            Policy::default()
-        } else {
-            Policy::none()
-        };
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(
-                config.timeout_secs.max(1) as u64
-            ))
-            .redirect(redirect_policy)
-            .build()
-            .unwrap_or_else(|e| {
-                warn!(
-                    "Failed to build webhook client for {} (timeout/redirect settings lost): {}",
-                    config.id, e
-                );
-                reqwest::Client::new()
-            });
-        let Some(ref target_url) = config.target_url else {
+        let Some(ref target_url_tmpl) = config.target_url else {
             warn!("Outgoing webhook {} has no target_url", config.id);
             continue;
         };
+
+        // Substitute env vars into the URL, then validate the *final* URL for
+        // SSRF and pin the resolved address before building the client. A blocked
+        // URL is logged as a failed delivery rather than sent.
+        let target_url = apply_env_vars(pool, config.user_id, target_url_tmpl).await;
+        let client =
+            match build_pinned_client(&target_url, config.follow_redirects, config.timeout_secs)
+                .await
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    warn!(
+                        "Outgoing webhook {} blocked by SSRF guard: {}",
+                        config.id, e
+                    );
+                    log_delivery(
+                        pool,
+                        config.id,
+                        Some(message.id),
+                        None,
+                        Some(&format!("blocked by SSRF guard: {e}")),
+                        0,
+                        false,
+                    )
+                    .await;
+                    continue;
+                }
+            };
 
         let body = if let Some(ref tmpl) = config.body_template {
             // Template substitution with JSON-safe escaping for string values
@@ -114,9 +150,6 @@ pub async fn fire_outgoing_webhooks(
         } else {
             message_json.clone()
         };
-
-        // Apply env vars to target URL
-        let target_url = apply_env_vars(pool, config.user_id, target_url).await;
 
         let mut req = match config.http_method.as_str() {
             "GET" => client.get(&target_url),
@@ -278,25 +311,6 @@ pub async fn fire_single_outgoing_webhook(
         .as_deref()
         .ok_or("No target_url configured")?;
 
-    let redirect_policy = if config.follow_redirects {
-        Policy::default()
-    } else {
-        Policy::none()
-    };
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(
-            config.timeout_secs.max(1) as u64
-        ))
-        .redirect(redirect_policy)
-        .build()
-        .unwrap_or_else(|e| {
-            warn!(
-                "Failed to build webhook client for {} (timeout/redirect settings lost): {}",
-                config.id, e
-            );
-            reqwest::Client::new()
-        });
-
     let message_json = serde_json::to_string(message).unwrap_or_else(|e| {
         error!(
             "Failed to serialize message {} for webhook test fire: {}",
@@ -323,8 +337,12 @@ pub async fn fire_single_outgoing_webhook(
         message_json
     };
 
-    // Apply env vars to target URL
+    // Substitute env vars into the URL, then validate for SSRF and pin the
+    // resolved address before building the client.
     let target_url = apply_env_vars(pool, config.user_id, target_url).await;
+    let client = build_pinned_client(&target_url, config.follow_redirects, config.timeout_secs)
+        .await
+        .map_err(|e| format!("blocked by SSRF guard: {e}"))?;
 
     let mut req = match config.http_method.as_str() {
         "GET" => client.get(&target_url),
@@ -365,13 +383,18 @@ pub async fn fire_single_outgoing_webhook(
                 .await
                 .ok()
                 .map(|t| t.chars().take(65536).collect::<String>());
+            // Char-safe truncation for the delivery-log preview (byte-slicing at
+            // 512 can panic on a multi-byte boundary).
+            let preview: Option<String> = response_body
+                .as_deref()
+                .map(|b| b.chars().take(512).collect());
 
             log_delivery(
                 pool,
                 config.id,
                 None,
                 Some(status as i32),
-                response_body.as_deref().map(|b| &b[..b.len().min(512)]),
+                preview.as_deref(),
                 duration_ms,
                 success,
             )

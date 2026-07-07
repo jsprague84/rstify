@@ -42,7 +42,9 @@ impl NtfyHeaders {
         }
 
         if let Some(v) = get_header(headers, "x-click").or_else(|| get_header(headers, "click")) {
-            parsed.click_url = Some(v);
+            // Only allow safe external schemes — a `javascript:`/`data:` click URL
+            // would be a stored-XSS vector when rendered as an <a href> in the UI.
+            parsed.click_url = sanitize_external_url(v);
         }
 
         if let Some(v) = get_header(headers, "x-icon").or_else(|| get_header(headers, "icon")) {
@@ -93,6 +95,18 @@ impl NtfyHeaders {
         }
 
         parsed
+    }
+}
+
+/// Allow only safe external link schemes (http/https/mailto). Returns `None` for
+/// anything else (e.g. `javascript:`, `data:`), dropping the value at ingest.
+fn sanitize_external_url(raw: String) -> Option<String> {
+    let lower = raw.trim_start().to_ascii_lowercase();
+    if lower.starts_with("http://") || lower.starts_with("https://") || lower.starts_with("mailto:")
+    {
+        Some(raw)
+    } else {
+        None
     }
 }
 
