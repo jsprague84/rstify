@@ -129,7 +129,7 @@ async fn main() -> anyhow::Result<()> {
                         rstify_core::repositories::TopicRepository::find_by_name(&topic_repo, name)
                             .await
                     {
-                        if msg.inbox {
+                        if msg.inbox && rstify_core::policy::should_notify(&topic, &msg) {
                             if let Some(owner_id) = topic.owner_id {
                                 fcm.notify_user(
                                     &client_repo,

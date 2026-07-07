@@ -385,6 +385,11 @@ function TestResultDisplay({ result, loading, error, webhookUrl, direction }: {
   webhookUrl: string;
   direction: string;
 }) {
+  // Must be called unconditionally, before any early return, to satisfy the
+  // Rules of Hooks (only the outgoing branch below uses it). Previously declared
+  // after the early returns, which crashed the page when a test completed.
+  const [tab, setTab] = useState<'body' | 'headers'>('body');
+
   if (loading) return <div className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">Sending test request...</div>;
   if (error) return <div className="text-sm text-red-600 dark:text-red-400 py-2">{error}</div>;
   if (!result) return null;
@@ -421,7 +426,6 @@ function TestResultDisplay({ result, loading, error, webhookUrl, direction }: {
   }
 
   // Outgoing result
-  const [tab, setTab] = useState<'body' | 'headers'>('body');
   const statusColor = result.status_code
     ? result.status_code < 300 ? 'bg-green-500' : result.status_code < 400 ? 'bg-blue-500' : result.status_code < 500 ? 'bg-amber-500' : 'bg-red-500'
     : 'bg-gray-500';
