@@ -6,9 +6,26 @@ import { useApplicationsStore } from "./applications";
 import { getSourceId } from "../utils/source";
 
 const msgCache = createCache<[string, MessageResponse[]][]>("msg_cache_groups");
+const lastReadCache = createCache<[string, number][]>("msg_last_read");
 const MAX_MESSAGES_PER_SOURCE = 100;
 const PAGE_SIZE = 50;
 const SAVE_DEBOUNCE_MS = 2000;
+
+// Per-source last-read marker: the highest message id the user has seen in each
+// source, persisted to MMKV. Unread counts are computed against this so read state
+// survives refreshes — previously unreadCount was just the group size and
+// markGroupRead was silently wiped by the next fetch/rebuildAllMeta.
+const lastReadMap = new Map<string, number>(lastReadCache.load() ?? []);
+
+function persistLastRead(): void {
+  lastReadCache.save(Array.from(lastReadMap.entries()));
+}
+
+function unreadCountFor(sourceId: string, messages: MessageResponse[]): number {
+  const lastRead = lastReadMap.get(sourceId);
+  if (lastRead === undefined) return messages.length; // never opened → all unread
+  return messages.reduce((n, m) => (m.id > lastRead ? n + 1 : n), 0);
+}
 
 // --- Types ---
 
@@ -79,7 +96,7 @@ function buildSourceMeta(
     name,
     iconUrl,
     sourceType: isTopic ? "topic" : "app",
-    unreadCount: messages.length,
+    unreadCount: unreadCountFor(sourceId, messages),
     latestTimestamp: latest?.date ?? "",
     latestPreview: latest?.title ?? latest?.message?.slice(0, 80) ?? "",
     priority,
@@ -160,7 +177,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         hasMore: result.messages.length >= PAGE_SIZE,
       });
       debouncedSaveToCache(get());
-    } catch {
+    } catch (e) {
+      console.warn("[messages] fetchMessages failed:", e);
       set({ isLoading: false });
     }
   },
@@ -216,7 +234,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
         hasMore: result.messages.length >= PAGE_SIZE,
       });
       debouncedSaveToCache(get());
-    } catch {
+    } catch (e) {
+      console.warn("[messages] fetchOlderMessages failed:", e);
       set({ isLoadingMore: false });
     }
   },
@@ -305,10 +324,21 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       hasMore: false,
     });
     msgCache.clear();
+    lastReadMap.clear();
+    lastReadCache.clear();
   },
 
   markGroupRead: (sourceId: string) => {
     set((state) => {
+      // Persist the highest seen message id so the group stays read across
+      // refreshes (unreadCountFor compares against it).
+      const messages = state.groupedMessages.get(sourceId);
+      if (messages && messages.length > 0) {
+        const newestId = messages.reduce((max, m) => Math.max(max, m.id), 0);
+        lastReadMap.set(sourceId, Math.max(newestId, lastReadMap.get(sourceId) ?? 0));
+        persistLastRead();
+      }
+
       const meta = new Map(state.sourceMeta);
       const existing = meta.get(sourceId);
       if (existing) {
@@ -370,6 +400,8 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       saveCacheTimer = null;
     }
     msgCache.clear();
+    lastReadMap.clear();
+    lastReadCache.clear();
     set({
       groupedMessages: new Map(),
       sourceMeta: new Map(),

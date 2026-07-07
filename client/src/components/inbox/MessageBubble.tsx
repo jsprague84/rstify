@@ -7,6 +7,7 @@ import { MessageContent } from "../MessageContent";
 import { MessageActions } from "../MessageActions";
 import { MessageAttachments } from "../MessageAttachments";
 import { PRIORITY_BORDER_COLORS, getPriorityLevel } from "../../utils/priority";
+import { formatLocalTime } from "shared";
 import type { MessageResponse } from "shared";
 
 interface MessageBubbleProps {
@@ -43,7 +44,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   // Click URL
   const clickUrl = message.click_url;
 
-  const timeStr = new Date(message.date).toLocaleString();
+  const timeStr = formatLocalTime(message.date);
 
   const handleTitlePress = async () => {
     if (!clickUrl) return;
