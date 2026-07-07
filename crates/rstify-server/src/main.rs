@@ -99,13 +99,21 @@ async fn main() -> anyhow::Result<()> {
         info!("SMTP email notifications enabled (host: {})", smtp_cfg.host);
     }
 
-    // Start periodic connection cleanup
+    // Background jobs and the ad-hoc cleanup loops below share one cancellation
+    // token so shutdown stops everything cleanly.
+    let job_runner = JobRunner::new(pool.clone());
+    let cancel = job_runner.cancel_token();
+
+    // Periodic connection cleanup (cancellable + joined on shutdown).
     let connections_for_cleanup = state.connections.clone();
-    tokio::spawn(async move {
+    let conn_cancel = cancel.clone();
+    let conn_cleanup_handle = tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(60));
         loop {
-            interval.tick().await;
-            connections_for_cleanup.cleanup_stale_channels().await;
+            tokio::select! {
+                _ = conn_cancel.cancelled() => break,
+                _ = interval.tick() => connections_for_cleanup.cleanup_stale_channels().await,
+            }
         }
     });
 
@@ -146,7 +154,7 @@ async fn main() -> anyhow::Result<()> {
         })
     });
 
-    let job_runner = JobRunner::new(pool)
+    let job_runner = job_runner
         .with_broadcast(broadcast_fn)
         .with_upload_dir(config.server.upload_dir.clone());
 
@@ -155,13 +163,16 @@ async fn main() -> anyhow::Result<()> {
     let limiter = RateLimiter::new(config.rate_limit.burst, config.rate_limit.rps)
         .trust_forwarded_for(config.rate_limit.trust_proxy);
 
-    // Periodic rate limiter cleanup
+    // Periodic rate limiter cleanup (cancellable + joined on shutdown).
     let limiter_cleanup = limiter.clone();
-    tokio::spawn(async move {
+    let limiter_cancel = cancel.clone();
+    let limiter_cleanup_handle = tokio::spawn(async move {
         let mut interval = tokio::time::interval(Duration::from_secs(300));
         loop {
-            interval.tick().await;
-            limiter_cleanup.cleanup().await;
+            tokio::select! {
+                _ = limiter_cancel.cancelled() => break,
+                _ = interval.tick() => limiter_cleanup.cleanup().await,
+            }
         }
     });
 
@@ -286,7 +297,15 @@ async fn main() -> anyhow::Result<()> {
     .await?;
 
     info!("Shutting down background jobs...");
-    job_runner.shutdown();
+    job_runner.shutdown().await;
+    // The ad-hoc cleanup loops share the runner's cancel token (cancelled above);
+    // join them too, bounded by a timeout.
+    let _ = tokio::time::timeout(Duration::from_secs(5), async {
+        let _ = conn_cleanup_handle.await;
+        let _ = limiter_cleanup_handle.await;
+    })
+    .await;
+    info!("Shutdown complete");
     Ok(())
 }
 
