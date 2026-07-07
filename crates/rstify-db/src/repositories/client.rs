@@ -34,7 +34,7 @@ impl ClientRepository for SqliteClientRepo {
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
-            if e.to_string().contains("UNIQUE") {
+            if crate::is_unique_violation(&e) {
                 CoreError::AlreadyExists(format!("Client '{}' already exists", name))
             } else {
                 CoreError::Database(e.to_string())
@@ -47,7 +47,7 @@ impl ClientRepository for SqliteClientRepo {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn find_by_token(&self, token: &str) -> Result<Option<Client>, CoreError> {
@@ -55,7 +55,7 @@ impl ClientRepository for SqliteClientRepo {
             .bind(token)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_by_user(&self, user_id: i64) -> Result<Vec<Client>, CoreError> {
@@ -63,7 +63,7 @@ impl ClientRepository for SqliteClientRepo {
             .bind(user_id)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn update(
@@ -88,7 +88,7 @@ impl ClientRepository for SqliteClientRepo {
         .bind(id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn update_fcm_token(
@@ -101,7 +101,7 @@ impl ClientRepository for SqliteClientRepo {
             .bind(id)
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_fcm_tokens_by_user(&self, user_id: i64) -> Result<Vec<String>, CoreError> {
@@ -111,7 +111,7 @@ impl ClientRepository for SqliteClientRepo {
         .bind(user_id)
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))?;
+        .map_err(crate::map_sqlx_err)?;
         Ok(rows.into_iter().map(|r| r.0).collect())
     }
 
@@ -120,7 +120,7 @@ impl ClientRepository for SqliteClientRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!("Client {} not found", id)));
         }

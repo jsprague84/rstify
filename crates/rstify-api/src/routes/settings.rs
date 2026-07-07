@@ -7,7 +7,6 @@ use utoipa::ToSchema;
 use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::state::AppState;
-use rstify_core::error::CoreError;
 
 #[derive(Debug, Serialize, ToSchema, TS)]
 #[ts(export)]
@@ -31,7 +30,7 @@ pub async fn list_settings(
     let rows: Vec<(String, String)> = sqlx::query_as("SELECT key, value FROM settings")
         .fetch_all(&state.pool)
         .await
-        .map_err(|e| ApiError::from(CoreError::Database(e.to_string())))?;
+        .map_err(|e| ApiError::from(rstify_db::map_sqlx_err(e)))?;
     let settings = rows
         .into_iter()
         .map(|(key, value)| Setting { key, value })
@@ -57,7 +56,7 @@ pub async fn update_setting(
         .bind(&req.value)
         .execute(&state.pool)
         .await
-        .map_err(|e| ApiError::from(CoreError::Database(e.to_string())))?;
+        .map_err(|e| ApiError::from(rstify_db::map_sqlx_err(e)))?;
 
     // Update in-memory cache
     if key == "inbox_priority_threshold" {

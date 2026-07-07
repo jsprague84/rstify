@@ -36,7 +36,7 @@ impl TopicRepository for SqliteTopicRepo {
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
-            if e.to_string().contains("UNIQUE") {
+            if crate::is_unique_violation(&e) {
                 CoreError::AlreadyExists(format!("Topic '{}' already exists", name))
             } else {
                 CoreError::Database(e.to_string())
@@ -49,7 +49,7 @@ impl TopicRepository for SqliteTopicRepo {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn find_by_name(&self, name: &str) -> Result<Option<Topic>, CoreError> {
@@ -57,14 +57,14 @@ impl TopicRepository for SqliteTopicRepo {
             .bind(name)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_all(&self) -> Result<Vec<Topic>, CoreError> {
         sqlx::query_as::<_, Topic>("SELECT * FROM topics ORDER BY id")
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_visible(&self, user_id: i64) -> Result<Vec<Topic>, CoreError> {
@@ -83,7 +83,7 @@ impl TopicRepository for SqliteTopicRepo {
         .bind(user_id)
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn update(
@@ -134,7 +134,7 @@ impl TopicRepository for SqliteTopicRepo {
         .bind(id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn delete(&self, id: i64) -> Result<(), CoreError> {
@@ -143,13 +143,13 @@ impl TopicRepository for SqliteTopicRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
 
         let result = sqlx::query("DELETE FROM topics WHERE id = ?")
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!("Topic {} not found", id)));
         }
@@ -160,7 +160,7 @@ impl TopicRepository for SqliteTopicRepo {
         let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM topics")
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         Ok(count)
     }
 
@@ -180,7 +180,7 @@ impl TopicRepository for SqliteTopicRepo {
         .bind(can_write)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn list_permissions_for_user(
@@ -193,14 +193,14 @@ impl TopicRepository for SqliteTopicRepo {
         .bind(user_id)
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn list_all_permissions(&self) -> Result<Vec<TopicPermission>, CoreError> {
         sqlx::query_as::<_, TopicPermission>("SELECT * FROM topic_permissions ORDER BY id")
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn delete_permission(&self, id: i64) -> Result<(), CoreError> {
@@ -208,7 +208,7 @@ impl TopicRepository for SqliteTopicRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!("Permission {} not found", id)));
         }

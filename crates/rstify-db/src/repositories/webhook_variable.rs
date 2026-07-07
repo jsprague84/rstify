@@ -27,7 +27,7 @@ impl WebhookVariableRepository for SqliteWebhookVariableRepo {
         .bind(user_id)
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn create_webhook_variable(
@@ -45,7 +45,7 @@ impl WebhookVariableRepository for SqliteWebhookVariableRepo {
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
-            if e.to_string().contains("UNIQUE") {
+            if crate::is_unique_violation(&e) {
                 CoreError::AlreadyExists(format!("Webhook variable '{}' already exists", key))
             } else {
                 CoreError::Database(e.to_string())
@@ -64,7 +64,7 @@ impl WebhookVariableRepository for SqliteWebhookVariableRepo {
                 .bind(id)
                 .fetch_optional(&self.pool)
                 .await
-                .map_err(|e| CoreError::Database(e.to_string()))?
+                .map_err(crate::map_sqlx_err)?
                 .ok_or_else(|| CoreError::NotFound(format!("Variable {} not found", id)))?;
 
         let new_key = key.unwrap_or(&current.key);
@@ -78,7 +78,7 @@ impl WebhookVariableRepository for SqliteWebhookVariableRepo {
         .bind(id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn delete_webhook_variable(&self, id: i64) -> Result<(), CoreError> {
@@ -86,7 +86,7 @@ impl WebhookVariableRepository for SqliteWebhookVariableRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!("Variable {} not found", id)));
         }

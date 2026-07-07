@@ -58,7 +58,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(inbox)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn find_by_id(&self, id: i64) -> Result<Option<Message>, CoreError> {
@@ -66,7 +66,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_by_application(
@@ -83,7 +83,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(limit)
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn list_by_user_apps(
@@ -112,7 +112,7 @@ impl MessageRepository for SqliteMessageRepo {
         qb.build_query_as::<Message>()
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_by_topic(
@@ -129,7 +129,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(limit)
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn update(
@@ -160,7 +160,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn search(
@@ -218,7 +218,7 @@ impl MessageRepository for SqliteMessageRepo {
         qb.build_query_as::<Message>()
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn delete_batch(&self, ids: &[i64], user_id: i64) -> Result<u64, CoreError> {
@@ -235,10 +235,7 @@ impl MessageRepository for SqliteMessageRepo {
             q = q.bind(id);
         }
         q = q.bind(user_id).bind(user_id);
-        let result = q
-            .execute(&self.pool)
-            .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+        let result = q.execute(&self.pool).await.map_err(crate::map_sqlx_err)?;
         Ok(result.rows_affected())
     }
 
@@ -247,7 +244,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!("Message {} not found", id)));
         }
@@ -265,7 +262,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(user_id)
         .execute(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))?;
+        .map_err(crate::map_sqlx_err)?;
         Ok(())
     }
 
@@ -274,7 +271,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(app_id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         Ok(())
     }
 
@@ -284,14 +281,14 @@ impl MessageRepository for SqliteMessageRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn count(&self) -> Result<i64, CoreError> {
         let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM messages")
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         Ok(count)
     }
 
@@ -301,7 +298,7 @@ impl MessageRepository for SqliteMessageRepo {
                 .bind(since)
                 .fetch_one(&self.pool)
                 .await
-                .map_err(|e| CoreError::Database(e.to_string()))?;
+                .map_err(crate::map_sqlx_err)?;
         Ok(count)
     }
 
@@ -311,7 +308,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         Ok(())
     }
 
@@ -321,7 +318,7 @@ impl MessageRepository for SqliteMessageRepo {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))?;
+        .map_err(crate::map_sqlx_err)?;
         Ok(result.rows_affected())
     }
 
@@ -330,7 +327,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         Ok(())
     }
 
@@ -357,7 +354,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(expires_at)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn list_attachments_by_message(
@@ -368,7 +365,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(message_id)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_attachments_by_messages(
@@ -390,7 +387,7 @@ impl MessageRepository for SqliteMessageRepo {
         query
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn find_attachment(&self, id: i64) -> Result<Option<Attachment>, CoreError> {
@@ -398,7 +395,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_expired_attachments(&self) -> Result<Vec<Attachment>, CoreError> {
@@ -407,7 +404,7 @@ impl MessageRepository for SqliteMessageRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn delete_attachment(&self, id: i64) -> Result<(), CoreError> {
@@ -415,7 +412,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         Ok(())
     }
 
@@ -466,7 +463,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(secret)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn find_webhook_config_by_id(&self, id: i64) -> Result<Option<WebhookConfig>, CoreError> {
@@ -474,7 +471,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn find_webhook_config_by_token(
@@ -485,7 +482,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(token)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_webhook_configs_by_user(
@@ -498,7 +495,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(user_id)
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn update_webhook_config(
@@ -559,7 +556,7 @@ impl MessageRepository for SqliteMessageRepo {
         .bind(id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn delete_webhook_config(&self, id: i64) -> Result<(), CoreError> {
@@ -567,7 +564,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!(
                 "Webhook config {} not found",
@@ -587,7 +584,7 @@ impl MessageRepository for SqliteMessageRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!(
                 "Webhook config {} not found",

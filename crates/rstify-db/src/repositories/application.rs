@@ -36,7 +36,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
-            if e.to_string().contains("UNIQUE") {
+            if crate::is_unique_violation(&e) {
                 CoreError::AlreadyExists(format!("Application '{}' already exists", name))
             } else {
                 CoreError::Database(e.to_string())
@@ -49,7 +49,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn find_by_token(&self, token: &str) -> Result<Option<Application>, CoreError> {
@@ -57,7 +57,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
             .bind(token)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_by_user(&self, user_id: i64) -> Result<Vec<Application>, CoreError> {
@@ -65,7 +65,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
             .bind(user_id)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn update(
@@ -96,7 +96,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
         .bind(id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn list_with_retention(&self) -> Result<Vec<Application>, CoreError> {
@@ -105,7 +105,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn update_image(&self, id: i64, image: Option<&str>) -> Result<Application, CoreError> {
@@ -116,7 +116,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
         .bind(id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn delete(&self, id: i64) -> Result<(), CoreError> {
@@ -124,7 +124,7 @@ impl ApplicationRepository for SqliteApplicationRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!("Application {} not found", id)));
         }

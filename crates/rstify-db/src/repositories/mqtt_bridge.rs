@@ -48,7 +48,7 @@ impl MqttBridgeRepository for SqliteMqttBridgeRepo {
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
-            if e.to_string().contains("UNIQUE") {
+            if crate::is_unique_violation(&e) {
                 CoreError::AlreadyExists(format!("MQTT bridge '{}' already exists", name))
             } else {
                 CoreError::Database(e.to_string())
@@ -61,7 +61,7 @@ impl MqttBridgeRepository for SqliteMqttBridgeRepo {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_by_user(&self, user_id: i64) -> Result<Vec<MqttBridge>, CoreError> {
@@ -69,14 +69,14 @@ impl MqttBridgeRepository for SqliteMqttBridgeRepo {
             .bind(user_id)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_enabled(&self) -> Result<Vec<MqttBridge>, CoreError> {
         sqlx::query_as::<_, MqttBridge>("SELECT * FROM mqtt_bridges WHERE enabled = 1 ORDER BY id")
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn update(
@@ -128,7 +128,7 @@ impl MqttBridgeRepository for SqliteMqttBridgeRepo {
         .bind(id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn delete(&self, id: i64) -> Result<(), CoreError> {
@@ -136,7 +136,7 @@ impl MqttBridgeRepository for SqliteMqttBridgeRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!("MQTT bridge {} not found", id)));
         }

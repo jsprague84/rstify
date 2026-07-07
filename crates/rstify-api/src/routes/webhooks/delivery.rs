@@ -78,7 +78,7 @@ pub async fn list_webhook_deliveries(
         .bind(offset)
         .fetch_all(&state.pool)
         .await
-        .map_err(|e| ApiError::from(rstify_core::error::CoreError::Database(e.to_string())))?;
+        .map_err(|e| ApiError::from(rstify_db::map_sqlx_err(e)))?;
 
     Ok(Json(logs))
 }

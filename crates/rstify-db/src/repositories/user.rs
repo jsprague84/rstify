@@ -34,7 +34,7 @@ impl UserRepository for SqliteUserRepo {
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
-            if e.to_string().contains("UNIQUE") {
+            if crate::is_unique_violation(&e) {
                 CoreError::AlreadyExists(format!("User '{}' already exists", username))
             } else {
                 CoreError::Database(e.to_string())
@@ -48,7 +48,7 @@ impl UserRepository for SqliteUserRepo {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, CoreError> {
@@ -56,14 +56,14 @@ impl UserRepository for SqliteUserRepo {
             .bind(username)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn list_all(&self) -> Result<Vec<User>, CoreError> {
         sqlx::query_as::<_, User>("SELECT * FROM users ORDER BY id")
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))
+            .map_err(crate::map_sqlx_err)
     }
 
     async fn update(
@@ -91,7 +91,7 @@ impl UserRepository for SqliteUserRepo {
         .bind(id)
         .fetch_one(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))
+        .map_err(crate::map_sqlx_err)
     }
 
     async fn update_password(&self, id: i64, password_hash: &str) -> Result<(), CoreError> {
@@ -102,7 +102,7 @@ impl UserRepository for SqliteUserRepo {
         .bind(id)
         .execute(&self.pool)
         .await
-        .map_err(|e| CoreError::Database(e.to_string()))?;
+        .map_err(crate::map_sqlx_err)?;
         Ok(())
     }
 
@@ -111,7 +111,7 @@ impl UserRepository for SqliteUserRepo {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         if result.rows_affected() == 0 {
             return Err(CoreError::NotFound(format!("User {} not found", id)));
         }
@@ -122,7 +122,7 @@ impl UserRepository for SqliteUserRepo {
         let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM users")
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| CoreError::Database(e.to_string()))?;
+            .map_err(crate::map_sqlx_err)?;
         Ok(count)
     }
 }
