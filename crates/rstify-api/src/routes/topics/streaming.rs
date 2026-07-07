@@ -120,6 +120,12 @@ pub async fn topic_websocket(
 
     check_read_permission(&state, &auth.user, &topic).await?;
 
+    if !state.connections.can_accept(None).await {
+        return Err(ApiError {
+            status: axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            message: "Too many active connections; try again later".to_string(),
+        });
+    }
     let connections = state.connections.clone();
 
     Ok(ws.on_upgrade(move |mut socket| async move {

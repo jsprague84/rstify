@@ -452,6 +452,12 @@ pub async fn websocket_stream(
             )));
         }
     };
+    if !state.connections.can_accept(Some(user_id)).await {
+        return Err(ApiError {
+            status: axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            message: "Too many active connections; try again later".to_string(),
+        });
+    }
     let connections = state.connections.clone();
 
     Ok(ws.on_upgrade(move |mut socket| async move {

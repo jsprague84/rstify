@@ -48,6 +48,13 @@ pub async fn topic_sse(
         }
     }
 
+    if !state.connections.can_accept(None).await {
+        return Err(ApiError {
+            status: axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            message: "Too many active connections; try again later".to_string(),
+        });
+    }
+
     let rx = state.connections.subscribe_topic(&name).await;
     let stream = BroadcastStream::new(rx).filter_map(|result| match result {
         Ok(msg) => {

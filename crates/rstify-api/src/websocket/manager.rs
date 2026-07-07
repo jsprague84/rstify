@@ -6,6 +6,12 @@ use tokio::sync::{broadcast, RwLock};
 const CHANNEL_CAPACITY: usize = 256;
 const GLOBAL_CHANNEL_CAPACITY: usize = 1024;
 
+/// Global cap on concurrent stream connections (WS + SSE), to bound fd/memory use.
+const MAX_TOTAL_CONNECTIONS: usize = 5000;
+/// Per-user cap on concurrent Gotify /stream connections, so one account can't
+/// monopolise the global budget.
+const MAX_CONNECTIONS_PER_USER: usize = 50;
+
 #[derive(Clone)]
 pub struct ConnectionManager {
     /// Channels keyed by user ID for Gotify-compatible streaming
@@ -49,6 +55,24 @@ impl ConnectionManager {
         let user_count: usize = users.values().map(|s| s.receiver_count()).sum();
         let topic_count: usize = topics.values().map(|s| s.receiver_count()).sum();
         user_count + topic_count
+    }
+
+    /// Whether a new stream connection can be accepted without exceeding the
+    /// global cap (and, for a user stream, the per-user cap). Approximate under
+    /// concurrency, which is fine for a DoS backstop.
+    pub async fn can_accept(&self, user_id: Option<i64>) -> bool {
+        if self.active_count().await >= MAX_TOTAL_CONNECTIONS {
+            return false;
+        }
+        if let Some(uid) = user_id {
+            let users = self.user_channels.read().await;
+            if let Some(sender) = users.get(&uid) {
+                if sender.receiver_count() >= MAX_CONNECTIONS_PER_USER {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     /// Subscribe to a user's message stream (Gotify /stream)
@@ -102,5 +126,23 @@ impl ConnectionManager {
             let mut channels = self.topic_channels.write().await;
             channels.retain(|_, sender| sender.receiver_count() > 0);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn can_accept_under_caps_and_no_deadlock() {
+        let cm = ConnectionManager::new();
+        // Fresh manager: accepts both a user stream and a topic stream.
+        assert!(cm.can_accept(None).await);
+        assert!(cm.can_accept(Some(1)).await);
+        // A single active subscription is well under the per-user cap; the nested
+        // lock acquisition in can_accept must not deadlock.
+        let _rx = cm.subscribe_user(1).await;
+        assert!(cm.can_accept(Some(1)).await);
+        assert_eq!(cm.active_count().await, 1);
     }
 }
