@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../hooks/useAuth';
@@ -6,15 +7,29 @@ import { useTheme } from '../hooks/useTheme';
 export default function Layout() {
   const { logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar />
-      <div className="flex-1 flex flex-col">
-        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex justify-end items-center gap-3">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-surface-bg">
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <header className="sticky top-0 z-20 h-16 bg-white/90 dark:bg-surface-card/90 backdrop-blur border-b border-slate-200 dark:border-surface-elevated px-4 sm:px-6 flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="md:hidden -ml-1 w-9 h-9 rounded-field flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-surface-elevated transition"
+            aria-label="Open menu"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          <div className="flex-1" />
+
           <button
             onClick={toggleTheme}
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="w-9 h-9 rounded-field flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-surface-elevated transition"
             aria-label="Toggle dark mode"
           >
             {theme === 'dark' ? (
@@ -27,14 +42,16 @@ export default function Layout() {
               </svg>
             )}
           </button>
+
           <button
             onClick={logout}
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+            className="text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white px-3 py-1.5 rounded-field hover:bg-slate-100 dark:hover:bg-surface-elevated transition"
           >
             Logout
           </button>
         </header>
-        <main className="flex-1 p-6 dark:bg-gray-950">
+
+        <main className="flex-1 p-4 sm:p-6">
           <Outlet />
         </main>
       </div>
