@@ -67,8 +67,8 @@ export default function LoginScreen() {
           entering={FadeInDown.delay(0).duration(500)}
           className="items-center mb-10"
         >
-          <Ionicons name="notifications" size={56} color="#2563eb" />
-          <Text className="text-4xl font-bold text-gray-900 dark:text-white mt-2">
+          <Ionicons name="notifications" size={56} color="#0052FF" />
+          <Text className="text-4xl font-bold text-slate-900 dark:text-white mt-2">
             rstify
           </Text>
           <Text className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -83,7 +83,7 @@ export default function LoginScreen() {
         >
           {/* Username */}
           <TextInput
-            className="bg-white dark:bg-surface-card border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-base text-gray-900 dark:text-white"
+            className="bg-white dark:bg-surface-card border border-slate-200 dark:border-white/[0.06] rounded-xl px-4 py-3.5 text-base text-slate-900 dark:text-white"
             placeholder="Username"
             placeholderTextColor="#94a3b8"
             value={username}
@@ -102,7 +102,7 @@ export default function LoginScreen() {
           <View className="relative">
             <TextInput
               ref={passwordRef}
-              className="bg-white dark:bg-surface-card border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 pr-12 text-base text-gray-900 dark:text-white"
+              className="bg-white dark:bg-surface-card border border-slate-200 dark:border-white/[0.06] rounded-xl px-4 py-3.5 pr-12 text-base text-slate-900 dark:text-white"
               placeholder="Password"
               placeholderTextColor="#94a3b8"
               value={password}
@@ -140,7 +140,7 @@ export default function LoginScreen() {
             <Ionicons
               name={showServer ? "chevron-up-outline" : "server-outline"}
               size={14}
-              color="#9ca3af"
+              color="#94a3b8"
             />
             <Text className="text-sm text-slate-400 dark:text-slate-500">
               Server Settings
@@ -152,7 +152,7 @@ export default function LoginScreen() {
             <Animated.View entering={FadeInDown.duration(300)}>
               <TextInput
                 ref={serverRef}
-                className="bg-white dark:bg-surface-card border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3.5 text-base text-gray-900 dark:text-white"
+                className="bg-white dark:bg-surface-card border border-slate-200 dark:border-white/[0.06] rounded-xl px-4 py-3.5 text-base text-slate-900 dark:text-white"
                 placeholder="https://rstify.example.com"
                 placeholderTextColor="#94a3b8"
                 value={serverUrl}

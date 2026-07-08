@@ -193,12 +193,12 @@ export default function UsersScreen() {
                           value={u.is_admin}
                           onValueChange={() => handleToggleAdmin(u)}
                           trackColor={{ false: '#d1d5db', true: '#93c5fd' }}
-                          thumbColor={u.is_admin ? '#3b82f6' : '#9ca3af'}
+                          thumbColor={u.is_admin ? '#0052FF' : '#94a3b8'}
                           disabled={u.id === user?.id}
                         />
                       </View>
                       <Pressable onPress={() => openEditUser(u)} hitSlop={8}>
-                        <Ionicons name="create-outline" size={16} color="#3b82f6" />
+                        <Ionicons name="create-outline" size={16} color="#0052FF" />
                       </Pressable>
                       {u.id !== user?.id && (
                         <Pressable onPress={() => handleDeleteUser(u)} hitSlop={8}>
@@ -219,7 +219,7 @@ export default function UsersScreen() {
               <View className="flex-row items-center justify-between px-1">
                 <SectionLabel>Topic Permissions ({permissions.length})</SectionLabel>
                 <Pressable onPress={() => setShowCreatePerm(true)} hitSlop={8}>
-                  <Ionicons name="add-circle-outline" size={18} color="#3b82f6" />
+                  <Ionicons name="add-circle-outline" size={18} color="#0052FF" />
                 </Pressable>
               </View>
               <View className="bg-white dark:bg-surface-card rounded-xl overflow-hidden">
@@ -263,7 +263,7 @@ export default function UsersScreen() {
               >
                 <Text className="text-base text-slate-900 dark:text-slate-100">{u.username}</Text>
                 {newPermUserId === String(u.id) && (
-                  <Ionicons name="checkmark" size={18} color="#3b82f6" />
+                  <Ionicons name="checkmark" size={18} color="#0052FF" />
                 )}
               </AnimatedPressable>
             ))}
@@ -272,7 +272,7 @@ export default function UsersScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Topic pattern (e.g. alerts.*)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={newPermPattern}
           onChangeText={setNewPermPattern}
           autoCapitalize="none"
@@ -305,7 +305,7 @@ export default function UsersScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Username"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={newUsername}
           onChangeText={setNewUsername}
           autoCapitalize="none"
@@ -314,7 +314,7 @@ export default function UsersScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Password (min 8 characters)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={newUserPassword}
           onChangeText={setNewUserPassword}
           secureTextEntry
@@ -322,7 +322,7 @@ export default function UsersScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Email (optional)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={newUserEmail}
           onChangeText={setNewUserEmail}
           keyboardType="email-address"
@@ -353,7 +353,7 @@ export default function UsersScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Username"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={editUsername}
           onChangeText={setEditUsername}
           autoCapitalize="none"
@@ -361,7 +361,7 @@ export default function UsersScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Email (optional)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={editEmail}
           onChangeText={setEditEmail}
           keyboardType="email-address"

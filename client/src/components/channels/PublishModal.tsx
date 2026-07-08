@@ -80,13 +80,13 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
         {/* Header */}
-        <View className="flex-row items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-slate-700">
+        <View className="flex-row items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-white/[0.06]">
           <Pressable onPress={onClose} hitSlop={12}>
             <Text className="text-body text-slate-500 dark:text-slate-400">
               Cancel
             </Text>
           </Pressable>
-          <Text className="text-body font-semibold text-gray-900 dark:text-white">
+          <Text className="text-body font-semibold text-slate-900 dark:text-white">
             Publish to {topicName}
           </Text>
           <Pressable
@@ -95,13 +95,13 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
             hitSlop={12}
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color="#3b82f6" />
+              <ActivityIndicator size="small" color="#0052FF" />
             ) : (
               <Text
                 className="text-body font-semibold"
                 style={{
                   color:
-                    message.trim() ? "#3b82f6" : "#94a3b8",
+                    message.trim() ? "#0052FF" : "#94a3b8",
                 }}
               >
                 Publish
@@ -121,7 +121,7 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
               Title (optional)
             </Text>
             <TextInput
-              className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-gray-900 dark:text-white border border-slate-200 dark:border-slate-700"
+              className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-slate-900 dark:text-white border border-slate-200 dark:border-white/[0.06]"
               placeholder="Message title..."
               placeholderTextColor="#94a3b8"
               value={title}
@@ -137,7 +137,7 @@ export function PublishModal({ visible, topicName, onClose }: PublishModalProps)
               Message
             </Text>
             <TextInput
-              className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-gray-900 dark:text-white border border-slate-200 dark:border-slate-700"
+              className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-slate-900 dark:text-white border border-slate-200 dark:border-white/[0.06]"
               placeholder="Write your message..."
               placeholderTextColor="#94a3b8"
               value={message}

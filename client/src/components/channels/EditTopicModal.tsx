@@ -65,16 +65,16 @@ export function EditTopicModal({ visible, topic, onClose, onUpdated }: EditTopic
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <SafeAreaView className="flex-1 bg-slate-50 dark:bg-surface-bg" edges={["top"]}>
         <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : "height"}>
-          <View className="flex-row items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-slate-700">
+          <View className="flex-row items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-white/[0.06]">
             <Pressable onPress={onClose} hitSlop={12}>
               <Text className="text-body text-slate-500 dark:text-slate-400">Cancel</Text>
             </Pressable>
-            <Text className="text-body font-semibold text-gray-900 dark:text-white">
+            <Text className="text-body font-semibold text-slate-900 dark:text-white">
               Edit {topic?.name}
             </Text>
             <Pressable onPress={handleSave} disabled={isSubmitting} hitSlop={12}>
               {isSubmitting ? (
-                <ActivityIndicator size="small" color="#3b82f6" />
+                <ActivityIndicator size="small" color="#0052FF" />
               ) : (
                 <Text className="text-body font-semibold text-primary">Save</Text>
               )}
@@ -87,7 +87,7 @@ export function EditTopicModal({ visible, topic, onClose, onUpdated }: EditTopic
                 Description
               </Text>
               <TextInput
-                className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-gray-900 dark:text-white border border-slate-200 dark:border-slate-700"
+                className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-slate-900 dark:text-white border border-slate-200 dark:border-white/[0.06]"
                 placeholder="What is this topic for?"
                 placeholderTextColor="#94a3b8"
                 value={description}
@@ -97,10 +97,10 @@ export function EditTopicModal({ visible, topic, onClose, onUpdated }: EditTopic
               />
             </View>
 
-            <View className="bg-white dark:bg-surface-card rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+            <View className="bg-white dark:bg-surface-card rounded-lg border border-slate-200 dark:border-white/[0.06] overflow-hidden">
               <View className="flex-row items-center justify-between p-3">
                 <View>
-                  <Text className="text-body font-medium text-gray-900 dark:text-white">Public Read</Text>
+                  <Text className="text-body font-medium text-slate-900 dark:text-white">Public Read</Text>
                   <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Everyone can read messages</Text>
                 </View>
                 <Switch value={everyoneRead} onValueChange={setEveryoneRead} />
@@ -108,7 +108,7 @@ export function EditTopicModal({ visible, topic, onClose, onUpdated }: EditTopic
               <View className="h-px bg-slate-100 dark:bg-slate-700" />
               <View className="flex-row items-center justify-between p-3">
                 <View>
-                  <Text className="text-body font-medium text-gray-900 dark:text-white">Public Write</Text>
+                  <Text className="text-body font-medium text-slate-900 dark:text-white">Public Write</Text>
                   <Text className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Everyone can publish messages</Text>
                 </View>
                 <Switch value={everyoneWrite} onValueChange={setEveryoneWrite} />

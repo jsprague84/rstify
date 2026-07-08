@@ -42,8 +42,8 @@ export function SegmentedControl({
             <Text
               className={
                 isSelected
-                  ? 'text-body font-medium text-gray-900 dark:text-white'
-                  : 'text-body font-medium text-gray-500 dark:text-gray-400'
+                  ? 'text-body font-medium text-slate-900 dark:text-white'
+                  : 'text-body font-medium text-slate-500 dark:text-slate-400'
               }
             >
               {label}

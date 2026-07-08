@@ -88,13 +88,13 @@ export const MessageBubble = React.memo(function MessageBubble({
               haptic={false}
               className="flex-row items-center gap-1 mb-1"
             >
-              <Text className="text-lg font-bold text-gray-900 dark:text-white flex-shrink">
+              <Text className="text-lg font-bold text-slate-900 dark:text-white flex-shrink">
                 {message.title}
               </Text>
-              <Ionicons name="open-outline" size={14} color="#2563eb" />
+              <Ionicons name="open-outline" size={14} color="#0052FF" />
             </AnimatedPressable>
           ) : (
-            <Text className="text-lg font-bold text-gray-900 dark:text-white mb-1">
+            <Text className="text-lg font-bold text-slate-900 dark:text-white mb-1">
               {message.title}
             </Text>
           )

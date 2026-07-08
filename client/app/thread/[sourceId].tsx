@@ -92,7 +92,7 @@ export default function ThreadScreen() {
 
         <View className="flex-1 min-w-0">
           <Text
-            className="text-body font-semibold text-gray-900 dark:text-white"
+            className="text-body font-semibold text-slate-900 dark:text-white"
             numberOfLines={1}
           >
             {sourceName}

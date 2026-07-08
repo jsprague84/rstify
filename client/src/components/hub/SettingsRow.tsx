@@ -24,7 +24,7 @@ export function SettingsRow({ title, value, href, onPress }: SettingsRowProps) {
 
   return (
     <AnimatedPressable
-      className="bg-white dark:bg-surface-card rounded-lg px-4 py-3 flex-row items-center justify-between"
+      className="bg-white dark:bg-surface-card rounded-xl border border-slate-100 dark:border-white/[0.06] px-4 py-3.5 flex-row items-center justify-between"
       onPress={handlePress}
     >
       <Text className="text-base text-slate-900 dark:text-slate-100">{title}</Text>

@@ -461,7 +461,7 @@ export default function WebhooksScreen() {
           ) : null
         }
         renderItem={({ item }) => (
-          <View className="px-4 py-4 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-slate-700">
+          <View className="px-4 py-4 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-white/[0.06]">
             <View className="flex-row justify-between items-start">
               <View className="flex-1 mr-3">
                 <View className="flex-row items-center gap-2">
@@ -483,7 +483,7 @@ export default function WebhooksScreen() {
                     <Text className="text-[11px] text-primary font-mono" numberOfLines={1}>
                       {getWebhookUrl(item)}
                     </Text>
-                    <Ionicons name="copy-outline" size={12} color="#3b82f6" />
+                    <Ionicons name="copy-outline" size={12} color="#0052FF" />
                   </Pressable>
                 )}
               </View>
@@ -492,7 +492,7 @@ export default function WebhooksScreen() {
                   value={item.enabled}
                   onValueChange={() => handleToggleEnabled(item)}
                   trackColor={{ false: '#94a3b8', true: '#93c5fd' }}
-                  thumbColor={item.enabled ? '#3b82f6' : '#94a3b8'}
+                  thumbColor={item.enabled ? '#0052FF' : '#94a3b8'}
                 />
                 <View className="flex-row gap-3">
                   <Pressable onPress={() => handleTest(item)} hitSlop={8}>
@@ -508,7 +508,7 @@ export default function WebhooksScreen() {
                     <Ionicons name="list-outline" size={18} color="#94a3b8" />
                   </Pressable>
                   <Pressable onPress={() => openEdit(item)} hitSlop={8}>
-                    <Ionicons name="create-outline" size={18} color="#3b82f6" />
+                    <Ionicons name="create-outline" size={18} color="#0052FF" />
                   </Pressable>
                   <Pressable onPress={() => handleDelete(item)} hitSlop={8}>
                     <Ionicons name="trash-outline" size={18} color="#ef4444" />
@@ -779,7 +779,7 @@ export default function WebhooksScreen() {
                   keyExtractor={(d) => d.id.toString()}
                   style={{ maxHeight: 300 }}
                   renderItem={({ item: d }) => (
-                    <View className="py-2 border-b border-slate-100 dark:border-slate-700">
+                    <View className="py-2 border-b border-slate-100 dark:border-white/[0.06]">
                       <View className="flex-row justify-between">
                         <Text className={`text-sm font-semibold ${d.success ? 'text-green-500' : 'text-red-500'}`}>
                           {d.success ? 'OK' : 'FAIL'} {d.status_code ? `(${d.status_code})` : ''}

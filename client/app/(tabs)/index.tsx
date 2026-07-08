@@ -162,7 +162,7 @@ export default function InboxScreen() {
         {/* Header */}
         <View className="px-4 pt-3 pb-2">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-display font-bold text-gray-900 dark:text-white">
+            <Text className="text-display font-bold text-slate-900 dark:text-white">
               Inbox
             </Text>
             <ConnectionStatus status={connectionStatus} />
@@ -186,7 +186,7 @@ export default function InboxScreen() {
       {/* Header */}
       <View className="px-4 pt-3 pb-2">
         <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-display font-bold text-gray-900 dark:text-white">
+          <Text className="text-display font-bold text-slate-900 dark:text-white">
             Inbox
           </Text>
           <ConnectionStatus status={connectionStatus} />
@@ -194,7 +194,7 @@ export default function InboxScreen() {
 
         {/* Search */}
         <TextInput
-          className="bg-white dark:bg-surface-card rounded-lg px-3 py-2 text-body text-gray-900 dark:text-white mb-3"
+          className="bg-white dark:bg-surface-card rounded-lg px-3 py-2 text-body text-slate-900 dark:text-white mb-3"
           placeholder="Search messages..."
           placeholderTextColor="#94a3b8"
           value={searchQuery}

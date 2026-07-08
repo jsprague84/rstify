@@ -158,7 +158,7 @@ export const MessageActions = React.memo(function MessageActions({ message }: Me
             }
           >
             {isExecuting ? (
-              <ActivityIndicator size="small" color="#3b82f6" />
+              <ActivityIndicator size="small" color="#0052FF" />
             ) : (
               <Text className={classes.text}>{action.label}</Text>
             )}

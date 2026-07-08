@@ -80,20 +80,20 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
           className="flex-1"
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-        <View className="flex-row items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-slate-700">
+        <View className="flex-row items-center justify-between px-4 py-4 border-b border-slate-200 dark:border-white/[0.06]">
           <Pressable onPress={onClose} hitSlop={12}>
             <Text className="text-body text-slate-500 dark:text-slate-400">Cancel</Text>
           </Pressable>
-          <Text className="text-body font-semibold text-gray-900 dark:text-white">
+          <Text className="text-body font-semibold text-slate-900 dark:text-white">
             New Topic
           </Text>
           <Pressable onPress={handleCreate} disabled={isSubmitting || !name.trim()} hitSlop={12}>
             {isSubmitting ? (
-              <ActivityIndicator size="small" color="#3b82f6" />
+              <ActivityIndicator size="small" color="#0052FF" />
             ) : (
               <Text
                 className="text-body font-semibold"
-                style={{ color: name.trim() ? "#3b82f6" : "#94a3b8" }}
+                style={{ color: name.trim() ? "#0052FF" : "#94a3b8" }}
               >
                 Create
               </Text>
@@ -107,7 +107,7 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
               Topic Name
             </Text>
             <TextInput
-              className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-gray-900 dark:text-white border border-slate-200 dark:border-slate-700"
+              className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-slate-900 dark:text-white border border-slate-200 dark:border-white/[0.06]"
               placeholder="e.g. alerts/production"
               placeholderTextColor="#94a3b8"
               value={name}
@@ -123,7 +123,7 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
               Description (optional)
             </Text>
             <TextInput
-              className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-gray-900 dark:text-white border border-slate-200 dark:border-slate-700"
+              className="bg-white dark:bg-surface-card rounded-lg px-3 py-2.5 text-body text-slate-900 dark:text-white border border-slate-200 dark:border-white/[0.06]"
               placeholder="What is this topic for?"
               placeholderTextColor="#94a3b8"
               value={description}
@@ -132,14 +132,14 @@ function CreateTopicModal({ visible, onClose, onCreated }: CreateTopicModalProps
               onSubmitEditing={handleCreate}
             />
           </View>
-          <View className="bg-white dark:bg-surface-card rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <View className="bg-white dark:bg-surface-card rounded-lg border border-slate-200 dark:border-white/[0.06] overflow-hidden">
             <View className="flex-row items-center justify-between p-3">
-              <Text className="text-body text-gray-900 dark:text-white">Everyone can read</Text>
+              <Text className="text-body text-slate-900 dark:text-white">Everyone can read</Text>
               <Switch value={everyoneRead} onValueChange={setEveryoneRead} />
             </View>
             <View className="h-px bg-slate-100 dark:bg-slate-700" />
             <View className="flex-row items-center justify-between p-3">
-              <Text className="text-body text-gray-900 dark:text-white">Everyone can write</Text>
+              <Text className="text-body text-slate-900 dark:text-white">Everyone can write</Text>
               <Switch value={everyoneWrite} onValueChange={setEveryoneWrite} />
             </View>
           </View>
@@ -186,11 +186,11 @@ function CreateFolderModal({ visible, onClose }: CreateFolderModalProps) {
           className="bg-white dark:bg-surface-card rounded-2xl p-5 w-full"
           onPress={(e) => e.stopPropagation()}
         >
-          <Text className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          <Text className="text-lg font-semibold text-slate-900 dark:text-white mb-4">
             New Folder
           </Text>
           <TextInput
-            className="bg-slate-50 dark:bg-surface-bg rounded-lg px-3 py-2.5 text-body text-gray-900 dark:text-white border border-slate-200 dark:border-slate-700 mb-4"
+            className="bg-slate-50 dark:bg-surface-bg rounded-lg px-3 py-2.5 text-body text-slate-900 dark:text-white border border-slate-200 dark:border-white/[0.06] mb-4"
             placeholder="Folder name..."
             placeholderTextColor="#94a3b8"
             value={folderName}
@@ -306,7 +306,7 @@ export default function ChannelsScreen() {
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-surface-bg" edges={["top"]}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
-        <Text className="text-display font-bold text-gray-900 dark:text-white">
+        <Text className="text-display font-bold text-slate-900 dark:text-white">
           Channels
         </Text>
         <View className="flex-row gap-2">
@@ -330,7 +330,7 @@ export default function ChannelsScreen() {
       {/* Search */}
       <View className="px-4 pb-2">
         <TextInput
-          className="bg-white dark:bg-surface-card rounded-lg px-3 py-2 text-body text-gray-900 dark:text-white"
+          className="bg-white dark:bg-surface-card rounded-lg px-3 py-2 text-body text-slate-900 dark:text-white"
           placeholder="Search channels..."
           placeholderTextColor="#94a3b8"
           value={searchQuery}
@@ -368,7 +368,7 @@ export default function ChannelsScreen() {
             <FolderSection
               title="Pinned"
               icon="📌"
-              color="#3b82f6"
+              color="#0052FF"
               topics={filteredPinned}
               onEditTopic={setEditTopic}
               onDeleteTopic={setDeleteTopic}

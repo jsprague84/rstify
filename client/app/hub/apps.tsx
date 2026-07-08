@@ -126,7 +126,7 @@ export default function AppsScreen() {
         data={apps}
         keyExtractor={(item) => item.id.toString()}
         renderItem={({ item }) => (
-          <View className="flex-row items-center justify-between px-4 py-4 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-slate-700">
+          <View className="flex-row items-center justify-between px-4 py-4 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-white/[0.06]">
             <AppIconView app={item} />
             <View className="flex-1 mr-3">
               <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">
@@ -149,7 +149,7 @@ export default function AppsScreen() {
             </View>
             <View className="flex-row gap-3">
               <Pressable onPress={() => openEditApp(item)} hitSlop={8}>
-                <Ionicons name="create-outline" size={18} color="#3b82f6" />
+                <Ionicons name="create-outline" size={18} color="#0052FF" />
               </Pressable>
               <Pressable onPress={() => handleDeleteApp(item)} hitSlop={8}>
                 <Ionicons name="trash-outline" size={18} color="#ef4444" />
@@ -177,7 +177,7 @@ export default function AppsScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Application name"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={newAppName}
           onChangeText={setNewAppName}
           returnKeyType="next"
@@ -185,7 +185,7 @@ export default function AppsScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Description (optional)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={newAppDesc}
           onChangeText={setNewAppDesc}
           returnKeyType="done"
@@ -220,21 +220,21 @@ export default function AppsScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Name"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={editName}
           onChangeText={setEditName}
         />
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Description (optional)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={editDesc}
           onChangeText={setEditDesc}
         />
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Default Priority (1-10)"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={editPriority}
           onChangeText={setEditPriority}
           keyboardType="numeric"

@@ -117,7 +117,7 @@ export const MessageAttachments = React.memo(function MessageAttachments({
             />
           ) : (
             <View className="flex-row items-center gap-1.5 px-2.5 py-2">
-              <Ionicons name="attach" size={16} color="#3b82f6" />
+              <Ionicons name="attach" size={16} color="#0052FF" />
               <Text
                 className="text-primary text-sm flex-1"
                 numberOfLines={1}

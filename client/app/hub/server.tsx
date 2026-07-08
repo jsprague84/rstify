@@ -109,7 +109,7 @@ export default function ServerScreen() {
                           onChangeText={setUrlInput}
                           autoCapitalize="none"
                           keyboardType="url"
-                          placeholderTextColor="#9ca3af"
+                          placeholderTextColor="#94a3b8"
                         />
                         <AnimatedPressable className="bg-primary rounded-lg px-4 justify-center" onPress={handleSaveUrl}>
                           <Text className="text-white font-semibold text-sm">Save</Text>

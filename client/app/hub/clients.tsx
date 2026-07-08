@@ -121,7 +121,7 @@ export default function ClientsScreen() {
               </View>
               <View className="flex-row gap-2">
                 <Pressable onPress={() => handleRegisterPush(item.id)} hitSlop={8}>
-                  <Ionicons name="notifications-outline" size={16} color="#3b82f6" />
+                  <Ionicons name="notifications-outline" size={16} color="#0052FF" />
                 </Pressable>
                 <Pressable onPress={() => handleDeleteClient(item)} hitSlop={8}>
                   <Ionicons name="trash-outline" size={16} color="#ef4444" />
@@ -152,7 +152,7 @@ export default function ClientsScreen() {
         <TextInput
           className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
           placeholder="Token name"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#94a3b8"
           value={newTokenName}
           onChangeText={setNewTokenName}
           autoCapitalize="none"

@@ -102,7 +102,7 @@ export default function SettingsScreen() {
                 <Ionicons
                   name={opt.icon}
                   size={22}
-                  color={mode === opt.value ? '#3b82f6' : '#94a3b8'}
+                  color={mode === opt.value ? '#0052FF' : '#94a3b8'}
                 />
                 <View className="flex-1">
                   <Text className="text-base font-medium text-slate-900 dark:text-slate-100">{opt.label}</Text>
@@ -159,7 +159,7 @@ export default function SettingsScreen() {
               <TextInput
                 className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
                 placeholder="Current password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#94a3b8"
                 value={currentPassword}
                 onChangeText={setCurrentPassword}
                 secureTextEntry
@@ -167,7 +167,7 @@ export default function SettingsScreen() {
               <TextInput
                 className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
                 placeholder="New password (min 8 chars)"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#94a3b8"
                 value={newPassword}
                 onChangeText={setNewPassword}
                 secureTextEntry
@@ -175,7 +175,7 @@ export default function SettingsScreen() {
               <TextInput
                 className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-base text-slate-900 dark:text-slate-100"
                 placeholder="Confirm new password"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor="#94a3b8"
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
                 secureTextEntry
@@ -223,7 +223,7 @@ export default function SettingsScreen() {
                 }
               }}
             >
-              <Ionicons name="refresh-outline" size={20} color="#3b82f6" />
+              <Ionicons name="refresh-outline" size={20} color="#0052FF" />
               <Text className="text-base text-primary font-medium">Re-register Push Token</Text>
             </Pressable>
           </View>

@@ -12,7 +12,7 @@ export function HubScreenHeader({ title, onAdd }: HubScreenHeaderProps) {
   const router = useRouter();
 
   return (
-    <View className="flex-row items-center justify-between px-4 py-3 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-slate-700">
+    <View className="flex-row items-center justify-between px-4 py-3.5 bg-white dark:bg-surface-card border-b border-slate-100 dark:border-white/[0.06]">
       <View className="flex-row items-center gap-3">
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <Ionicons name="chevron-back" size={24} color="#94a3b8" />
@@ -23,7 +23,7 @@ export function HubScreenHeader({ title, onAdd }: HubScreenHeaderProps) {
       </View>
       {onAdd ? (
         <Pressable onPress={onAdd} hitSlop={8}>
-          <Ionicons name="add-circle-outline" size={24} color="#3b82f6" />
+          <Ionicons name="add-circle-outline" size={26} color="#0052FF" />
         </Pressable>
       ) : null}
     </View>

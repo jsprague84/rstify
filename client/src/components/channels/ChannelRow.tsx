@@ -41,18 +41,18 @@ export const ChannelRow = React.memo(function ChannelRow({ topic, onEdit, onDele
     >
       <ContextMenu.Trigger>
         <Pressable onPress={handlePress}>
-          <View className="px-4 py-3 bg-white dark:bg-surface-card rounded-lg mx-4 mb-1.5">
+          <View className="px-4 py-3.5 bg-white dark:bg-surface-card rounded-xl border border-slate-100 dark:border-white/[0.06] mx-4 mb-2">
             <View className="flex-row items-center gap-3">
               {/* Pinned indicator */}
               {pinned ? (
-                <View className="w-2 h-2 rounded-full bg-blue-500" />
+                <View className="w-2 h-2 rounded-full bg-primary" />
               ) : (
                 <View className="w-2 h-2 rounded-full bg-transparent" />
               )}
 
               <View className="flex-1 min-w-0">
                 <Text
-                  className="text-body font-medium text-gray-900 dark:text-white"
+                  className="text-body font-semibold text-slate-900 dark:text-white"
                   numberOfLines={1}
                 >
                   {topic.name}
@@ -70,13 +70,13 @@ export const ChannelRow = React.memo(function ChannelRow({ topic, onEdit, onDele
               {/* Access indicators */}
               <View className="flex-row gap-1">
                 {topic.everyone_read && (
-                  <View className="bg-green-100 dark:bg-green-900/30 rounded px-1.5 py-0.5">
-                    <Text className="text-xs text-green-700 dark:text-green-400">R</Text>
+                  <View className="bg-slate-100 dark:bg-surface-elevated rounded-md px-1.5 py-0.5">
+                    <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">R</Text>
                   </View>
                 )}
                 {topic.everyone_write && (
-                  <View className="bg-blue-100 dark:bg-blue-900/30 rounded px-1.5 py-0.5">
-                    <Text className="text-xs text-blue-700 dark:text-blue-400">W</Text>
+                  <View className="bg-slate-100 dark:bg-surface-elevated rounded-md px-1.5 py-0.5">
+                    <Text className="text-xs font-medium text-slate-500 dark:text-slate-400">W</Text>
                   </View>
                 )}
               </View>
