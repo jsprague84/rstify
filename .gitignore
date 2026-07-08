@@ -17,3 +17,8 @@ easKey
 .superpowers/
 # ts-rs default bindings output (canonical output is in shared/generated/)
 crates/*/bindings/
+
+# web-ui redesign screenshot-loop dev artifacts (local only)
+webui-dev.db*
+webui-dev-uploads/
+web-ui/.shots/
