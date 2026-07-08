@@ -1,4 +1,5 @@
 const tokens = require('../shared/design/tokens.cjs')
+const defaultTheme = require('tailwindcss/defaultTheme')
 
 /** @type {import('tailwindcss').Config} */
 export default {
@@ -12,6 +13,12 @@ export default {
       colors: tokens.colors,
       fontSize: tokens.fontSize,
       borderRadius: tokens.borderRadius,
+      // Coinbase-substitute typefaces (loaded in main.tsx): Inter for UI, JetBrains
+      // Mono for numbers. Web-only (mobile keeps system fonts until expo-font loads them).
+      fontFamily: {
+        sans: ['"Inter Variable"', ...defaultTheme.fontFamily.sans],
+        mono: ['"JetBrains Mono Variable"', ...defaultTheme.fontFamily.mono],
+      },
     },
   },
   plugins: [require('@tailwindcss/typography')],
