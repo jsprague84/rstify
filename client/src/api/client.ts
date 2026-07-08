@@ -422,8 +422,15 @@ export class RstifyClient {
     await this.request("DELETE", `/api/webhooks/${id}`);
   }
 
-  async listWebhookDeliveries(id: number, limit = 20): Promise<WebhookDeliveryLog[]> {
-    return this.request("GET", `/api/webhooks/${id}/deliveries?limit=${limit}`);
+  async listWebhookDeliveries(
+    id: number,
+    limit = 20,
+    success?: boolean,
+    offset = 0,
+  ): Promise<WebhookDeliveryLog[]> {
+    let url = `/api/webhooks/${id}/deliveries?limit=${limit}&offset=${offset}`;
+    if (success !== undefined) url += `&success=${success}`;
+    return this.request("GET", url);
   }
 
   async testWebhook(id: number): Promise<WebhookTestResult> {

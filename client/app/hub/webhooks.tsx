@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { formatLocalTime } from 'shared';
+import { formatLocalTime, WEBHOOK_SERVICE_GUIDES, getWebhookGuide, renderSetupStep, incomingCurlExample } from 'shared';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../src/components/EmptyState';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
@@ -36,6 +36,11 @@ type Direction = 'incoming' | 'outgoing';
 export default function WebhooksScreen() {
   const [topics, setTopics] = useState<Topic[]>([]);
   const [showCreate, setShowCreate] = useState(false);
+  // 'direction' = the two-path chooser; 'form' = the focused per-direction form.
+  const [createStep, setCreateStep] = useState<'direction' | 'form'>('direction');
+  // Post-create success screen for incoming webhooks (URL + setup steps).
+  const [setupWebhook, setSetupWebhook] = useState<{ token: string; webhook_type: string; name: string } | null>(null);
+  const [setupSecret, setSetupSecret] = useState<string | null>(null);
 
   const [editWebhook, setEditWebhook] = useState<WebhookConfigWithHealth | null>(null);
   const [editName, setEditName] = useState('');
@@ -57,12 +62,16 @@ export default function WebhooksScreen() {
   const [deliveriesWebhook, setDeliveriesWebhook] = useState<WebhookConfig | null>(null);
   const [deliveries, setDeliveries] = useState<WebhookDeliveryLog[]>([]);
   const [deliveriesLoading, setDeliveriesLoading] = useState(false);
+  const [deliveriesFilter, setDeliveriesFilter] = useState<'all' | 'success' | 'failed'>('all');
+  const [deliveriesHasMore, setDeliveriesHasMore] = useState(false);
   const [testingId, setTestingId] = useState<number | null>(null);
 
   // Create form state
   const [direction, setDirection] = useState<Direction>('incoming');
   const [name, setName] = useState('');
-  const [webhookType, setWebhookType] = useState('custom');
+  const [webhookType, setWebhookType] = useState('github');
+  const [createSecret, setCreateSecret] = useState('');
+  const [editSecret, setEditSecret] = useState('');
   const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
   const [targetUrl, setTargetUrl] = useState('');
   const [httpMethod, setHttpMethod] = useState('POST');
@@ -156,12 +165,13 @@ export default function WebhooksScreen() {
   };
 
   const resetForm = () => {
-    setDirection('incoming'); setName(''); setWebhookType('custom');
+    setDirection('incoming'); setName(''); setWebhookType('github'); setCreateSecret('');
     setSelectedTopicId(null); setTargetUrl(''); setHttpMethod('POST');
     setCreateHeaders(''); setBodyTemplate('');
     setCreateAuthType('none'); setCreateAuthToken(''); setCreateAuthUser(''); setCreateAuthPass('');
     setCreateMaxRetries('3'); setCreateRetryDelay('60'); setCreateTimeout('15');
     setCreateFollowRedirects(true); setCreateGroupName(''); setCreateContentType('application/json');
+    setCreateStep('direction');
   };
 
   const getWebhookUrl = (wh: WebhookConfigWithHealth) => {
@@ -173,32 +183,51 @@ export default function WebhooksScreen() {
 
   const handleCreate = async () => {
     if (!name.trim()) { Alert.alert('Error', 'Name is required'); return; }
+    if (!selectedTopicId) {
+      Alert.alert(
+        'Pick a topic',
+        direction === 'incoming'
+          ? 'Incoming webhooks deliver their messages to a topic — create one on the Channels tab first if you have none.'
+          : 'Outgoing webhooks fire when a message is published to a topic.',
+      );
+      return;
+    }
     if (direction === 'outgoing' && !targetUrl.trim()) {
       Alert.alert('Error', 'Target URL is required for outgoing webhooks'); return;
     }
-    const api = getApiClient();
-    const ok = await mutate(() => api.createWebhook({
-      name: name.trim(), webhookType: webhookType, template: null, direction: direction,
-      targetTopicId: selectedTopicId ?? null,
-      targetApplicationId: null,
-      enabled: null,
-      targetUrl: direction === 'outgoing' ? targetUrl.trim() : null,
-      httpMethod: direction === 'outgoing' ? httpMethod : null,
-      headers: direction === 'outgoing' ? (() => {
-        const h = mergeAuthIntoHeaders(createHeaders, createAuthType, createAuthToken, createAuthUser, createAuthPass) || {};
-        h['Content-Type'] = createContentType;
-        return h;
-      })() : null,
-      bodyTemplate: direction === 'outgoing' && bodyTemplate.trim() ? bodyTemplate.trim() : null,
-      maxRetries: direction === 'outgoing' ? parseInt(createMaxRetries, 10) || 3 : null,
-      retryDelaySecs: direction === 'outgoing' ? parseInt(createRetryDelay, 10) || 60 : null,
-      timeoutSecs: direction === 'outgoing' ? parseInt(createTimeout, 10) || 15 : null,
-      followRedirects: direction === 'outgoing' ? createFollowRedirects : null,
-      groupName: createGroupName.trim() || null,
-      secret: null,
-    }));
-    if (ok) {
-      resetForm(); setShowCreate(false);
+    try {
+      const api = getApiClient();
+      const created = await api.createWebhook({
+        name: name.trim(), webhookType: webhookType, template: null, direction: direction,
+        targetTopicId: selectedTopicId,
+        targetApplicationId: null,
+        enabled: null,
+        targetUrl: direction === 'outgoing' ? targetUrl.trim() : null,
+        httpMethod: direction === 'outgoing' ? httpMethod : null,
+        headers: direction === 'outgoing' ? (() => {
+          const h = mergeAuthIntoHeaders(createHeaders, createAuthType, createAuthToken, createAuthUser, createAuthPass) || {};
+          h['Content-Type'] = createContentType;
+          return h;
+        })() : null,
+        bodyTemplate: direction === 'outgoing' && bodyTemplate.trim() ? bodyTemplate.trim() : null,
+        maxRetries: direction === 'outgoing' ? parseInt(createMaxRetries, 10) || 3 : null,
+        retryDelaySecs: direction === 'outgoing' ? parseInt(createRetryDelay, 10) || 60 : null,
+        timeoutSecs: direction === 'outgoing' ? parseInt(createTimeout, 10) || 15 : null,
+        followRedirects: direction === 'outgoing' ? createFollowRedirects : null,
+        groupName: createGroupName.trim() || null,
+        secret: direction === 'incoming' && createSecret.trim() ? createSecret.trim() : null,
+      });
+      const secretUsed = direction === 'incoming' ? createSecret.trim() : '';
+      resetForm();
+      setShowCreate(false);
+      refresh();
+      // Incoming: land on the setup screen — the URL is what the user needs next.
+      if (created.direction !== 'outgoing') {
+        setSetupSecret(secretUsed || null);
+        setSetupWebhook({ token: created.token, webhook_type: created.webhook_type, name: created.name });
+      }
+    } catch (e) {
+      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to create webhook');
     }
   };
 
@@ -250,25 +279,23 @@ export default function WebhooksScreen() {
   };
 
   const handleTest = async (webhook: WebhookConfigWithHealth) => {
+    // Incoming webhooks aren't "tested" server-side — show the setup screen
+    // (URL + per-service steps + curl) instead of a mismatched play action.
+    if (webhook.direction !== 'outgoing') {
+      setSetupSecret(null);
+      setSetupWebhook({ token: webhook.token, webhook_type: webhook.webhook_type, name: webhook.name });
+      return;
+    }
     setTestingId(webhook.id);
     try {
       const api = getApiClient();
       const result: WebhookTestResult = await api.testWebhook(webhook.id);
-      if (webhook.direction === 'incoming') {
-        const url = result.webhook_url || getWebhookUrl(webhook);
-        Alert.alert('Incoming Webhook URL', `Send POST requests to:\n\n${url}`, [
-          { text: 'Copy URL', onPress: () => Clipboard.setStringAsync(url) },
-          { text: 'Copy curl', onPress: () => Clipboard.setStringAsync(result.curl_example || '') },
-          { text: 'OK' },
-        ]);
-      } else {
-        Alert.alert(
-          result.success ? 'Test Successful' : 'Test Failed',
-          result.success
-            ? `HTTP ${result.status_code}\n${result.response_preview?.slice(0, 200) || ''}`
-            : result.error || 'Unknown error',
-        );
-      }
+      Alert.alert(
+        result.success ? 'Test Successful' : 'Test Failed',
+        result.success
+          ? `HTTP ${result.status_code}\n${result.response_preview?.slice(0, 200) || ''}`
+          : result.error || 'Unknown error',
+      );
     } catch (e) {
       Alert.alert('Test Failed', e instanceof Error ? e.message : 'Test failed');
     } finally { setTestingId(null); }
@@ -294,6 +321,7 @@ export default function WebhooksScreen() {
     setEditTimeout(String(wh.timeout_secs ?? 15));
     setEditFollowRedirects(wh.follow_redirects ?? true);
     setEditGroupName(wh.group_name || '');
+    setEditSecret('');
   };
 
   const handleEdit = async () => {
@@ -302,7 +330,9 @@ export default function WebhooksScreen() {
     const api = getApiClient();
     const ok = await mutate(() => api.updateWebhook(editWebhook.id, {
       name: editName.trim() || null, template: null, enabled: editEnabled,
-      groupName: editGroupName.trim() || null, secret: null,
+      groupName: editGroupName.trim() || null,
+      // null = keep the stored secret; only a non-empty value replaces it.
+      secret: editSecret.trim() || null,
       targetUrl: isOutgoing ? (editTargetUrl.trim() || null) : null,
       httpMethod: isOutgoing ? editHttpMethod : null,
       headers: isOutgoing ? (() => {
@@ -318,15 +348,28 @@ export default function WebhooksScreen() {
     if (ok) setEditWebhook(null);
   };
 
-  const openDeliveries = async (wh: WebhookConfigWithHealth) => {
-    setDeliveriesWebhook(wh); setDeliveriesLoading(true);
+  const loadDeliveries = async (
+    wh: WebhookConfig,
+    filter: 'all' | 'success' | 'failed',
+    offset: number,
+  ) => {
+    setDeliveriesLoading(true);
     try {
       const api = getApiClient();
-      const logs = await api.listWebhookDeliveries(wh.id);
-      setDeliveries(logs);
+      const successParam = filter === 'all' ? undefined : filter === 'success';
+      const logs = await api.listWebhookDeliveries(wh.id, 20, successParam, offset);
+      setDeliveries(prev => (offset === 0 ? logs : [...prev, ...logs]));
+      setDeliveriesHasMore(logs.length === 20);
     } catch (e) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Failed to load deliveries');
     } finally { setDeliveriesLoading(false); }
+  };
+
+  const openDeliveries = (wh: WebhookConfigWithHealth) => {
+    setDeliveriesWebhook(wh);
+    setDeliveriesFilter('all');
+    setDeliveries([]);
+    loadDeliveries(wh, 'all', 0);
   };
 
   const generateCurl = (wh: WebhookConfigWithHealth): string => {
@@ -496,7 +539,11 @@ export default function WebhooksScreen() {
                 />
                 <View className="flex-row gap-3">
                   <Pressable onPress={() => handleTest(item)} hitSlop={8}>
-                    <Ionicons name="play-outline" size={18} color={testingId === item.id ? '#94a3b8' : '#22c55e'} />
+                    <Ionicons
+                      name={item.direction === 'outgoing' ? 'play-outline' : 'help-buoy-outline'}
+                      size={18}
+                      color={testingId === item.id ? '#94a3b8' : item.direction === 'outgoing' ? '#22c55e' : '#0052FF'}
+                    />
                   </Pressable>
                   <Pressable onPress={() => handleCopyCurl(item)} hitSlop={8}>
                     <Ionicons name="code-slash-outline" size={18} color="#94a3b8" />
@@ -533,48 +580,73 @@ export default function WebhooksScreen() {
           <Pressable style={{ maxHeight: '85%' }} onPress={() => {}}>
             <KeyboardAwareScrollView bottomOffset={20} keyboardShouldPersistTaps="handled" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
               <View className="bg-white dark:bg-surface-card rounded-2xl p-6 gap-3">
-                <Text className="text-lg font-bold text-slate-900 dark:text-slate-100">Create Webhook</Text>
+                <Text className="text-lg font-bold text-slate-900 dark:text-slate-100">New Webhook</Text>
 
-                {/* Direction toggle */}
-                <View className="flex-row gap-2">
-                  <AnimatedPressable
-                    haptic={false}
-                    className={`flex-1 p-2.5 rounded-lg items-center ${direction === 'incoming' ? 'bg-primary' : 'bg-slate-100 dark:bg-surface-elevated'}`}
-                    onPress={() => setDirection('incoming')}
-                  >
-                    <Text className={`font-semibold ${direction === 'incoming' ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>Incoming</Text>
-                  </AnimatedPressable>
-                  <AnimatedPressable
-                    haptic={false}
-                    className={`flex-1 p-2.5 rounded-lg items-center ${direction === 'outgoing' ? 'bg-primary' : 'bg-slate-100 dark:bg-surface-elevated'}`}
-                    onPress={() => setDirection('outgoing')}
-                  >
-                    <Text className={`font-semibold ${direction === 'outgoing' ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>Outgoing</Text>
-                  </AnimatedPressable>
-                </View>
+                {/* Step 1: two-path direction chooser */}
+                {createStep === 'direction' && (
+                  <>
+                    <Text className="text-sm text-slate-500 dark:text-slate-400">What should this webhook do?</Text>
+                    <AnimatedPressable
+                      haptic={false}
+                      className="p-4 rounded-xl border border-slate-200 dark:border-white/10"
+                      onPress={() => { setDirection('incoming'); setCreateStep('form'); }}
+                    >
+                      <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">↓ Receive notifications</Text>
+                      <Text className="text-sm text-slate-500 dark:text-slate-400 mt-1">A service posts to a URL on this server and the payload becomes a message.</Text>
+                      <Text className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">GitHub · Forgejo · Grafana · any script that can POST JSON</Text>
+                    </AnimatedPressable>
+                    <AnimatedPressable
+                      haptic={false}
+                      className="p-4 rounded-xl border border-slate-200 dark:border-white/10"
+                      onPress={() => { setDirection('outgoing'); setCreateStep('form'); }}
+                    >
+                      <Text className="text-base font-semibold text-slate-900 dark:text-slate-100">↑ Send to another service</Text>
+                      <Text className="text-sm text-slate-500 dark:text-slate-400 mt-1">Every message published to a topic is forwarded as an HTTP request you define.</Text>
+                      <Text className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">n8n · Slack-compatible endpoints · home-automation hooks</Text>
+                    </AnimatedPressable>
+                    <AnimatedPressable className="p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center" onPress={closeModal} haptic={false}>
+                      <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
+                    </AnimatedPressable>
+                  </>
+                )}
 
+                {createStep === 'form' && (
+                <>
                 <InputField value={name} onChangeText={setName} placeholder="Webhook name" />
                 <InputField value={createGroupName} onChangeText={setCreateGroupName} placeholder="Group (optional)" />
 
-                {/* Webhook type */}
-                <Text className="text-xs text-slate-500 dark:text-slate-400">Webhook Type</Text>
-                <ChipRow items={['custom', 'json', 'github', 'grafana']} selected={webhookType} onSelect={setWebhookType} />
+                {/* Incoming: which service will send? */}
+                {direction === 'incoming' && (
+                  <>
+                    <Text className="text-xs text-slate-500 dark:text-slate-400">Which service will send to rstify?</Text>
+                    <View className="flex-row gap-2 flex-wrap">
+                      {WEBHOOK_SERVICE_GUIDES.map((g) => (
+                        <AnimatedPressable
+                          key={g.type}
+                          haptic={false}
+                          className={`px-3 py-2 rounded-lg items-center ${webhookType === g.type ? 'bg-primary' : 'bg-slate-100 dark:bg-surface-elevated'}`}
+                          onPress={() => setWebhookType(g.type)}
+                        >
+                          <Text className={`text-sm font-semibold ${webhookType === g.type ? 'text-white' : 'text-slate-600 dark:text-slate-300'}`}>
+                            {g.label}
+                          </Text>
+                        </AnimatedPressable>
+                      ))}
+                    </View>
+                    <Text className="text-xs text-slate-400 dark:text-slate-500">{getWebhookGuide(webhookType).blurb}</Text>
+                    <InputField value={createSecret} onChangeText={setCreateSecret} placeholder="Secret (recommended)" secureTextEntry />
+                    <Text className="text-xs text-slate-400 dark:text-slate-500">{getWebhookGuide(webhookType).secretHelp}</Text>
+                  </>
+                )}
 
                 {/* Topic selector */}
                 {topics.length > 0 && (
                   <>
                     <Text className="text-xs text-slate-500 dark:text-slate-400">
-                      Target Topic {direction === 'incoming' ? '(required)' : '(triggers outgoing)'}
+                      {direction === 'incoming' ? 'Deliver messages to topic (required)' : 'Trigger — fires on every message published to (required)'}
                     </Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       <View className="flex-row gap-1.5">
-                        <AnimatedPressable
-                          haptic={false}
-                          className={`px-3 py-1.5 rounded-full ${selectedTopicId === null ? 'bg-blue-100 dark:bg-blue-900/50' : 'bg-slate-100 dark:bg-surface-elevated'}`}
-                          onPress={() => setSelectedTopicId(null)}
-                        >
-                          <Text className={`text-sm ${selectedTopicId === null ? 'text-blue-800 dark:text-blue-300' : 'text-slate-500 dark:text-slate-400'}`}>None</Text>
-                        </AnimatedPressable>
                         {topics.map((t) => (
                           <AnimatedPressable
                             key={t.id}
@@ -588,6 +660,11 @@ export default function WebhooksScreen() {
                       </View>
                     </ScrollView>
                   </>
+                )}
+                {topics.length === 0 && (
+                  <Text className="text-xs text-amber-600 dark:text-amber-400">
+                    You need a topic first — create one on the Channels tab, then come back.
+                  </Text>
                 )}
 
                 {/* Outgoing-specific fields */}
@@ -610,18 +687,21 @@ export default function WebhooksScreen() {
                       authPass={createAuthPass} setAuthPass={setCreateAuthPass}
                     />
                     <InputField value={createHeaders} onChangeText={setCreateHeaders} placeholder="Additional headers (Key: Value per line)" multiline numberOfLines={2} />
-                    <InputField value={bodyTemplate} onChangeText={setBodyTemplate} placeholder="Body template ({{message}}, {{title}})" multiline numberOfLines={3} />
+                    <InputField value={bodyTemplate} onChangeText={setBodyTemplate} placeholder="Body template — {{title}} {{message}} {{topic}} {{priority}} {{json}} {{env.KEY}}" multiline numberOfLines={3} />
+                    <Text className="text-xs text-slate-400 dark:text-slate-500">
+                      Leave the body empty to send the full message as JSON. {'{{env.KEY}}'} variables (managed on web) work in the URL, headers and body.
+                    </Text>
                     <View className="flex-row gap-2">
                       <View className="flex-1">
-                        <Text className="text-xs text-slate-500 dark:text-slate-400 mb-1">Max Retries</Text>
+                        <Text className="text-xs text-slate-500 dark:text-slate-400 mb-1">Max Retries (0–10)</Text>
                         <InputField value={createMaxRetries} onChangeText={setCreateMaxRetries} placeholder="3" keyboardType="numeric" />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-xs text-slate-500 dark:text-slate-400 mb-1">Retry Delay (s)</Text>
+                        <Text className="text-xs text-slate-500 dark:text-slate-400 mb-1">Retry Delay (1–3600s)</Text>
                         <InputField value={createRetryDelay} onChangeText={setCreateRetryDelay} placeholder="60" keyboardType="numeric" />
                       </View>
                       <View className="flex-1">
-                        <Text className="text-xs text-slate-500 dark:text-slate-400 mb-1">Timeout (s)</Text>
+                        <Text className="text-xs text-slate-500 dark:text-slate-400 mb-1">Timeout (1–120s)</Text>
                         <InputField value={createTimeout} onChangeText={setCreateTimeout} placeholder="15" keyboardType="numeric" />
                       </View>
                     </View>
@@ -633,13 +713,15 @@ export default function WebhooksScreen() {
                 )}
 
                 <View className="flex-row gap-3 mt-1">
-                  <AnimatedPressable className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center" onPress={closeModal}>
-                    <Text className="font-semibold text-slate-500 dark:text-slate-400">Cancel</Text>
+                  <AnimatedPressable className="flex-1 p-3.5 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center" onPress={() => setCreateStep('direction')}>
+                    <Text className="font-semibold text-slate-500 dark:text-slate-400">Back</Text>
                   </AnimatedPressable>
                   <AnimatedPressable className="flex-1 p-3.5 rounded-lg bg-primary items-center" onPress={handleCreate}>
                     <Text className="font-semibold text-white">Create</Text>
                   </AnimatedPressable>
                 </View>
+                </>
+                )}
               </View>
             </KeyboardAwareScrollView>
           </Pressable>
@@ -700,6 +782,15 @@ export default function WebhooksScreen() {
 
                 <InputField value={editName} onChangeText={setEditName} placeholder="Name" />
                 <InputField value={editGroupName} onChangeText={setEditGroupName} placeholder="Group (optional)" />
+
+                {editWebhook && editWebhook.direction !== 'outgoing' && (
+                  <>
+                    <InputField value={editSecret} onChangeText={setEditSecret} placeholder="Secret — leave empty to keep current" secureTextEntry />
+                    <Text className="text-xs text-slate-400 dark:text-slate-500">
+                      {getWebhookGuide(editWebhook.webhook_type).secretHelp}
+                    </Text>
+                  </>
+                )}
 
                 <View className="flex-row justify-between items-center py-1">
                   <Text className="text-base text-slate-900 dark:text-slate-100">Enabled</Text>
@@ -769,15 +860,44 @@ export default function WebhooksScreen() {
               <Text className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 Delivery Logs {deliveriesWebhook ? `\u2014 ${deliveriesWebhook.name}` : ''}
               </Text>
-              {deliveriesLoading ? (
+              <View className="flex-row gap-2">
+                {(['all', 'success', 'failed'] as const).map((f) => (
+                  <AnimatedPressable
+                    key={f}
+                    haptic={false}
+                    className={`px-3 py-1.5 rounded-full ${deliveriesFilter === f ? 'bg-primary' : 'bg-slate-100 dark:bg-surface-elevated'}`}
+                    onPress={() => {
+                      setDeliveriesFilter(f);
+                      if (deliveriesWebhook) { setDeliveries([]); loadDeliveries(deliveriesWebhook, f, 0); }
+                    }}
+                  >
+                    <Text className={`text-xs font-semibold ${deliveriesFilter === f ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`}>
+                      {f === 'all' ? 'All' : f === 'success' ? 'Success' : 'Failed'}
+                    </Text>
+                  </AnimatedPressable>
+                ))}
+              </View>
+              {deliveriesLoading && deliveries.length === 0 ? (
                 <Text className="text-slate-500 dark:text-slate-400 text-center py-4">Loading...</Text>
               ) : deliveries.length === 0 ? (
-                <Text className="text-slate-500 dark:text-slate-400 text-center py-4">No deliveries yet</Text>
+                <Text className="text-slate-500 dark:text-slate-400 text-center py-4">
+                  {deliveriesFilter !== 'all'
+                    ? 'No deliveries matching this filter'
+                    : deliveriesWebhook?.direction !== 'outgoing'
+                      ? 'Nothing received yet \u2014 every request to the webhook URL (accepted or rejected) appears here.'
+                      : 'No deliveries yet \u2014 they appear as soon as a message is published to the trigger topic.'}
+                </Text>
               ) : (
                 <FlatList
                   data={deliveries}
                   keyExtractor={(d) => d.id.toString()}
                   style={{ maxHeight: 300 }}
+                  onEndReached={() => {
+                    if (deliveriesHasMore && !deliveriesLoading && deliveriesWebhook) {
+                      loadDeliveries(deliveriesWebhook, deliveriesFilter, deliveries.length);
+                    }
+                  }}
+                  onEndReachedThreshold={0.4}
                   renderItem={({ item: d }) => (
                     <View className="py-2 border-b border-slate-100 dark:border-white/[0.06]">
                       <View className="flex-row justify-between">
@@ -796,6 +916,11 @@ export default function WebhooksScreen() {
                       ) : null}
                     </View>
                   )}
+                  ListFooterComponent={
+                    deliveriesLoading && deliveries.length > 0 ? (
+                      <Text className="text-xs text-slate-400 text-center py-2">Loading\u2026</Text>
+                    ) : null
+                  }
                 />
               )}
               <AnimatedPressable
@@ -805,6 +930,67 @@ export default function WebhooksScreen() {
                 <Text className="font-semibold text-slate-500 dark:text-slate-400">Close</Text>
               </AnimatedPressable>
             </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Setup / post-create modal for incoming webhooks: the URL is the artifact
+          the user needs, plus paste-here steps for the sending service. */}
+      <Modal visible={!!setupWebhook} animationType="fade" transparent>
+        <Pressable className="flex-1 bg-black/40 justify-center px-4" onPress={() => setSetupWebhook(null)}>
+          <Pressable style={{ maxHeight: '85%' }} onPress={() => {}}>
+            <ScrollView>
+              <View className="bg-white dark:bg-surface-card rounded-2xl p-6 gap-3">
+                <Text className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  Set up — {setupWebhook?.name}
+                </Text>
+                {setupWebhook && (() => {
+                  const url = `${serverBase || 'https://your-server'}/api/wh/${setupWebhook.token}`;
+                  const guide = getWebhookGuide(setupWebhook.webhook_type);
+                  return (
+                    <>
+                      <Pressable
+                        className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3"
+                        onPress={() => { Clipboard.setStringAsync(url); Alert.alert('Copied', 'Webhook URL copied'); }}
+                      >
+                        <Text className="text-[11px] font-semibold text-blue-800 dark:text-blue-300 mb-1">Webhook URL (tap to copy)</Text>
+                        <Text className="text-xs text-blue-900 dark:text-blue-200 font-mono">{url}</Text>
+                      </Pressable>
+                      <Text className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400 mt-1">
+                        Set up {guide.label}
+                      </Text>
+                      {guide.setupSteps.map((s, i) => (
+                        <Text key={i} className="text-sm text-slate-600 dark:text-slate-300">
+                          {i + 1}. {renderSetupStep(s, url, setupSecret)}
+                        </Text>
+                      ))}
+                      <Text className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                        Understands: {guide.events}
+                      </Text>
+                      <AnimatedPressable
+                        className="p-3 rounded-lg bg-slate-100 dark:bg-surface-elevated items-center"
+                        haptic={false}
+                        onPress={() => {
+                          Clipboard.setStringAsync(incomingCurlExample(url, guide.samplePayload));
+                          Alert.alert('Copied', 'curl command copied — run it to send a test message');
+                        }}
+                      >
+                        <Text className="font-semibold text-slate-600 dark:text-slate-300">Copy test curl</Text>
+                      </AnimatedPressable>
+                      <Text className="text-xs text-slate-400 dark:text-slate-500">
+                        Every request (accepted or rejected) appears under the log icon on the webhook row.
+                      </Text>
+                    </>
+                  );
+                })()}
+                <AnimatedPressable
+                  className="p-3.5 rounded-lg bg-primary items-center mt-1"
+                  onPress={() => setSetupWebhook(null)}
+                >
+                  <Text className="font-semibold text-white">Done</Text>
+                </AnimatedPressable>
+              </View>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </Modal>
