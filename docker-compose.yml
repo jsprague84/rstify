@@ -4,8 +4,6 @@ services:
     env_file: .env
     ports:
       - "8080:8080"
-      - "1883:1883"    # MQTT TCP
-      - "8083:8083"    # MQTT WebSocket
     volumes:
       - rstify_data:/data
       - rstify_uploads:/uploads

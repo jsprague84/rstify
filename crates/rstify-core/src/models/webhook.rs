@@ -1,0 +1,96 @@
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+use utoipa::ToSchema;
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, ToSchema, TS)]
+#[ts(export)]
+pub struct WebhookConfig {
+    pub id: i64,
+    pub user_id: i64,
+    pub name: String,
+    pub token: String,
+    pub webhook_type: String,
+    pub target_topic_id: Option<i64>,
+    pub target_application_id: Option<i64>,
+    pub template: String,
+    pub enabled: bool,
+    #[serde(serialize_with = "crate::models::ser_utc_z")]
+    pub created_at: String,
+    // Outgoing webhook fields
+    pub direction: String,
+    pub target_url: Option<String>,
+    pub http_method: String,
+    pub headers: Option<String>,
+    pub body_template: Option<String>,
+    pub max_retries: i32,
+    pub retry_delay_secs: i32,
+    pub timeout_secs: i32,
+    pub follow_redirects: bool,
+    pub group_name: Option<String>,
+    pub secret: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct CreateWebhookConfig {
+    pub name: String,
+    #[serde(alias = "webhook_type")]
+    pub webhook_type: String,
+    #[serde(alias = "target_topic_id")]
+    pub target_topic_id: Option<i64>,
+    #[serde(alias = "target_application_id")]
+    pub target_application_id: Option<i64>,
+    pub template: Option<serde_json::Value>,
+    pub enabled: Option<bool>,
+    // Outgoing webhook fields
+    pub direction: Option<String>,
+    #[serde(alias = "target_url")]
+    pub target_url: Option<String>,
+    #[serde(alias = "http_method")]
+    pub http_method: Option<String>,
+    pub headers: Option<serde_json::Value>,
+    #[serde(alias = "body_template")]
+    pub body_template: Option<String>,
+    #[serde(alias = "max_retries")]
+    pub max_retries: Option<i32>,
+    #[serde(alias = "retry_delay_secs")]
+    pub retry_delay_secs: Option<i32>,
+    #[serde(alias = "timeout_secs")]
+    pub timeout_secs: Option<i32>,
+    #[serde(alias = "follow_redirects")]
+    pub follow_redirects: Option<bool>,
+    #[serde(alias = "group_name")]
+    pub group_name: Option<String>,
+    #[serde(alias = "secret")]
+    pub secret: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export)]
+pub struct UpdateWebhookConfig {
+    pub name: Option<String>,
+    pub template: Option<serde_json::Value>,
+    pub enabled: Option<bool>,
+    // Outgoing webhook fields
+    #[serde(alias = "target_url")]
+    pub target_url: Option<String>,
+    #[serde(alias = "http_method")]
+    pub http_method: Option<String>,
+    pub headers: Option<serde_json::Value>,
+    #[serde(alias = "body_template")]
+    pub body_template: Option<String>,
+    #[serde(alias = "max_retries")]
+    pub max_retries: Option<i32>,
+    #[serde(alias = "retry_delay_secs")]
+    pub retry_delay_secs: Option<i32>,
+    #[serde(alias = "timeout_secs")]
+    pub timeout_secs: Option<i32>,
+    #[serde(alias = "follow_redirects")]
+    pub follow_redirects: Option<bool>,
+    #[serde(alias = "group_name")]
+    pub group_name: Option<String>,
+    #[serde(alias = "secret")]
+    pub secret: Option<String>,
+}

@@ -5,6 +5,7 @@ pub mod client;
 pub mod message;
 pub mod topic;
 pub mod user;
+pub mod webhook;
 pub mod webhook_delivery;
 pub mod webhook_variable;
 
@@ -15,6 +16,7 @@ pub use client::*;
 pub use message::*;
 pub use topic::*;
 pub use user::*;
+pub use webhook::*;
 pub use webhook_delivery::*;
 pub use webhook_variable::*;
 

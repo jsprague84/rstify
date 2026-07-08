@@ -10,7 +10,7 @@ Drop-in for Gotify clients, plus features Gotify lacks (topics/pub-sub, webhooks
 
 ## Core surfaces
 
-- **Backend** — Axum REST API + WebSocket stream + MQTT ingest/publish + OpenAPI at `/docs`.
+- **Backend** — Axum REST API + WebSocket stream + OpenAPI at `/docs`.
 - **Web UI** — React dashboard: apps, messages, topics, webhooks, users.
 - **Mobile** — React Native/Expo app with FCM push.
 
@@ -21,7 +21,7 @@ Drop-in for Gotify clients, plus features Gotify lacks (topics/pub-sub, webhooks
 - Gotify-compatible message API (apps, messages, clients, extras: `client::display`/`notification`, `android::action`).
 - Topics (pub-sub), incoming + outgoing webhooks (HMAC, `{{env.KEY}}` templating), file attachments, tags.
 - JWT auth (Argon2), rate limiting, CORS, security headers.
-- MQTT bridge with anti-loop guards; FCM/SMTP optional integrations.
+- FCM/SMTP optional integrations.
 
 ## In progress
 
