@@ -62,26 +62,26 @@ export function FormModal({
     <Modal title={title} open={open} onClose={onClose}>
       <form onSubmit={handleSubmit}>
         {error && (
-          <div className="mb-3 p-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded text-red-600 dark:text-red-400 text-sm">
+          <div className="mb-4 px-4 py-2.5 bg-error/10 text-error rounded-xl text-sm">
             {error}
           </div>
         )}
         {children}
-        <div className="flex justify-end gap-2 mt-4">
+        <div className="flex justify-end gap-2 mt-6">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            className="px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-50 transition"
           >
             {cancelLabel}
           </button>
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-pill hover:bg-brand-600 disabled:opacity-50 transition"
           >
-            {loading ? 'Saving...' : submitLabel}
+            {loading ? 'Saving…' : submitLabel}
           </button>
         </div>
       </form>

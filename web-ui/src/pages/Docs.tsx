@@ -16,7 +16,7 @@ export default function Docs() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6 dark:text-white">Documentation</h2>
+      <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight mb-6">Documentation</h1>
       <div className="flex gap-6">
         <nav className="w-48 shrink-0">
           <ul className="space-y-1">
@@ -24,10 +24,10 @@ export default function Docs() {
               <li key={s.key}>
                 <button
                   onClick={() => setActive(s.key)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm ${
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition ${
                     active === s.key
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      ? 'bg-primary text-white font-medium'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-surface-elevated'
                   }`}
                 >
                   {s.label}
@@ -37,7 +37,7 @@ export default function Docs() {
           </ul>
         </nav>
         <div className="flex-1 min-w-0">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 prose dark:prose-invert max-w-none text-sm">
+          <div className="bg-white dark:bg-surface-card rounded-2xl border border-slate-200 dark:border-white/10 p-8 prose dark:prose-invert max-w-none">
             {active === 'quickstart' && <QuickStart />}
             {active === 'messages' && <MessagesDoc />}
             {active === 'webhooks' && <WebhooksDoc />}
@@ -62,7 +62,7 @@ function DocSection({ title, children }: { title: string; children: React.ReactN
 
 function Code({ children }: { children: string }) {
   return (
-    <pre className="bg-gray-50 dark:bg-gray-900 rounded-md p-3 text-xs overflow-x-auto">
+    <pre className="bg-slate-50 dark:bg-surface-bg border border-slate-200 dark:border-white/10 rounded-lg p-3 text-xs overflow-x-auto font-mono">
       <code>{children}</code>
     </pre>
   );

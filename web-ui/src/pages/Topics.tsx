@@ -62,12 +62,12 @@ export default function Topics() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold dark:text-white">Topics</h2>
-        <button onClick={openCreate} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+        <h2 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">Topics</h2>
+        <button onClick={openCreate} className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-pill hover:bg-brand-600 transition">
           Create Topic
         </button>
       </div>
-      {crud.error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{crud.error}</div>}
+      {crud.error && <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm mb-4">{crud.error}</div>}
       <DataTable
         data={crud.items}
         keyField="id"
@@ -80,10 +80,10 @@ export default function Topics() {
         ]}
         actions={t => (
           <div className="flex gap-2">
-            <button onClick={() => loadTopicMessages(t)} className="text-blue-600 hover:text-blue-800 text-sm">Messages</button>
+            <button onClick={() => loadTopicMessages(t)} className="text-primary hover:text-brand-700 text-sm font-medium">Messages</button>
             <button onClick={() => setPublishTopic(t)} className="text-green-600 hover:text-green-800 text-sm">Send</button>
-            <button onClick={() => setEditTopic(t)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
-            <button onClick={() => setDeleteTopic(t)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
+            <button onClick={() => setEditTopic(t)} className="text-primary hover:text-brand-700 text-sm font-medium">Edit</button>
+            <button onClick={() => setDeleteTopic(t)} className="text-error hover:text-error/80 text-sm font-medium">Delete</button>
           </div>
         )}
       />
@@ -210,7 +210,7 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
+      {error && <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm">{error}</div>}
       <div>
         <label className={labelClass}>Name (read-only)</label>
         <input value={topic.name} disabled className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-gray-400 bg-gray-50" />
@@ -228,7 +228,7 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
         Everyone can write
       </label>
 
-      <button type="button" onClick={() => setShowPolicies(!showPolicies)} className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400">
+      <button type="button" onClick={() => setShowPolicies(!showPolicies)} className="text-sm text-primary hover:text-brand-700">
         {showPolicies ? '\u25BE Hide' : '\u25B8 Show'} Notification & Storage Policies
       </button>
 
@@ -305,7 +305,7 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
 
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
-        <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Save</button>
+        <button type="submit" disabled={loading} className="px-5 py-2 text-sm font-semibold text-white bg-primary rounded-pill hover:bg-brand-600 disabled:opacity-50 transition">Save</button>
       </div>
     </form>
   );
@@ -363,7 +363,7 @@ function TopicMessagesView({ topic, messages, loading, onRequestDeleteAll }: {
     <div>
       <div className="flex items-center justify-between mb-3">
         <div className="flex gap-2">
-          <button onClick={() => setMode('history')} className={`px-3 py-1 text-sm rounded ${mode === 'history' ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
+          <button onClick={() => setMode('history')} className={`px-3 py-1 text-sm rounded ${mode === 'history' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-surface-elevated text-slate-600 dark:text-slate-300'}`}>
             History
           </button>
           <button onClick={() => setMode('live')} className={`px-3 py-1 text-sm rounded ${mode === 'live' ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
@@ -418,7 +418,7 @@ function PublishForm({ topicName, onSuccess, onClose }: { topicName: string; onS
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {publishAction.error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{publishAction.error}</div>}
+      {publishAction.error && <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm">{publishAction.error}</div>}
       <input placeholder="Title (optional)" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
       <textarea placeholder="Message" required rows={4} value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))} className="w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white" />
       <div className="flex gap-3">
@@ -438,7 +438,7 @@ function PublishForm({ topicName, onSuccess, onClose }: { topicName: string; onS
       </div>
       <div className="flex justify-end gap-3 pt-2">
         <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
-        <button type="submit" disabled={publishAction.loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">{form.scheduled_for ? 'Schedule' : 'Send'}</button>
+        <button type="submit" disabled={publishAction.loading} className="px-5 py-2 text-sm font-semibold text-white bg-primary rounded-pill hover:bg-brand-600 disabled:opacity-50 transition">{form.scheduled_for ? 'Schedule' : 'Send'}</button>
       </div>
     </form>
   );

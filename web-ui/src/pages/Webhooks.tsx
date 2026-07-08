@@ -159,10 +159,10 @@ export default function Webhooks() {
   const directionBadge = (dir: string) => {
     const isOut = dir === 'outgoing';
     return (
-      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-caption font-semibold ${
         isOut
-          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-          : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+          ? 'bg-warning/10 text-warning'
+          : 'bg-slate-100 dark:bg-surface-elevated text-slate-500 dark:text-slate-300'
       }`}>
         {isOut ? '\u2192 Out' : '\u2190 In'}
       </span>
@@ -172,18 +172,18 @@ export default function Webhooks() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold dark:text-white">Webhooks</h2>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">Webhooks</h1>
         <div className="flex gap-2">
-          <button onClick={() => setShowVars(v => !v)} className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600">
+          <button onClick={() => setShowVars(v => !v)} className="px-4 py-2 text-sm font-medium border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 rounded-pill hover:border-primary hover:text-primary transition">
             Variables {variables.length > 0 && `(${variables.length})`}
           </button>
-          <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-            Create Webhook
+          <button onClick={() => setShowCreate(true)} className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-pill hover:bg-brand-600 transition">
+            New webhook
           </button>
         </div>
       </div>
       {showVars && <VariablesSection variables={variables} onMutate={crud.mutate} />}
-      {crud.error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{crud.error}</div>}
+      {crud.error && <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm mb-4">{crud.error}</div>}
       {(() => {
         const columns = [
           { key: 'id' as const, header: 'ID' },
@@ -192,7 +192,7 @@ export default function Webhooks() {
           { key: 'webhook_type' as const, header: 'Type' },
           { key: 'target_url' as const, header: 'Target', render: (w: WebhookConfigWithHealth) =>
             w.direction === 'outgoing' && w.target_url ? (
-              <span className="text-xs text-gray-600 dark:text-gray-400">{w.http_method} {w.target_url}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{w.http_method} {w.target_url}</span>
             ) : (
               <WebhookUrlDisplay url={getWebhookUrl(w)} />
             )
@@ -200,7 +200,7 @@ export default function Webhooks() {
           { key: 'enabled' as const, header: 'Enabled', render: (w: WebhookConfigWithHealth) => (
             <button
               onClick={() => handleToggleEnabled(w)}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${w.enabled ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${w.enabled ? 'bg-primary' : 'bg-slate-200 dark:bg-white/15'}`}
               title={w.enabled ? 'Enabled – click to disable' : 'Disabled – click to enable'}
             >
               <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${w.enabled ? 'translate-x-[18px]' : 'translate-x-[2px]'}`} />
@@ -230,13 +230,13 @@ export default function Webhooks() {
         ];
         const renderActions = (w: WebhookConfigWithHealth) => (
           <div className="flex gap-2 justify-end">
-            <button onClick={() => handleTest(w)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-200 text-sm">Test</button>
-            <button onClick={() => copyCurl(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Curl</button>
-            {w.direction === 'outgoing' && <button onClick={() => setCodeWh(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Code</button>}
-            <button onClick={() => setLogsWh(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Logs</button>
-            <button onClick={() => handleDuplicate(w)} className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 text-sm">Dup</button>
-            <button onClick={() => setEditWh(w)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
-            <button onClick={() => setDeleteWh(w)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
+            <button onClick={() => handleTest(w)} className="text-success hover:text-success/80 text-sm font-medium">Test</button>
+            <button onClick={() => copyCurl(w)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white text-sm font-medium">Curl</button>
+            {w.direction === 'outgoing' && <button onClick={() => setCodeWh(w)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white text-sm font-medium">Code</button>}
+            <button onClick={() => setLogsWh(w)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white text-sm font-medium">Logs</button>
+            <button onClick={() => handleDuplicate(w)} className="text-slate-500 hover:text-slate-900 dark:hover:text-white text-sm font-medium">Dup</button>
+            <button onClick={() => setEditWh(w)} className="text-primary hover:text-brand-700 text-sm font-medium">Edit</button>
+            <button onClick={() => setDeleteWh(w)} className="text-error hover:text-error/80 text-sm font-medium">Delete</button>
           </div>
         );
 
@@ -272,13 +272,13 @@ export default function Webhooks() {
               <DataTable data={ungrouped} keyField="id" columns={columns} actions={renderActions} />
             )}
             {[...groups.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([groupName, items]) => (
-              <div key={groupName} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+              <div key={groupName}>
                 <button
                   onClick={() => toggleGroup(groupName)}
-                  className="w-full flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="w-full flex items-center justify-between px-1 py-2 mb-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition"
                 >
                   <span>{collapsedGroups.has(groupName) ? '\u25b6' : '\u25bc'} {groupName}</span>
-                  <span className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{items.length}</span>
+                  <span className="text-caption font-mono text-slate-400">{items.length}</span>
                 </button>
                 {!collapsedGroups.has(groupName) && (
                   <DataTable data={items} keyField="id" columns={columns} actions={renderActions} />
@@ -322,11 +322,11 @@ export default function Webhooks() {
         <Modal open onClose={() => setTestResult(null)} title={`Test \u2014 ${testResult.wh.name}`}>
           {testResult.wh.direction === 'outgoing' && !testResult.result && !testResult.loading && !testResult.error && (
             <div className="space-y-3">
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Test Payload (JSON)</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Test Payload (JSON)</label>
               <textarea
                 value={testResult.customPayload}
                 onChange={e => setTestResult(prev => prev ? { ...prev, customPayload: e.target.value } : null)}
-                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm p-2 font-mono text-gray-900 dark:text-gray-100"
+                className="w-full rounded-md border border-gray-300 dark:border-white/10 bg-white dark:bg-gray-800 text-sm p-2 font-mono text-slate-800 dark:text-slate-100"
                 rows={6}
               />
               <div className="flex justify-end">
@@ -370,8 +370,8 @@ function WebhookUrlDisplay({ url }: { url: string }) {
   };
   return (
     <div className="flex items-center gap-1">
-      <code className="text-xs text-gray-600 dark:text-gray-400 truncate max-w-[200px]" title={url}>{url}</code>
-      <button onClick={handleCopy} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap">
+      <code className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[200px]" title={url}>{url}</code>
+      <button onClick={handleCopy} className="text-xs text-primary dark:text-brand-400 hover:underline whitespace-nowrap">
         {copied ? 'Copied!' : 'Copy'}
       </button>
     </div>
@@ -390,7 +390,7 @@ function TestResultDisplay({ result, loading, error, webhookUrl, direction }: {
   // after the early returns, which crashed the page when a test completed.
   const [tab, setTab] = useState<'body' | 'headers'>('body');
 
-  if (loading) return <div className="text-sm text-gray-500 dark:text-gray-400 py-4 text-center">Sending test request...</div>;
+  if (loading) return <div className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center">Sending test request...</div>;
   if (error) return <div className="text-sm text-red-600 dark:text-red-400 py-2">{error}</div>;
   if (!result) return null;
 
@@ -400,18 +400,18 @@ function TestResultDisplay({ result, loading, error, webhookUrl, direction }: {
         <div className="text-sm dark:text-gray-300">
           Send a POST request to this URL to trigger the webhook:
         </div>
-        <div className="bg-gray-50 dark:bg-gray-700 rounded p-2">
+        <div className="bg-slate-50 dark:bg-surface-elevated rounded p-2">
           <div className="flex items-center gap-2">
             <code className="text-xs text-gray-800 dark:text-gray-200 break-all flex-1">{result.webhook_url || webhookUrl}</code>
             <button
               onClick={() => navigator.clipboard.writeText(result.webhook_url || webhookUrl)}
-              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline whitespace-nowrap"
+              className="text-xs text-primary dark:text-brand-400 hover:underline whitespace-nowrap"
             >Copy</button>
           </div>
         </div>
         {result.curl_example && (
           <div>
-            <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Example curl command:</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Example curl command:</div>
             <div className="bg-gray-900 dark:bg-gray-800 rounded p-3 relative">
               <code className="text-xs text-green-400 break-all whitespace-pre-wrap">{result.curl_example}</code>
               <button
@@ -442,7 +442,7 @@ function TestResultDisplay({ result, loading, error, webhookUrl, direction }: {
           {result.status_code && <span className="font-mono">HTTP {result.status_code}</span>}
         </div>
         {result.duration_ms != null && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">{result.duration_ms}ms</span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">{result.duration_ms}ms</span>
         )}
       </div>
       {result.error && (
@@ -450,13 +450,13 @@ function TestResultDisplay({ result, loading, error, webhookUrl, direction }: {
       )}
       {(result.response_preview || result.response_headers) && (
         <div>
-          <div className="flex gap-1 border-b border-gray-200 dark:border-gray-600 mb-2">
-            <button onClick={() => setTab('body')} className={`px-3 py-1 text-xs font-medium ${tab === 'body' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>Body</button>
-            <button onClick={() => setTab('headers')} className={`px-3 py-1 text-xs font-medium ${tab === 'headers' ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>Headers</button>
+          <div className="flex gap-1 border-b border-gray-200 dark:border-white/10 mb-2">
+            <button onClick={() => setTab('body')} className={`px-3 py-1 text-xs font-medium ${tab === 'body' ? 'border-b-2 border-primary text-primary dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'}`}>Body</button>
+            <button onClick={() => setTab('headers')} className={`px-3 py-1 text-xs font-medium ${tab === 'headers' ? 'border-b-2 border-primary text-primary dark:text-brand-400' : 'text-slate-500 dark:text-slate-400'}`}>Headers</button>
           </div>
           {tab === 'body' && result.response_preview && (
             <div className="relative">
-              <pre className="bg-gray-50 dark:bg-gray-800 rounded p-3 text-xs text-gray-700 dark:text-gray-300 max-h-64 overflow-auto whitespace-pre-wrap font-mono">{formatBody(result.response_preview)}</pre>
+              <pre className="bg-gray-50 dark:bg-gray-800 rounded p-3 text-xs text-slate-700 dark:text-slate-300 max-h-64 overflow-auto whitespace-pre-wrap font-mono">{formatBody(result.response_preview)}</pre>
               <button
                 onClick={() => navigator.clipboard.writeText(result.response_preview!)}
                 className="absolute top-2 right-2 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
@@ -466,7 +466,7 @@ function TestResultDisplay({ result, loading, error, webhookUrl, direction }: {
           {tab === 'headers' && result.response_headers && (
             <div className="bg-gray-50 dark:bg-gray-800 rounded p-3 text-xs font-mono max-h-64 overflow-auto">
               {Object.entries(result.response_headers).map(([k, v]) => (
-                <div key={k} className="text-gray-700 dark:text-gray-300"><span className="text-indigo-600 dark:text-indigo-400">{k}:</span> {v}</div>
+                <div key={k} className="text-slate-700 dark:text-slate-300"><span className="text-primary dark:text-brand-400">{k}:</span> {v}</div>
               ))}
             </div>
           )}
@@ -480,11 +480,11 @@ function TemplateHelp() {
   const [open, setOpen] = useState(false);
   return (
     <div className="text-xs">
-      <button type="button" onClick={() => setOpen(!open)} className="text-indigo-600 dark:text-indigo-400 hover:underline">
+      <button type="button" onClick={() => setOpen(!open)} className="text-primary dark:text-brand-400 hover:underline">
         {open ? 'Hide' : 'Show'} template variables
       </button>
       {open && (
-        <div className="mt-1 bg-gray-50 dark:bg-gray-700 rounded p-2 space-y-0.5 text-gray-600 dark:text-gray-300">
+        <div className="mt-1 bg-slate-50 dark:bg-surface-elevated rounded p-2 space-y-0.5 text-slate-600 dark:text-slate-300">
           <div><code>{'{{title}}'}</code> — Message title</div>
           <div><code>{'{{message}}'}</code> — Message body</div>
           <div><code>{'{{priority}}'}</code> — Priority level (1-10)</div>
@@ -497,9 +497,9 @@ function TemplateHelp() {
   );
 }
 
-const inputCls = "w-full border dark:border-gray-600 rounded px-3 py-2 text-sm dark:bg-gray-700 dark:text-white";
+const inputCls = "w-full rounded-md border border-slate-200 dark:border-white/10 bg-white dark:bg-surface-elevated px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition";
 const btnCls = (active: boolean) =>
-  `px-3 py-1.5 text-sm rounded font-medium ${active ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`;
+  `px-3 py-1.5 text-sm rounded font-medium ${active ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-surface-elevated text-slate-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`;
 
 function parseHeaders(text: string): Record<string, string> | null {
   const headers: Record<string, string> = {};
@@ -589,7 +589,7 @@ function ContentTypeSelector({ headers, onHeadersChange }: { headers: string; on
 
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Content-Type</label>
+      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Content-Type</label>
       <div className="flex gap-2 flex-wrap">
         {CONTENT_TYPES.map(ct => (
           <button key={ct} type="button" onClick={() => setCT(ct)} className={btnCls(current === ct)}>
@@ -627,7 +627,7 @@ function AuthSection({ headers, onHeadersChange }: { headers: string; onHeadersC
 
   return (
     <div className="space-y-2">
-      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400">Authentication</label>
+      <label className="block text-xs font-medium text-slate-500 dark:text-slate-400">Authentication</label>
       <select value={authType} onChange={e => { const t = e.target.value as AuthType; setAuthType(t); updateHeaders(t, { token, username, password, keyName, keyValue }); }} className={inputCls}>
         <option value="none">None</option>
         <option value="bearer">Bearer Token</option>
@@ -717,11 +717,11 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
+      {error && <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm">{error}</div>}
 
       {/* Direction toggle */}
       <div>
-        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Direction</label>
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Direction</label>
         <div className="flex gap-2">
           <button type="button" onClick={() => setForm(f => ({ ...f, direction: 'incoming' }))} className={btnCls(form.direction === 'incoming')}>
             Incoming
@@ -735,7 +735,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
       <input placeholder="Name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
 
       <div>
-        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Group (optional)</label>
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Group (optional)</label>
         <input
           placeholder="e.g. Production, Monitoring"
           value={form.group_name}
@@ -751,7 +751,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Webhook Type</label>
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Webhook Type</label>
         <select value={form.webhook_type} onChange={e => setForm(f => ({ ...f, webhook_type: e.target.value }))} className={inputCls}>
           <option value="custom">Custom</option>
           <option value="json">JSON</option>
@@ -762,7 +762,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Webhook Secret (optional)</label>
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Webhook Secret (optional)</label>
         <input
           type="password"
           placeholder="HMAC signing secret for signature verification"
@@ -776,7 +776,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
       {/* Target topic */}
       {topics.length > 0 && (
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Target Topic {form.direction === 'incoming' ? '(required for incoming)' : '(triggers outgoing when messages arrive)'}</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Target Topic {form.direction === 'incoming' ? '(required for incoming)' : '(triggers outgoing when messages arrive)'}</label>
           <select value={form.target_topic_id ?? ''} onChange={e => setForm(f => ({ ...f, target_topic_id: e.target.value ? Number(e.target.value) : undefined }))} className={inputCls}>
             <option value="">None</option>
             {topics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
@@ -787,7 +787,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
       {/* Target application (incoming only) */}
       {form.direction === 'incoming' && apps.length > 0 && (
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Target Application (optional)</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Target Application (optional)</label>
           <select value={form.target_application_id ?? ''} onChange={e => setForm(f => ({ ...f, target_application_id: e.target.value ? Number(e.target.value) : undefined }))} className={inputCls}>
             <option value="">None</option>
             {apps.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -801,7 +801,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
           <input placeholder="Target URL" required value={form.target_url} onChange={e => setForm(f => ({ ...f, target_url: e.target.value }))} className={inputCls} />
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">HTTP Method</label>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">HTTP Method</label>
             <div className="flex gap-2">
               {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
                 <button key={m} type="button" onClick={() => setForm(f => ({ ...f, http_method: m }))} className={btnCls(form.http_method === m)}>
@@ -816,7 +816,7 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
           <AuthSection headers={form.headers} onHeadersChange={h => setForm(f => ({ ...f, headers: h }))} />
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Additional Headers (one per line: Key: Value)</label>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Additional Headers (one per line: Key: Value)</label>
             <textarea placeholder="X-Custom-Header: value" value={form.headers} onChange={e => setForm(f => ({ ...f, headers: e.target.value }))} className={inputCls} rows={2} />
           </div>
 
@@ -827,15 +827,15 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Max Retries</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Max Retries</label>
               <input type="number" min={0} max={10} value={form.max_retries} onChange={e => setForm(f => ({ ...f, max_retries: parseInt(e.target.value) || 0 }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Retry Delay (s)</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Retry Delay (s)</label>
               <input type="number" min={1} max={3600} value={form.retry_delay_secs} onChange={e => setForm(f => ({ ...f, retry_delay_secs: parseInt(e.target.value) || 60 }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Timeout (s)</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Timeout (s)</label>
               <input type="number" min={1} max={120} value={form.timeout_secs} onChange={e => setForm(f => ({ ...f, timeout_secs: parseInt(e.target.value) || 15 }))} className={inputCls} />
             </div>
           </div>
@@ -856,8 +856,8 @@ function WebhookForm({ topics, apps, onSubmit, onClose, existingGroups = [] }: {
       )}
 
       <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
-        <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Create</button>
+        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-surface-elevated rounded-md">Cancel</button>
+        <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-primary rounded-md disabled:opacity-50">Create</button>
       </div>
     </form>
   );
@@ -910,25 +910,25 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
 
   useEffect(() => { fetchLogs(true); }, [webhookId, filter]);
 
-  if (loading) return <div className="text-sm text-gray-500 dark:text-gray-400">Loading...</div>;
+  if (loading) return <div className="text-sm text-slate-500 dark:text-slate-400">Loading...</div>;
   if (error) return <div className="text-sm text-red-600">{error}</div>;
 
   return (
     <div className="space-y-3">
       <div className="flex gap-1">
         {(['all', 'success', 'failed'] as const).map(f => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 text-xs rounded font-medium ${filter === f ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
+          <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 text-xs rounded font-medium ${filter === f ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-surface-elevated text-slate-700 dark:text-slate-300'}`}>
             {f === 'all' ? 'All' : f === 'success' ? 'Success' : 'Failed'}
           </button>
         ))}
       </div>
       {logs.length === 0 ? (
-        <div className="text-sm text-gray-500 dark:text-gray-400">No delivery attempts{filter !== 'all' ? ' matching filter' : ''}.</div>
+        <div className="text-sm text-slate-500 dark:text-slate-400">No delivery attempts{filter !== 'all' ? ' matching filter' : ''}.</div>
       ) : (
         <div className="max-h-96 overflow-y-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-left text-gray-500 dark:text-gray-400 border-b dark:border-gray-600">
+              <tr className="text-left text-slate-500 dark:text-slate-400 border-b dark:border-white/10">
                 <th className="pb-1 pr-2">Time</th>
                 <th className="pb-1 pr-2">Status</th>
                 <th className="pb-1 pr-2">Duration</th>
@@ -937,8 +937,8 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
             </thead>
             <tbody>
               {logs.map(log => (
-                <tr key={log.id} className="border-b dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}>
-                  <td className="py-1.5 pr-2 whitespace-nowrap text-gray-600 dark:text-gray-300">
+                <tr key={log.id} className="border-b dark:border-white/10 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50" onClick={() => setExpandedId(expandedId === log.id ? null : log.id)}>
+                  <td className="py-1.5 pr-2 whitespace-nowrap text-slate-600 dark:text-slate-300">
                     <span title={formatLocalTime(log.attempted_at)}>{relativeTime(log.attempted_at)}</span>
                     {!log.message_id && <span className="ml-1 px-1 py-0.5 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded text-[10px] font-medium">TEST</span>}
                   </td>
@@ -947,8 +947,8 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
                       {log.status_code || 'ERR'}
                     </span>
                   </td>
-                  <td className="py-1.5 pr-2 text-gray-600 dark:text-gray-300">{log.duration_ms}ms</td>
-                  <td className="py-1.5 text-gray-500 dark:text-gray-400">
+                  <td className="py-1.5 pr-2 text-slate-600 dark:text-slate-300">{log.duration_ms}ms</td>
+                  <td className="py-1.5 text-slate-500 dark:text-slate-400">
                     {expandedId === log.id ? (
                       <pre className="whitespace-pre-wrap break-all max-h-40 overflow-auto bg-gray-50 dark:bg-gray-800 rounded p-2 font-mono">{log.response_body_preview || '\u2014'}</pre>
                     ) : (
@@ -961,7 +961,7 @@ function DeliveryLogViewer({ webhookId }: { webhookId: number }) {
           </table>
           {hasMore && (
             <div className="text-center py-2">
-              <button onClick={() => fetchLogs(false)} disabled={loadingMore} className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline disabled:opacity-50">
+              <button onClick={() => fetchLogs(false)} disabled={loadingMore} className="text-xs text-primary dark:text-brand-400 hover:underline disabled:opacity-50">
                 {loadingMore ? 'Loading...' : 'Load more'}
               </button>
             </div>
@@ -1031,11 +1031,11 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>}
+      {error && <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm">{error}</div>}
 
       {/* Show webhook URL for incoming webhooks */}
       {webhookUrl && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-3 space-y-2">
+        <div className="bg-primary/5 dark:bg-primary/10 rounded p-3 space-y-2">
           <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Webhook URL</div>
           <div className="flex items-center gap-2">
             <code className="text-xs text-blue-800 dark:text-blue-200 break-all flex-1">{webhookUrl}</code>
@@ -1056,7 +1056,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
       )}
 
       {/* Show type and direction info */}
-      <div className="flex gap-2 text-xs text-gray-500 dark:text-gray-400">
+      <div className="flex gap-2 text-xs text-slate-500 dark:text-slate-400">
         <span>Type: <strong>{webhook.webhook_type}</strong></span>
         <span>Direction: <strong>{webhook.direction}</strong></span>
       </div>
@@ -1064,7 +1064,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
       <input placeholder="Name" required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className={inputCls} />
 
       <div>
-        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Group (optional)</label>
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Group (optional)</label>
         <input
           placeholder="e.g. Production, Monitoring"
           value={form.group_name}
@@ -1080,7 +1080,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Webhook Secret (optional)</label>
+        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Webhook Secret (optional)</label>
         <input
           type="password"
           placeholder="HMAC signing secret for signature verification"
@@ -1095,7 +1095,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
         <>
           <input placeholder="Target URL" value={form.target_url} onChange={e => setForm(f => ({ ...f, target_url: e.target.value }))} className={inputCls} />
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">HTTP Method</label>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">HTTP Method</label>
             <div className="flex gap-2">
               {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
                 <button key={m} type="button" onClick={() => setForm(f => ({ ...f, http_method: m }))} className={btnCls(form.http_method === m)}>
@@ -1108,7 +1108,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
           <AuthSection headers={form.headers} onHeadersChange={h => setForm(f => ({ ...f, headers: h }))} />
 
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Additional Headers (one per line: Key: Value)</label>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Additional Headers (one per line: Key: Value)</label>
             <textarea placeholder="X-Custom-Header: value" value={form.headers} onChange={e => setForm(f => ({ ...f, headers: e.target.value }))} className={inputCls} rows={2} />
           </div>
           <div>
@@ -1116,7 +1116,7 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
             <TemplateHelp />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Template (JSON)</label>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Template (JSON)</label>
             <textarea
               value={form.template || ''}
               onChange={e => setForm(f => ({ ...f, template: e.target.value }))}
@@ -1126,15 +1126,15 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Max Retries</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Max Retries</label>
               <input type="number" min={0} max={10} value={form.max_retries} onChange={e => setForm(f => ({ ...f, max_retries: parseInt(e.target.value) || 0 }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Retry Delay (s)</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Retry Delay (s)</label>
               <input type="number" min={1} max={3600} value={form.retry_delay_secs} onChange={e => setForm(f => ({ ...f, retry_delay_secs: parseInt(e.target.value) || 60 }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Timeout (s)</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Timeout (s)</label>
               <input type="number" min={1} max={120} value={form.timeout_secs} onChange={e => setForm(f => ({ ...f, timeout_secs: parseInt(e.target.value) || 15 }))} className={inputCls} />
             </div>
           </div>
@@ -1156,8 +1156,8 @@ function EditWebhookForm({ webhook, topics, apps, onSubmit, onClose, onRegenerat
         Enabled
       </label>
       <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 rounded-md">Cancel</button>
-        <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-indigo-600 rounded-md disabled:opacity-50">Save</button>
+        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-surface-elevated rounded-md">Cancel</button>
+        <button type="submit" disabled={loading} className="px-4 py-2 text-sm text-white bg-primary rounded-md disabled:opacity-50">Save</button>
       </div>
     </form>
   );
@@ -1189,14 +1189,14 @@ function VariablesSection({ variables, onMutate }: { variables: WebhookVariable[
   };
 
   return (
-    <div className="mb-4 border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
-      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Template Variables</h3>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+    <div className="mb-4 border border-gray-200 dark:border-white/10 rounded-lg p-4 bg-gray-50 dark:bg-gray-800/50">
+      <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Template Variables</h3>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
         Define variables to use in webhook body templates with <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">{'{{env.KEY}}'}</code> syntax.
       </p>
       <table className="w-full text-sm mb-2">
         <thead>
-          <tr className="text-left text-xs text-gray-500 dark:text-gray-400">
+          <tr className="text-left text-xs text-slate-500 dark:text-slate-400">
             <th className="pb-1 pr-2">Key</th>
             <th className="pb-1 pr-2">Value</th>
             <th className="pb-1 w-20"></th>
@@ -1204,7 +1204,7 @@ function VariablesSection({ variables, onMutate }: { variables: WebhookVariable[
         </thead>
         <tbody>
           {variables.map(v => (
-            <tr key={v.id} className="border-t border-gray-200 dark:border-gray-700">
+            <tr key={v.id} className="border-t border-gray-200 dark:border-white/10">
               {editingId === v.id ? (
                 <>
                   <td className="py-1 pr-2"><input value={editKey} onChange={e => setEditKey(e.target.value)} className={`${inputCls} text-xs`} /></td>
@@ -1217,9 +1217,9 @@ function VariablesSection({ variables, onMutate }: { variables: WebhookVariable[
               ) : (
                 <>
                   <td className="py-1 pr-2 font-mono text-xs dark:text-gray-300">{v.key}</td>
-                  <td className="py-1 pr-2 text-xs text-gray-600 dark:text-gray-400">{v.value}</td>
+                  <td className="py-1 pr-2 text-xs text-slate-500 dark:text-slate-400">{v.value}</td>
                   <td className="py-1">
-                    <button onClick={() => { setEditingId(v.id); setEditKey(v.key); setEditValue(v.value); }} className="text-xs text-indigo-600 hover:underline mr-2">Edit</button>
+                    <button onClick={() => { setEditingId(v.id); setEditKey(v.key); setEditValue(v.value); }} className="text-xs text-primary hover:underline mr-2">Edit</button>
                     <button onClick={() => handleDelete(v.id)} className="text-xs text-red-600 hover:underline">Del</button>
                   </td>
                 </>
@@ -1231,7 +1231,7 @@ function VariablesSection({ variables, onMutate }: { variables: WebhookVariable[
       <div className="flex gap-2">
         <input placeholder="Key" value={newKey} onChange={e => setNewKey(e.target.value)} className={`${inputCls} text-xs flex-1`} />
         <input placeholder="Value" value={newValue} onChange={e => setNewValue(e.target.value)} className={`${inputCls} text-xs flex-1`} />
-        <button onClick={handleAdd} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">Add</button>
+        <button onClick={handleAdd} className="px-3 py-1 text-xs bg-primary text-white rounded hover:bg-brand-700">Add</button>
       </div>
     </div>
   );
