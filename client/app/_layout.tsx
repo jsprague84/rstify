@@ -1,5 +1,14 @@
 import '../global.css';
+import '../src/theme/defaultFont';
 import React, { useEffect, useState } from 'react';
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 import { ActivityIndicator, View, Linking } from 'react-native';
 import { Stack, SplashScreen } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -66,6 +75,13 @@ export default function RootLayout() {
   const loadFromCache = useMessagesStore((s) => s.loadFromCache);
   const { isDark, mode, activeTheme } = useTheme();
   const { setColorScheme } = useNativeWindColorScheme();
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
 
   // Sync NativeWind's dark mode with our theme store
   useEffect(() => {
@@ -110,13 +126,13 @@ export default function RootLayout() {
 
   // Hide splash once migration is done and auth has resolved
   useEffect(() => {
-    if (!migrating && !isLoadingAuth) {
+    if (!migrating && !isLoadingAuth && fontsLoaded) {
       SplashScreen.hide();
     }
-  }, [migrating, isLoadingAuth]);
+  }, [migrating, isLoadingAuth, fontsLoaded]);
 
-  // Show spinner while migration is running
-  if (migrating) {
+  // Show spinner while migration is running or fonts are loading
+  if (migrating || !fontsLoaded) {
     return (
       <GestureHandlerRootView className="flex-1">
         <View className="flex-1 items-center justify-center bg-slate-950">
