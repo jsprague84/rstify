@@ -17,10 +17,16 @@ import { useUserWebSocket } from "../../src/hooks/useWebSocket";
 import { showMessageNotification } from "../../src/services/notifications";
 import { getApiClient } from "../../src/api";
 import { getDevicePushToken } from "../../src/services/notifications";
+import { createCache } from "../../src/utils/cache";
 import type { MessageResponse } from "../../src/api";
 import type { SourceMeta } from "../../src/store/messages";
 
 const SEGMENTS = ["Grouped", "Stream"];
+
+// This device's own client (id + token), persisted so the WebSocket and FCM
+// registration use a stable client we own — not an arbitrary clients[0] that may
+// belong to the web UI or another device.
+const mobileClientCache = createCache<{ id: number; token: string }>("mobile_client");
 
 export default function InboxScreen() {
   const token = useAuthStore((s) => s.token);
@@ -60,28 +66,33 @@ export default function InboxScreen() {
     const setupClient = async () => {
       try {
         const api = getApiClient();
-        const clients = await api.listClients();
-        if (clients.length > 0) {
-          setClientToken(clients[0].token);
-          // Register FCM token for background notifications
-          const pushToken = await getDevicePushToken();
-          if (pushToken) {
-            api
-              .registerFcmToken(clients[0].id, pushToken)
-              .catch(() => undefined);
-          }
-        } else {
-          const client = await api.createClient({ name: "rstify-mobile", scopes: null });
-          setClientToken(client.token);
-          const pushToken = await getDevicePushToken();
-          if (pushToken) {
-            api
-              .registerFcmToken(client.id, pushToken)
-              .catch(() => undefined);
+
+        // Reuse this device's persisted client if it still exists server-side;
+        // otherwise create a fresh one and persist it.
+        let client = mobileClientCache.load();
+        if (client) {
+          const clients = await api.listClients();
+          if (!clients.some((c) => c.id === client!.id)) {
+            client = null;
           }
         }
-      } catch {
-        // Will retry on next mount
+        if (!client) {
+          const created = await api.createClient({ name: "rstify-mobile", scopes: null });
+          client = { id: created.id, token: created.token };
+          mobileClientCache.save(client);
+        }
+
+        setClientToken(client.token);
+
+        // Register this device's push token under our own client.
+        const pushToken = await getDevicePushToken();
+        if (pushToken) {
+          api
+            .registerFcmToken(client.id, pushToken)
+            .catch((e) => console.warn("[inbox] FCM register failed:", e));
+        }
+      } catch (e) {
+        console.warn("[inbox] client setup failed; will retry on next mount:", e);
       }
     };
     setupClient();
@@ -99,6 +110,8 @@ export default function InboxScreen() {
   const { connectionStatus } = useUserWebSocket({
     clientToken,
     onMessage,
+    // Refetch on reconnect so messages that arrived during a drop aren't lost.
+    onReconnect: fetchMessages,
     enabled: !!clientToken,
   });
 

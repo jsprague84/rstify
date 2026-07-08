@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import { formatLocalTime } from 'shared';
 import { Ionicons } from '@expo/vector-icons';
 import { EmptyState } from '../../src/components/EmptyState';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
@@ -781,7 +782,7 @@ export default function WebhooksScreen() {
                         <Text className="text-[11px] text-slate-400 dark:text-slate-500">{d.duration_ms}ms</Text>
                       </View>
                       <Text className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        {new Date(d.attempted_at).toLocaleString()}
+                        {formatLocalTime(d.attempted_at)}
                       </Text>
                       {d.response_body_preview ? (
                         <Text className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5" numberOfLines={2}>
