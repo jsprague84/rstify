@@ -119,8 +119,12 @@ pub async fn update_topic(
     if let Some(interval) = req.store_interval {
         validate_positive("store_interval", interval)?;
     }
+    // Empty string explicitly clears the override (back to the global
+    // threshold) — None means keep-current, so it can't express "clear".
     if let Some(ref policy) = req.inbox_override {
-        validate_policy("inbox_override", policy, INBOX_OVERRIDES)?;
+        if !policy.is_empty() {
+            validate_policy("inbox_override", policy, INBOX_OVERRIDES)?;
+        }
     }
 
     let updated = state

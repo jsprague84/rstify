@@ -12,6 +12,8 @@ interface HubData<T> {
   items: T[];
   /** True during load/reload. */
   isLoading: boolean;
+  /** Set when the last load failed — lets screens show inline retry instead of a blank body. */
+  error: string | null;
   /** Re-fetch from API. Alerts on error unless silent=true. */
   refresh: (silent?: boolean) => Promise<void>;
   /** Wrap a mutation: runs fn, refreshes on success, shows Alert on failure. Returns true on success. */
@@ -31,13 +33,18 @@ interface HubData<T> {
 export function useHubData<T>(fetchFn: () => Promise<T[]>): HubData<T> {
   const [items, setItems] = useState<T[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async (silent = false) => {
     setIsLoading(true);
     try {
       const data = await fetchFn();
       setItems(data);
+      setError(null);
     } catch (e) {
+      // Even a silent initial load must not leave a blank screen — expose the
+      // error so screens can render an inline retry.
+      setError(normalizeError(e));
       if (!silent) {
         Alert.alert('Error', normalizeError(e));
       }
@@ -65,5 +72,5 @@ export function useHubData<T>(fetchFn: () => Promise<T[]>): HubData<T> {
     [refresh],
   );
 
-  return { items, isLoading, refresh, mutate };
+  return { items, isLoading, error, refresh, mutate };
 }

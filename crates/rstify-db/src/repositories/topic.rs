@@ -117,10 +117,16 @@ impl TopicRepository for SqliteTopicRepo {
         let new_notify_digest_interval = notify_digest_interval.or(current.notify_digest_interval);
         let new_store_policy = store_policy.unwrap_or(&current.store_policy);
         let new_store_interval = store_interval.or(current.store_interval);
-        let new_inbox_override = inbox_override
-            .map(|s| s.to_string())
-            .or(current.inbox_override);
-        let new_inbox_priority_min = inbox_priority_min.or(current.inbox_priority_min);
+        // None = keep current; Some("") = clear back to the global threshold.
+        let new_inbox_override = match inbox_override {
+            Some("") => None,
+            Some(s) => Some(s.to_string()),
+            None => current.inbox_override,
+        };
+        let new_inbox_priority_min = match inbox_override {
+            Some("") => None,
+            _ => inbox_priority_min.or(current.inbox_priority_min),
+        };
 
         sqlx::query_as::<_, Topic>(
             "UPDATE topics SET description = ?, everyone_read = ?, everyone_write = ?, \

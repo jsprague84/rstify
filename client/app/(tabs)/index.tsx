@@ -13,6 +13,7 @@ import {
   useAuthStore,
   useApplicationsStore,
 } from "../../src/store";
+import { useConnectionStore } from "../../src/store/connection";
 import { useUserWebSocket } from "../../src/hooks/useWebSocket";
 import { showMessageNotification } from "../../src/services/notifications";
 import { getApiClient } from "../../src/api";
@@ -56,6 +57,30 @@ export default function InboxScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [clientToken, setClientToken] = useState<string | null>(null);
 
+  // Server-side search over FULL message history (the local cache only holds
+  // the most recent window). Debounced; out-of-order responses are dropped.
+  const [serverResults, setServerResults] = useState<MessageResponse[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const searchSeq = useRef(0);
+  useEffect(() => {
+    const q = searchQuery.trim();
+    const seq = ++searchSeq.current;
+    if (!q) {
+      setServerResults(null);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const t = setTimeout(() => {
+      getApiClient()
+        .searchMessages({ q, limit: 100 })
+        .then((res) => { if (seq === searchSeq.current) setServerResults(res); })
+        .catch(() => { if (seq === searchSeq.current) setServerResults([]); })
+        .finally(() => { if (seq === searchSeq.current) setSearching(false); });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
   // --- Client token setup for WebSocket ---
   useEffect(() => {
     const setupClient = async () => {
@@ -96,33 +121,17 @@ export default function InboxScreen() {
     enabled: !!clientToken,
   });
 
+  // Publish the socket state app-wide so other screens can surface drops.
+  const setConnectionStatus = useConnectionStore((s) => s.setStatus);
+  useEffect(() => {
+    setConnectionStatus(connectionStatus);
+  }, [connectionStatus, setConnectionStatus]);
+
   // --- Initial fetch ---
   useEffect(() => {
     fetchMessages();
     fetchApplications();
   }, [fetchMessages, fetchApplications]);
-
-  // --- Search filtering ---
-
-  const filteredGrouped = useMemo(() => {
-    if (!searchQuery.trim()) return groupedSources;
-    const q = searchQuery.toLowerCase();
-    return groupedSources.filter(
-      (s) =>
-        s.name.toLowerCase().includes(q) ||
-        s.latestPreview.toLowerCase().includes(q),
-    );
-  }, [groupedSources, searchQuery]);
-
-  const filteredStream = useMemo(() => {
-    if (!searchQuery.trim()) return streamMessages;
-    const q = searchQuery.toLowerCase();
-    return streamMessages.filter(
-      (m) =>
-        (m.title?.toLowerCase().includes(q) ?? false) ||
-        m.message.toLowerCase().includes(q),
-    );
-  }, [streamMessages, searchQuery]);
 
   // --- Segment control ---
   const selectedIndex = viewMode === "grouped" ? 0 : 1;
@@ -193,9 +202,35 @@ export default function InboxScreen() {
       </View>
 
       {/* Content */}
-      {viewMode === "grouped" ? (
+      {searchQuery.trim() ? (
+        // Search results: flat list over the server's full-history search.
         <LegendList
-          data={filteredGrouped}
+          data={serverResults ?? []}
+          keyExtractor={(item: MessageResponse) => String(item.id)}
+          renderItem={({ item }: { item: MessageResponse }) => (
+            <StreamMessageCard message={item} />
+          )}
+          recycleItems
+          contentContainerStyle={{ paddingTop: 8, paddingBottom: 32, flexGrow: 1 }}
+          ListEmptyComponent={
+            searching || serverResults === null ? (
+              <View className="gap-2 mt-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <MessageCardSkeleton key={i} />
+                ))}
+              </View>
+            ) : (
+              <EmptyState
+                icon="search-outline"
+                title={`No results for “${searchQuery.trim()}”`}
+                subtitle="Search covers your full message history on the server"
+              />
+            )
+          }
+        />
+      ) : viewMode === "grouped" ? (
+        <LegendList
+          data={groupedSources}
           keyExtractor={(item: SourceMeta) => item.sourceId}
           renderItem={({ item, index }: { item: SourceMeta; index: number }) => (
             <SourceGroupCard source={item} index={index} />
@@ -224,7 +259,7 @@ export default function InboxScreen() {
         />
       ) : (
         <LegendList
-          data={filteredStream}
+          data={streamMessages}
           keyExtractor={(item: MessageResponse) => String(item.id)}
           renderItem={({ item }: { item: MessageResponse }) => (
             <StreamMessageCard message={item} />

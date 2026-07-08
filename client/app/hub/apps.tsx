@@ -11,7 +11,7 @@ import {
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { EmptyState } from '../../src/components/EmptyState';
+import { HubListState } from '../../src/components/hub/HubListState';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
@@ -60,7 +60,7 @@ export default function AppsScreen() {
     fetchApplications();
     return result;
   }, [fetchApplications]);
-  const { items: apps, isLoading, refresh, mutate } = useHubData(fetchApps);
+  const { items: apps, isLoading, error, refresh, mutate } = useHubData(fetchApps);
 
   const handleCreateApp = async () => {
     if (!newAppName.trim()) return;
@@ -161,13 +161,14 @@ export default function AppsScreen() {
           <RefreshControl refreshing={isLoading} onRefresh={refresh} />
         }
         ListEmptyComponent={
-          isLoading ? null : (
-            <EmptyState
-              icon="apps-outline"
-              title="No applications"
-              subtitle="Create an app to start sending messages"
-            />
-          )
+          <HubListState
+            isLoading={isLoading}
+            error={error}
+            onRetry={refresh}
+            emptyIcon="apps-outline"
+            emptyTitle="No applications"
+            emptySubtitle="Create an app to start sending messages"
+          />
         }
         contentContainerStyle={apps.length === 0 ? { flex: 1 } : undefined}
       />

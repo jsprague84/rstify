@@ -12,7 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 import { ConfirmSheet } from '../../src/components/design/ConfirmSheet';
-import { EmptyState } from '../../src/components/EmptyState';
+import { HubListState } from '../../src/components/hub/HubListState';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
 import { FormModal } from '../../src/components/design/FormModal';
 import { SectionLabel } from '../../src/components/design/SectionLabel';
@@ -36,7 +36,7 @@ export default function ClientsScreen() {
     const api = getApiClient();
     return api.listClients();
   }, []);
-  const { items: clients, isLoading, refresh, mutate } = useHubData(fetchClients);
+  const { items: clients, isLoading, error, refresh, mutate } = useHubData(fetchClients);
 
   useEffect(() => {
     (async () => {
@@ -132,9 +132,14 @@ export default function ClientsScreen() {
         )}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
         ListEmptyComponent={
-          isLoading ? null : (
-            <EmptyState icon="key-outline" title="No client tokens" subtitle="Create a token to authenticate API clients" />
-          )
+          <HubListState
+            isLoading={isLoading}
+            error={error}
+            onRetry={refresh}
+            emptyIcon="key-outline"
+            emptyTitle="No client tokens"
+            emptySubtitle="Create a token to authenticate API clients"
+          />
         }
         contentContainerStyle={clients.length === 0 ? { flex: 1 } : { paddingBottom: 20 }}
       />

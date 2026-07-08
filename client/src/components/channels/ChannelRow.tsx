@@ -2,6 +2,8 @@ import React, { useRef } from "react";
 import { View, Text, Pressable } from "react-native";
 import { useRouter } from "expo-router";
 import * as ContextMenu from "zeego/context-menu";
+import * as DropdownMenu from "zeego/dropdown-menu";
+import { Ionicons } from "@expo/vector-icons";
 import { useChannelsStore } from "../../store";
 import type { Topic } from "shared";
 
@@ -80,6 +82,54 @@ export const ChannelRow = React.memo(function ChannelRow({ topic, onEdit, onDele
                   </View>
                 )}
               </View>
+
+              {/* Visible affordance for the actions menu — the long-press
+                  context menu is undiscoverable on its own. */}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger>
+                  <Pressable hitSlop={8} accessibilityLabel={`Actions for ${topic.name}`}>
+                    <Ionicons name="ellipsis-horizontal" size={18} color="#94a3b8" />
+                  </Pressable>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content>
+                  <DropdownMenu.Item
+                    key="pin"
+                    onSelect={() => (pinned ? unpinTopic(topic.name) : pinTopic(topic.name))}
+                  >
+                    <DropdownMenu.ItemTitle>{pinned ? "Unpin" : "Pin to Top"}</DropdownMenu.ItemTitle>
+                  </DropdownMenu.Item>
+                  {onPublish ? (
+                    <DropdownMenu.Item key="publish" onSelect={() => onPublish(topic)}>
+                      <DropdownMenu.ItemTitle>Publish Message</DropdownMenu.ItemTitle>
+                    </DropdownMenu.Item>
+                  ) : null}
+                  {onEdit ? (
+                    <DropdownMenu.Item key="edit" onSelect={() => onEdit(topic)}>
+                      <DropdownMenu.ItemTitle>Edit Topic</DropdownMenu.ItemTitle>
+                    </DropdownMenu.Item>
+                  ) : null}
+                  {folders.length > 0 ? (
+                    <DropdownMenu.Group>
+                      {folders.map((folder) => (
+                        <DropdownMenu.Item
+                          key={`folder-${folder.id}`}
+                          onSelect={() => moveToFolder(topic.name, folder.id)}
+                        >
+                          <DropdownMenu.ItemTitle>Move to {folder.name}</DropdownMenu.ItemTitle>
+                        </DropdownMenu.Item>
+                      ))}
+                    </DropdownMenu.Group>
+                  ) : null}
+                  <DropdownMenu.Item key="remove-folder" onSelect={() => moveToFolder(topic.name, null)}>
+                    <DropdownMenu.ItemTitle>Remove from Folder</DropdownMenu.ItemTitle>
+                  </DropdownMenu.Item>
+                  {onDelete ? (
+                    <DropdownMenu.Item key="delete" destructive onSelect={() => onDelete(topic)}>
+                      <DropdownMenu.ItemTitle>Delete Topic</DropdownMenu.ItemTitle>
+                    </DropdownMenu.Item>
+                  ) : null}
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
             </View>
           </View>
         </Pressable>

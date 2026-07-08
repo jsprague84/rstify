@@ -21,7 +21,9 @@ import { FolderSection } from "../../src/components/channels/FolderSection";
 import { EditTopicModal } from "../../src/components/channels/EditTopicModal";
 import { PublishModal } from "../../src/components/channels/PublishModal";
 import { ConfirmSheet } from "../../src/components/design/ConfirmSheet";
+import { ConnectionStatus } from "../../src/components/design/ConnectionStatus";
 import { EmptyState } from "../../src/components/EmptyState";
+import { useConnectionStore } from "../../src/store/connection";
 import type { Topic } from "shared";
 
 // --- Create Topic Modal ---
@@ -223,6 +225,7 @@ function CreateFolderModal({ visible, onClose }: CreateFolderModalProps) {
 
 // --- Main Channels Screen ---
 export default function ChannelsScreen() {
+  const connectionStatus = useConnectionStore((s) => s.status);
   const fetchTopics = useChannelsStore((s) => s.fetchTopics);
   const storeTopics = useChannelsStore((s) => s.topics);
   const storeFolders = useChannelsStore((s) => s.folders);
@@ -306,9 +309,12 @@ export default function ChannelsScreen() {
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-surface-bg" edges={["top"]}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 pt-3 pb-2">
-        <Text className="text-display font-bold text-slate-900 dark:text-white">
-          Channels
-        </Text>
+        <View className="flex-row items-center gap-2.5">
+          <Text className="text-display font-bold text-slate-900 dark:text-white">
+            Channels
+          </Text>
+          <ConnectionStatus status={connectionStatus} />
+        </View>
         <View className="flex-row gap-2">
           <Pressable
             onPress={() => setShowCreateFolder(true)}

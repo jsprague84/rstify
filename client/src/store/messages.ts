@@ -52,6 +52,8 @@ interface MessagesState {
   fetchOlderMessages: () => Promise<void>;
   addMessage: (msg: MessageResponse) => void;
   deleteMessage: (id: number) => Promise<void>;
+  /** Drop a deleted attachment from the cached copy of a message. */
+  removeAttachment: (messageId: number, attachmentId: number) => void;
   deleteGroup: (sourceId: string) => Promise<void>;
   deleteAllMessages: () => Promise<void>;
   markGroupRead: (sourceId: string) => void;
@@ -291,6 +293,27 @@ export const useMessagesStore = create<MessagesState>((set, get) => ({
       }
 
       return { groupedMessages: groups, sourceMeta: meta };
+    });
+    debouncedSaveToCache(get());
+  },
+
+  removeAttachment: (messageId: number, attachmentId: number) => {
+    set((state) => {
+      const groups = new Map(state.groupedMessages);
+      for (const [sourceId, messages] of groups) {
+        if (messages.some((m) => m.id === messageId)) {
+          groups.set(
+            sourceId,
+            messages.map((m) =>
+              m.id === messageId
+                ? { ...m, attachments: (m.attachments ?? []).filter((a) => a.id !== attachmentId) }
+                : m,
+            ),
+          );
+          break;
+        }
+      }
+      return { groupedMessages: groups };
     });
     debouncedSaveToCache(get());
   },

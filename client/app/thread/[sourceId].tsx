@@ -7,20 +7,25 @@ import { LegendList } from "@legendapp/list";
 import { MessageBubble } from "../../src/components/inbox/MessageBubble";
 import { MessageIcon } from "../../src/components/MessageIcon";
 import { EmptyState } from "../../src/components/EmptyState";
+import { MessageCardSkeleton } from "../../src/components/design/SkeletonShimmer";
+import { ConnectionStatus } from "../../src/components/design/ConnectionStatus";
 import { SwipeableRow } from "../../src/components/design/SwipeableRow";
 import { useMessagesStore, useApplicationsStore } from "../../src/store";
+import { useConnectionStore } from "../../src/store/connection";
 import { getApiClient } from "../../src/api";
 import type { MessageResponse } from "../../src/api";
 
 export default function ThreadScreen() {
   const { sourceId } = useLocalSearchParams<{ sourceId: string }>();
   const router = useRouter();
+  const connectionStatus = useConnectionStore((s) => s.status);
 
   const decodedSourceId = decodeURIComponent(sourceId ?? "");
 
   const sourceMeta = useMessagesStore((s) => s.sourceMeta);
   const groupedMessages = useMessagesStore((s) => s.groupedMessages);
   const deleteMessage = useMessagesStore((s) => s.deleteMessage);
+  const removeAttachment = useMessagesStore((s) => s.removeAttachment);
   const getApp = useApplicationsStore((s) => s.getApp);
   const getIconUrl = useApplicationsStore((s) => s.getIconUrl);
   const meta = sourceMeta.get(decodedSourceId);
@@ -40,6 +45,18 @@ export default function ThreadScreen() {
         .then(setServerMessages)
         .catch(e => console.warn('Failed to load topic messages', e))
         .finally(() => setIsFetching(false));
+    } else if (decodedSourceId.startsWith("app:")) {
+      // App threads get the same server fallback as topics — a cleared cache
+      // must not read as "No messages" when history exists server-side.
+      const appId = parseInt(decodedSourceId.slice("app:".length), 10);
+      if (Number.isFinite(appId)) {
+        setIsFetching(true);
+        getApiClient()
+          .listApplicationMessages(appId, 100, 0)
+          .then((res) => setServerMessages(res.messages))
+          .catch(e => console.warn('Failed to load app messages', e))
+          .finally(() => setIsFetching(false));
+      }
     }
   }, [decodedSourceId, groupedMessages]);
 
@@ -67,14 +84,31 @@ export default function ThreadScreen() {
   }
 
   const handleRefresh = async () => {
-    if (!decodedSourceId.startsWith("topic:")) return;
-    const topicName = decodedSourceId.replace("topic:", "");
     setRefreshing(true);
     try {
-      const msgs = await getApiClient().getTopicMessages(topicName, 100, 0);
-      setServerMessages(msgs);
+      if (decodedSourceId.startsWith("topic:")) {
+        const topicName = decodedSourceId.replace("topic:", "");
+        setServerMessages(await getApiClient().getTopicMessages(topicName, 100, 0));
+      } else if (decodedSourceId.startsWith("app:")) {
+        const appId = parseInt(decodedSourceId.slice("app:".length), 10);
+        if (Number.isFinite(appId)) {
+          const res = await getApiClient().listApplicationMessages(appId, 100, 0);
+          setServerMessages(res.messages);
+        }
+      }
     } catch {}
     setRefreshing(false);
+  };
+
+  const handleAttachmentDeleted = (messageId: number, attachmentId: number) => {
+    removeAttachment(messageId, attachmentId);
+    setServerMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, attachments: (m.attachments ?? []).filter((a) => a.id !== attachmentId) }
+          : m,
+      ),
+    );
   };
 
   return (
@@ -101,6 +135,8 @@ export default function ThreadScreen() {
             {messages.length} {messages.length === 1 ? "message" : "messages"}
           </Text>
         </View>
+
+        <ConnectionStatus status={connectionStatus} />
       </View>
 
       {/* Message list */}
@@ -109,7 +145,10 @@ export default function ThreadScreen() {
         keyExtractor={(item: MessageResponse) => String(item.id)}
         renderItem={({ item }: { item: MessageResponse }) => (
           <SwipeableRow onDelete={() => deleteMessage(item.id)}>
-            <MessageBubble message={item} />
+            <MessageBubble
+              message={item}
+              onAttachmentDeleted={(attId) => handleAttachmentDeleted(item.id, attId)}
+            />
           </SwipeableRow>
         )}
         contentContainerStyle={{
@@ -121,11 +160,19 @@ export default function ThreadScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
         ListEmptyComponent={
-          <EmptyState
-            icon="chatbubble-outline"
-            title="No messages"
-            subtitle="Messages from this source will appear here"
-          />
+          isFetching ? (
+            <View className="gap-2 mt-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <MessageCardSkeleton key={i} />
+              ))}
+            </View>
+          ) : (
+            <EmptyState
+              icon="chatbubble-outline"
+              title="No messages"
+              subtitle="Messages from this source will appear here"
+            />
+          )
         }
       />
     </SafeAreaView>

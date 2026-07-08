@@ -200,6 +200,22 @@ async fn update_topic_persists_inbox_override() {
     let body = common::body_json(resp).await;
     assert_eq!(body["inbox_override"], "threshold");
     assert_eq!(body["inbox_priority_min"], 6);
+
+    // Empty string explicitly clears the override back to auto
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::put_json(
+            "/api/topics/inbox-topic",
+            &app.user_token,
+            serde_json::json!({ "inbox_override": "" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = common::body_json(resp).await;
+    assert!(body["inbox_override"].is_null());
+    assert!(body["inbox_priority_min"].is_null());
 }
 
 #[tokio::test]

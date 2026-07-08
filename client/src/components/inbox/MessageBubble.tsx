@@ -12,6 +12,8 @@ import type { MessageResponse } from "shared";
 
 interface MessageBubbleProps {
   message: MessageResponse;
+  /** Enables long-press-to-delete on attachments; called after the API delete. */
+  onAttachmentDeleted?: (attachmentId: number) => void;
 }
 
 const PRIORITY_LABELS: Record<string, { text: string; className: string }> = {
@@ -27,6 +29,7 @@ const PRIORITY_LABELS: Record<string, { text: string; className: string }> = {
 
 export const MessageBubble = React.memo(function MessageBubble({
   message,
+  onAttachmentDeleted,
 }: MessageBubbleProps) {
   const level = getPriorityLevel(message.priority);
   const priorityLabel = PRIORITY_LABELS[level];
@@ -104,7 +107,7 @@ export const MessageBubble = React.memo(function MessageBubble({
         <MessageContent message={message} />
 
         {/* Attachments */}
-        <MessageAttachments message={message} />
+        <MessageAttachments message={message} onDeleteAttachment={onAttachmentDeleted} />
 
         {/* Action buttons */}
         <MessageActions message={message} />

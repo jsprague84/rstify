@@ -163,7 +163,8 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
         notify_digest_interval: form.notify_policy === 'digest' ? form.notify_digest_interval : undefined,
         store_policy: form.store_policy,
         store_interval: form.store_policy === 'interval' ? form.store_interval : undefined,
-        inbox_override: form.inbox_override || null,
+        // '' explicitly clears the override (server treats null as keep-current)
+        inbox_override: form.inbox_override || '',
         inbox_priority_min: form.inbox_override === 'threshold' ? (form.inbox_priority_min ?? 5) : null,
       });
     } catch (err) {

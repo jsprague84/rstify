@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { formatLocalTime, WEBHOOK_SERVICE_GUIDES, getWebhookGuide, renderSetupStep, incomingCurlExample } from 'shared';
 import { Ionicons } from '@expo/vector-icons';
-import { EmptyState } from '../../src/components/EmptyState';
+import { HubListState } from '../../src/components/hub/HubListState';
 import { AnimatedPressable } from '../../src/components/design/AnimatedPressable';
 import { ConfirmSheet } from '../../src/components/design/ConfirmSheet';
 import { HubScreenHeader } from '../../src/components/hub/HubScreenHeader';
@@ -95,7 +95,7 @@ export default function WebhooksScreen() {
     const api = getApiClient();
     return api.listWebhooks();
   }, []);
-  const { items: webhooks, isLoading, refresh, mutate } = useHubData(fetchWebhooks);
+  const { items: webhooks, isLoading, error, refresh, mutate } = useHubData(fetchWebhooks);
 
   // Fetch topics separately (they're used in forms, not as the primary list)
   useEffect(() => {
@@ -567,9 +567,14 @@ export default function WebhooksScreen() {
         )}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} />}
         ListEmptyComponent={
-          isLoading ? null : (
-            <EmptyState icon="link-outline" title="No webhooks" subtitle="Create a webhook to integrate with external services" />
-          )
+          <HubListState
+            isLoading={isLoading}
+            error={error}
+            onRetry={refresh}
+            emptyIcon="link-outline"
+            emptyTitle="No webhooks"
+            emptySubtitle="Receive from GitHub/Forgejo/Grafana or forward topic messages to another service"
+          />
         }
         contentContainerStyle={webhooks.length === 0 ? { flex: 1 } : undefined}
       />
