@@ -1,9 +1,9 @@
-import React, { useRef } from "react";
-import { View, Text, Pressable } from "react-native";
+import React, { useRef, useState } from "react";
+import { View, Text, Pressable, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import * as ContextMenu from "zeego/context-menu";
-import * as DropdownMenu from "zeego/dropdown-menu";
 import { Ionicons } from "@expo/vector-icons";
+import { AnimatedPressable } from "../design/AnimatedPressable";
 import { useChannelsStore } from "../../store";
 import type { Topic } from "shared";
 
@@ -24,6 +24,7 @@ export const ChannelRow = React.memo(function ChannelRow({ topic, onEdit, onDele
 
   const pinned = isPinned(topic.name);
   const menuOpenRef = useRef(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
 
   const handlePress = () => {
     // Skip navigation if the context menu was just open
@@ -85,55 +86,53 @@ export const ChannelRow = React.memo(function ChannelRow({ topic, onEdit, onDele
 
               {/* Visible affordance for the actions menu — the long-press
                   context menu is undiscoverable on its own. */}
-              <DropdownMenu.Root>
-                <DropdownMenu.Trigger>
-                  <Pressable hitSlop={8} accessibilityLabel={`Actions for ${topic.name}`}>
-                    <Ionicons name="ellipsis-horizontal" size={18} color="#94a3b8" />
-                  </Pressable>
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Content>
-                  <DropdownMenu.Item
-                    key="pin"
-                    onSelect={() => (pinned ? unpinTopic(topic.name) : pinTopic(topic.name))}
-                  >
-                    <DropdownMenu.ItemTitle>{pinned ? "Unpin" : "Pin to Top"}</DropdownMenu.ItemTitle>
-                  </DropdownMenu.Item>
-                  {onPublish ? (
-                    <DropdownMenu.Item key="publish" onSelect={() => onPublish(topic)}>
-                      <DropdownMenu.ItemTitle>Publish Message</DropdownMenu.ItemTitle>
-                    </DropdownMenu.Item>
-                  ) : null}
-                  {onEdit ? (
-                    <DropdownMenu.Item key="edit" onSelect={() => onEdit(topic)}>
-                      <DropdownMenu.ItemTitle>Edit Topic</DropdownMenu.ItemTitle>
-                    </DropdownMenu.Item>
-                  ) : null}
-                  {folders.length > 0 ? (
-                    <DropdownMenu.Group>
-                      {folders.map((folder) => (
-                        <DropdownMenu.Item
-                          key={`folder-${folder.id}`}
-                          onSelect={() => moveToFolder(topic.name, folder.id)}
-                        >
-                          <DropdownMenu.ItemTitle>Move to {folder.name}</DropdownMenu.ItemTitle>
-                        </DropdownMenu.Item>
-                      ))}
-                    </DropdownMenu.Group>
-                  ) : null}
-                  <DropdownMenu.Item key="remove-folder" onSelect={() => moveToFolder(topic.name, null)}>
-                    <DropdownMenu.ItemTitle>Remove from Folder</DropdownMenu.ItemTitle>
-                  </DropdownMenu.Item>
-                  {onDelete ? (
-                    <DropdownMenu.Item key="delete" destructive onSelect={() => onDelete(topic)}>
-                      <DropdownMenu.ItemTitle>Delete Topic</DropdownMenu.ItemTitle>
-                    </DropdownMenu.Item>
-                  ) : null}
-                </DropdownMenu.Content>
-              </DropdownMenu.Root>
+              <Pressable
+                hitSlop={8}
+                onPress={() => setSheetVisible(true)}
+                accessibilityLabel={`Actions for ${topic.name}`}
+              >
+                <Ionicons name="ellipsis-horizontal" size={18} color="#94a3b8" />
+              </Pressable>
             </View>
           </View>
         </Pressable>
       </ContextMenu.Trigger>
+
+      {/* Tap-opened action sheet mirroring the long-press context menu. */}
+      <Modal visible={sheetVisible} animationType="fade" transparent onRequestClose={() => setSheetVisible(false)}>
+        <Pressable className="flex-1 bg-black/50 justify-end" onPress={() => setSheetVisible(false)}>
+          <Pressable className="bg-white dark:bg-surface-card rounded-t-2xl p-4 pb-8" onPress={(e) => e.stopPropagation()}>
+            <Text className="text-base font-semibold text-slate-900 dark:text-white px-2 pb-2" numberOfLines={1}>
+              {topic.name}
+            </Text>
+            {[
+              { key: "pin", label: pinned ? "Unpin" : "Pin to Top", onPress: () => (pinned ? unpinTopic(topic.name) : pinTopic(topic.name)) },
+              ...(onPublish ? [{ key: "publish", label: "Publish Message", onPress: () => onPublish(topic) }] : []),
+              ...(onEdit ? [{ key: "edit", label: "Edit Topic", onPress: () => onEdit(topic) }] : []),
+              ...folders.map((f) => ({ key: `folder-${f.id}`, label: `Move to ${f.name}`, onPress: () => moveToFolder(topic.name, f.id) })),
+              { key: "remove-folder", label: "Remove from Folder", onPress: () => moveToFolder(topic.name, null) },
+            ].map((item) => (
+              <AnimatedPressable
+                key={item.key}
+                haptic={false}
+                className="px-2 py-3"
+                onPress={() => { setSheetVisible(false); item.onPress(); }}
+              >
+                <Text className="text-body text-slate-700 dark:text-slate-200">{item.label}</Text>
+              </AnimatedPressable>
+            ))}
+            {onDelete ? (
+              <AnimatedPressable
+                haptic={false}
+                className="px-2 py-3"
+                onPress={() => { setSheetVisible(false); onDelete(topic); }}
+              >
+                <Text className="text-body text-red-500">Delete Topic</Text>
+              </AnimatedPressable>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <ContextMenu.Content>
         {/* Pin / Unpin */}
