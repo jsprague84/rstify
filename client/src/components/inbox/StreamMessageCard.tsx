@@ -45,7 +45,7 @@ export const StreamMessageCard = React.memo(function StreamMessageCard({
   return (
     <SwipeableRow onDelete={() => deleteMessage(message.id)}>
       <AnimatedPressable
-        className="mx-4 mb-2 p-3 rounded-xl bg-white dark:bg-surface-card"
+        className="mx-4 mb-2.5 p-3.5 rounded-2xl bg-white dark:bg-surface-card border border-slate-100 dark:border-white/[0.06]"
         onPress={() =>
           router.push(`/thread/${encodeURIComponent(sourceId)}`)
         }
@@ -73,7 +73,7 @@ export const StreamMessageCard = React.memo(function StreamMessageCard({
             {/* Title if present */}
             {message.title ? (
               <Text
-                className="text-body font-semibold text-gray-900 dark:text-white mb-0.5"
+                className="text-body font-semibold text-slate-900 dark:text-white mb-0.5"
                 numberOfLines={1}
               >
                 {message.title}

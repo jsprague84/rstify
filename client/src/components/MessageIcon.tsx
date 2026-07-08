@@ -41,12 +41,12 @@ export const MessageIcon = React.memo(function MessageIcon({
 
   return (
     <View
-      className="rounded-md bg-primary/20 items-center justify-center"
+      className="rounded-full bg-slate-100 dark:bg-surface-elevated items-center justify-center"
       style={{ width: size, height: size }}
     >
       {letter ? (
         <Text
-          className="text-primary font-bold"
+          className="text-slate-500 dark:text-slate-300 font-semibold"
           style={{ fontSize: size * 0.4 }}
         >
           {letter}

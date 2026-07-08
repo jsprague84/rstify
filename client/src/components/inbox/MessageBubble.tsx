@@ -6,7 +6,7 @@ import { AnimatedPressable } from "../design/AnimatedPressable";
 import { MessageContent } from "../MessageContent";
 import { MessageActions } from "../MessageActions";
 import { MessageAttachments } from "../MessageAttachments";
-import { PRIORITY_BORDER_COLORS, getPriorityLevel } from "../../utils/priority";
+import { getPriorityLevel } from "../../utils/priority";
 import { formatLocalTime } from "shared";
 import type { MessageResponse } from "shared";
 
@@ -29,7 +29,6 @@ export const MessageBubble = React.memo(function MessageBubble({
   message,
 }: MessageBubbleProps) {
   const level = getPriorityLevel(message.priority);
-  const borderColor = PRIORITY_BORDER_COLORS[level];
   const priorityLabel = PRIORITY_LABELS[level];
 
   // Big image from extras
@@ -59,10 +58,7 @@ export const MessageBubble = React.memo(function MessageBubble({
   };
 
   return (
-    <View
-      className="mx-4 mb-3 rounded-xl bg-white dark:bg-surface-card overflow-hidden"
-      style={{ borderLeftWidth: 3, borderLeftColor: borderColor }}
-    >
+    <View className="mx-4 mb-3 rounded-2xl bg-white dark:bg-surface-card border border-slate-100 dark:border-white/[0.06] overflow-hidden">
       {/* Big image hero */}
       {bigImageUrl ? (
         <Image

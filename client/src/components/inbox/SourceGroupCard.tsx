@@ -1,13 +1,13 @@
 import React, { useRef } from "react";
 import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { FadeInDown } from "react-native-reanimated";
 import { SwipeableRow } from "../design/SwipeableRow";
 import { AnimatedPressable } from "../design/AnimatedPressable";
 import { MessageIcon } from "../MessageIcon";
 import { useMessagesStore } from "../../store";
 import { formatTimeAgoCompact as formatTimeAgo } from "shared";
-import { PRIORITY_BORDER_COLORS, getPriorityLevel } from "../../utils/priority";
+import { getPriorityLevel } from "../../utils/priority";
 import type { SourceMeta } from "../../store/messages";
 
 interface SourceGroupCardProps {
@@ -30,8 +30,10 @@ export const SourceGroupCard = React.memo(function SourceGroupCard({
     : FadeInDown.delay(Math.min(index, 8) * 50).duration(300);
   hasAnimated.current = true;
 
+  // Priority is a restrained signal: a small dot for high/critical only. Color = meaning.
   const level = getPriorityLevel(source.priority);
-  const borderColor = PRIORITY_BORDER_COLORS[level];
+  const priorityDot =
+    level === "critical" ? "bg-error" : level === "high" ? "bg-warning" : null;
   const timeAgo = source.latestTimestamp
     ? formatTimeAgo(source.latestTimestamp)
     : "";
@@ -42,8 +44,7 @@ export const SourceGroupCard = React.memo(function SourceGroupCard({
       onArchive={() => markGroupRead(source.sourceId)}
     >
       <AnimatedPressable
-        className="mx-4 mb-2 p-3 rounded-xl bg-white dark:bg-surface-card"
-        style={{ borderLeftWidth: 3, borderLeftColor: borderColor }}
+        className="mx-4 mb-2.5 p-3.5 rounded-2xl bg-white dark:bg-surface-card border border-slate-100 dark:border-white/[0.06]"
         onPress={() =>
           router.push(`/thread/${encodeURIComponent(source.sourceId)}`)
         }
@@ -54,29 +55,28 @@ export const SourceGroupCard = React.memo(function SourceGroupCard({
       >
         <View className="flex-row items-center gap-3">
           {/* Icon */}
-          <MessageIcon
-            iconUrl={source.iconUrl}
-            size={40}
-            name={source.name}
-          />
+          <MessageIcon iconUrl={source.iconUrl} size={44} name={source.name} />
 
           {/* Content */}
           <View className="flex-1 min-w-0">
             {/* Top row: name + badge + time */}
             <View className="flex-row items-center justify-between mb-0.5">
-              <Text
-                className="text-body font-semibold text-gray-900 dark:text-white flex-shrink"
-                numberOfLines={1}
-              >
-                {source.name}
-              </Text>
-              <View className="flex-row items-center gap-2 ml-2">
+              <View className="flex-row items-center gap-1.5 flex-shrink">
+                {priorityDot && (
+                  <View className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${priorityDot}`} />
+                )}
+                <Text
+                  className="text-body font-semibold text-slate-900 dark:text-white flex-shrink"
+                  numberOfLines={1}
+                >
+                  {source.name}
+                </Text>
+              </View>
+              <View className="flex-row items-center gap-2 ml-2 flex-shrink-0">
                 {source.unreadCount > 0 && (
                   <View className="bg-primary rounded-full min-w-[20px] h-5 items-center justify-center px-1.5">
                     <Text className="text-white text-xs font-bold">
-                      {source.unreadCount > 99
-                        ? "99+"
-                        : source.unreadCount}
+                      {source.unreadCount > 99 ? "99+" : source.unreadCount}
                     </Text>
                   </View>
                 )}
