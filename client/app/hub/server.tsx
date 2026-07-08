@@ -46,14 +46,31 @@ export default function ServerScreen() {
 
   useEffect(() => { if (user?.is_admin) fetchData(); }, [fetchData, user?.is_admin]);
 
-  const handleSaveUrl = async () => {
-    try {
-      setServerUrl(urlInput);
+  const handleSaveUrl = () => {
+    if (urlInput === serverUrl) {
       setEditingUrl(false);
-      logout();
-    } catch (e) {
-      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update');
+      return;
     }
+    Alert.alert(
+      'Change server URL?',
+      'Changing the server URL signs you out, and you will need to log in to the new server.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Change & sign out',
+          style: 'destructive',
+          onPress: () => {
+            try {
+              setServerUrl(urlInput);
+              setEditingUrl(false);
+              logout();
+            } catch (e) {
+              Alert.alert('Error', e instanceof Error ? e.message : 'Failed to update');
+            }
+          },
+        },
+      ],
+    );
   };
 
   // Redirect non-admins

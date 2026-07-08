@@ -263,7 +263,7 @@ export default function Webhooks() {
         };
 
         if (!hasGroups) {
-          return <DataTable data={crud.items} keyField="id" columns={columns} actions={renderActions} />;
+          return <DataTable data={crud.items} keyField="id" columns={columns} actions={renderActions} loading={crud.loading} />;
         }
 
         return (

@@ -98,6 +98,8 @@ impl TopicRepository for SqliteTopicRepo {
         notify_digest_interval: Option<i32>,
         store_policy: Option<&str>,
         store_interval: Option<i32>,
+        inbox_override: Option<&str>,
+        inbox_priority_min: Option<i32>,
     ) -> Result<Topic, CoreError> {
         let current = self
             .find_by_id(id)
@@ -115,11 +117,16 @@ impl TopicRepository for SqliteTopicRepo {
         let new_notify_digest_interval = notify_digest_interval.or(current.notify_digest_interval);
         let new_store_policy = store_policy.unwrap_or(&current.store_policy);
         let new_store_interval = store_interval.or(current.store_interval);
+        let new_inbox_override = inbox_override
+            .map(|s| s.to_string())
+            .or(current.inbox_override);
+        let new_inbox_priority_min = inbox_priority_min.or(current.inbox_priority_min);
 
         sqlx::query_as::<_, Topic>(
             "UPDATE topics SET description = ?, everyone_read = ?, everyone_write = ?, \
              notify_policy = ?, notify_priority_min = ?, notify_condition = ?, \
-             notify_digest_interval = ?, store_policy = ?, store_interval = ? \
+             notify_digest_interval = ?, store_policy = ?, store_interval = ?, \
+             inbox_override = ?, inbox_priority_min = ? \
              WHERE id = ? RETURNING *",
         )
         .bind(new_desc)
@@ -131,6 +138,8 @@ impl TopicRepository for SqliteTopicRepo {
         .bind(new_notify_digest_interval)
         .bind(new_store_policy)
         .bind(new_store_interval)
+        .bind(new_inbox_override)
+        .bind(new_inbox_priority_min)
         .bind(id)
         .fetch_one(&self.pool)
         .await

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { api } from '../api/client';
 import type { TopicPermission, UserResponse } from 'shared';
 import DataTable from '../components/DataTable';
+import EmptyState from '../components/EmptyState';
 import { FormModal } from '../components/FormModal';
 import { FormField } from '../components/FormField';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -64,6 +65,15 @@ export default function Permissions() {
       <DataTable
         data={crud.items}
         keyField="id"
+        loading={crud.loading}
+        empty={
+          <EmptyState
+            title="No topic permissions yet"
+            subtitle="Grant users read or write access to topics with exact names or wildcard patterns."
+            actionLabel="Add a permission"
+            onAction={openCreate}
+          />
+        }
         columns={[
           { key: 'id', header: 'ID' },
           { key: 'user_id', header: 'User', render: (p) => getUserName(p.user_id) },

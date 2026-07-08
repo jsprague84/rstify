@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import type { Application, MessageResponse } from 'shared';
 import MessageContent from '../components/MessageContent';
 import DataTable from '../components/DataTable';
+import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
@@ -192,6 +193,15 @@ export default function Applications() {
       <DataTable
         data={crud.items}
         keyField="id"
+        loading={crud.loading}
+        empty={
+          <EmptyState
+            title="No applications yet"
+            subtitle="Applications are senders — each gets a token your scripts and services use to push messages."
+            actionLabel="Create your first application"
+            onAction={openCreate}
+          />
+        }
         columns={[
           { key: 'id', header: 'ID' },
           { key: 'image', header: 'Icon', render: a => <button onClick={() => openEdit(a)} className="cursor-pointer"><AppIcon app={a} size={28} /></button> },

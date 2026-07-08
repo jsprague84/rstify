@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { api } from '../api/client';
 import type { UserResponse } from 'shared';
 import DataTable from '../components/DataTable';
+import EmptyState from '../components/EmptyState';
 import { FormModal } from '../components/FormModal';
 import { FormField } from '../components/FormField';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -67,6 +68,15 @@ export default function Users() {
       <DataTable
         data={crud.items}
         keyField="id"
+        loading={crud.loading}
+        empty={
+          <EmptyState
+            title="No users yet"
+            subtitle="Add accounts for other people who should sign in to this server."
+            actionLabel="Add a user"
+            onAction={openCreate}
+          />
+        }
         columns={[
           { key: 'id', header: 'ID' },
           { key: 'username', header: 'Username' },

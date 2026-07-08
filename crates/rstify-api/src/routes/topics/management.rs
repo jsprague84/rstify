@@ -10,8 +10,8 @@ use crate::error::ApiError;
 use crate::extractors::auth::AuthUser;
 use crate::helpers::ownership::{fetch_or_not_found, verify_optional_ownership};
 use crate::helpers::validation::{
-    validate_json, validate_policy, validate_positive, validate_topic_name, NOTIFY_POLICIES,
-    STORE_POLICIES,
+    validate_json, validate_policy, validate_positive, validate_topic_name, INBOX_OVERRIDES,
+    NOTIFY_POLICIES, STORE_POLICIES,
 };
 use crate::routes::messages::ListParams;
 use crate::state::AppState;
@@ -119,6 +119,9 @@ pub async fn update_topic(
     if let Some(interval) = req.store_interval {
         validate_positive("store_interval", interval)?;
     }
+    if let Some(ref policy) = req.inbox_override {
+        validate_policy("inbox_override", policy, INBOX_OVERRIDES)?;
+    }
 
     let updated = state
         .topic_repo
@@ -133,6 +136,8 @@ pub async fn update_topic(
             req.notify_digest_interval,
             req.store_policy.as_deref(),
             req.store_interval,
+            req.inbox_override.as_deref(),
+            req.inbox_priority_min,
         )
         .await
         .map_err(ApiError::from)?;

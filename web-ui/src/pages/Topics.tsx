@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../api/client';
 import type { Topic, MessageResponse } from 'shared';
 import DataTable from '../components/DataTable';
+import EmptyState from '../components/EmptyState';
 import Modal from '../components/Modal';
 import { FormModal } from '../components/FormModal';
 import { FormField } from '../components/FormField';
@@ -71,6 +72,15 @@ export default function Topics() {
       <DataTable
         data={crud.items}
         keyField="id"
+        loading={crud.loading}
+        empty={
+          <EmptyState
+            title="No topics yet"
+            subtitle="Topics are pub/sub channels — publishers send to a topic and every subscriber receives the message."
+            actionLabel="Create your first topic"
+            onAction={openCreate}
+          />
+        }
         columns={[
           { key: 'id', header: 'ID' },
           { key: 'name', header: 'Name' },

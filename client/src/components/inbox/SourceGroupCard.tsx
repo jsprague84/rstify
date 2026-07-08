@@ -1,8 +1,9 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { View, Text } from "react-native";
 import { useRouter } from "expo-router";
 import { FadeInDown } from "react-native-reanimated";
 import { SwipeableRow } from "../design/SwipeableRow";
+import { ConfirmSheet } from "../design/ConfirmSheet";
 import { AnimatedPressable } from "../design/AnimatedPressable";
 import { MessageIcon } from "../MessageIcon";
 import { useMessagesStore } from "../../store";
@@ -22,6 +23,7 @@ export const SourceGroupCard = React.memo(function SourceGroupCard({
   const router = useRouter();
   const deleteGroup = useMessagesStore((s) => s.deleteGroup);
   const markGroupRead = useMessagesStore((s) => s.markGroupRead);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // Only play entrance animation on the first render, not on recycle
   const hasAnimated = useRef(false);
@@ -40,7 +42,8 @@ export const SourceGroupCard = React.memo(function SourceGroupCard({
 
   return (
     <SwipeableRow
-      onDelete={() => deleteGroup(source.sourceId)}
+      onDelete={() => setConfirmDelete(true)}
+      confirmDelete
       onArchive={() => markGroupRead(source.sourceId)}
     >
       <AnimatedPressable
@@ -96,6 +99,14 @@ export const SourceGroupCard = React.memo(function SourceGroupCard({
           </View>
         </View>
       </AnimatedPressable>
+      <ConfirmSheet
+        visible={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() => deleteGroup(source.sourceId)}
+        title={`Delete ${source.name}?`}
+        message="This deletes every message in this conversation from the server. It cannot be undone."
+        confirmLabel="Delete all"
+      />
     </SwipeableRow>
   );
 });

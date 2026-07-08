@@ -13,10 +13,14 @@ interface DataTableProps<T> {
   keyField: keyof T;
   actions?: (item: T) => React.ReactNode;
   emptyMessage?: string;
+  /** Rich empty state (takes precedence over emptyMessage). */
+  empty?: React.ReactNode;
+  /** True while the list is being fetched; shows skeleton rows instead of the empty state. */
+  loading?: boolean;
   pageSize?: number;
 }
 
-export default function DataTable<T>({ columns, data, keyField, actions, emptyMessage = 'No data', pageSize = 25 }: DataTableProps<T>) {
+export default function DataTable<T>({ columns, data, keyField, actions, emptyMessage = 'No data', empty, loading = false, pageSize = 25 }: DataTableProps<T>) {
   const [page, setPage] = useState(0);
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -47,6 +51,23 @@ export default function DataTable<T>({ columns, data, keyField, actions, emptyMe
   const pageData = sorted.slice(page * pageSize, (page + 1) * pageSize);
 
   if (data.length === 0) {
+    if (loading) {
+      return (
+        <div className="rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white dark:bg-surface-card">
+          <div className="h-11 bg-slate-50 dark:bg-surface-elevated" />
+          <div className="divide-y divide-slate-100 dark:divide-white/[0.06]">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="px-5 py-4 flex items-center gap-6 animate-pulse">
+                <div className="h-3.5 w-1/4 rounded bg-slate-200 dark:bg-white/10" />
+                <div className="h-3.5 w-1/3 rounded bg-slate-100 dark:bg-white/[0.06]" />
+                <div className="h-3.5 w-1/5 rounded bg-slate-100 dark:bg-white/[0.06]" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    if (empty) return <>{empty}</>;
     return <p className="text-slate-400 text-center py-12 text-sm">{emptyMessage}</p>;
   }
 

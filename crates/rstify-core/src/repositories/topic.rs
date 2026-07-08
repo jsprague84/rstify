@@ -29,6 +29,8 @@ pub trait TopicRepository: Send + Sync {
         notify_digest_interval: Option<i32>,
         store_policy: Option<&str>,
         store_interval: Option<i32>,
+        inbox_override: Option<&str>,
+        inbox_priority_min: Option<i32>,
     ) -> Result<Topic, CoreError>;
     async fn delete(&self, id: i64) -> Result<(), CoreError>;
     async fn count(&self) -> Result<i64, CoreError>;

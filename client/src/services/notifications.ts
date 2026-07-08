@@ -100,7 +100,12 @@ export async function showMessageNotification(msg: MessageResponse) {
     content: {
       title: msg.title || "New Message",
       body: stripMarkdown(msg.message),
-      data: { messageId: msg.id, clickUrl: msg.click_url },
+      data: {
+        messageId: msg.id,
+        clickUrl: msg.click_url,
+        appid: msg.appid,
+        topic: msg.topic,
+      },
       ...(Platform.OS === "android" && {
         channelId: getChannelForPriority(msg.priority),
       }),

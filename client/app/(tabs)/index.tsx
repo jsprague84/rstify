@@ -17,16 +17,11 @@ import { useUserWebSocket } from "../../src/hooks/useWebSocket";
 import { showMessageNotification } from "../../src/services/notifications";
 import { getApiClient } from "../../src/api";
 import { getDevicePushToken } from "../../src/services/notifications";
-import { createCache } from "../../src/utils/cache";
+import { ensureMobileClient } from "../../src/services/mobileClient";
 import type { MessageResponse } from "../../src/api";
 import type { SourceMeta } from "../../src/store/messages";
 
 const SEGMENTS = ["Grouped", "Stream"];
-
-// This device's own client (id + token), persisted so the WebSocket and FCM
-// registration use a stable client we own — not an arbitrary clients[0] that may
-// belong to the web UI or another device.
-const mobileClientCache = createCache<{ id: number; token: string }>("mobile_client");
 
 export default function InboxScreen() {
   const token = useAuthStore((s) => s.token);
@@ -66,21 +61,7 @@ export default function InboxScreen() {
     const setupClient = async () => {
       try {
         const api = getApiClient();
-
-        // Reuse this device's persisted client if it still exists server-side;
-        // otherwise create a fresh one and persist it.
-        let client = mobileClientCache.load();
-        if (client) {
-          const clients = await api.listClients();
-          if (!clients.some((c) => c.id === client!.id)) {
-            client = null;
-          }
-        }
-        if (!client) {
-          const created = await api.createClient({ name: "rstify-mobile", scopes: null });
-          client = { id: created.id, token: created.token };
-          mobileClientCache.save(client);
-        }
+        const client = await ensureMobileClient();
 
         setClientToken(client.token);
 

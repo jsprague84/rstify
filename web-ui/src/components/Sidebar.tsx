@@ -29,11 +29,11 @@ const navSections = [
     items: [
       { to: '/users', label: 'Users', admin: true },
       { to: '/permissions', label: 'Permissions', admin: true },
-      { to: '/settings', label: 'Settings' },
     ],
   },
   {
     items: [
+      { to: '/settings', label: 'Settings' },
       { to: '/docs', label: 'Documentation' },
     ],
   },

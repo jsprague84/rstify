@@ -19,6 +19,7 @@ import {
   getDevicePushToken,
   requestNotificationPermissions,
 } from '../../src/services/notifications';
+import { ensureMobileClient } from '../../src/services/mobileClient';
 
 export default function SettingsScreen() {
   const { mode } = useTheme();
@@ -210,13 +211,15 @@ export default function SettingsScreen() {
                   if (token) {
                     setPushStatus(`Registered (${token.substring(0, 20)}...)`);
                     try {
+                      // Register against this device's own client, not clients[0]
+                      // (which may belong to the web UI or another device).
                       const api = getApiClient();
-                      const clientsList = await api.listClients();
-                      if (clientsList.length > 0) {
-                        await api.registerFcmToken(clientsList[0].id, token);
-                        Alert.alert('Success', 'Push notifications registered');
-                      }
-                    } catch { /* best effort */ }
+                      const client = await ensureMobileClient();
+                      await api.registerFcmToken(client.id, token);
+                      Alert.alert('Success', 'Push notifications registered');
+                    } catch (e) {
+                      Alert.alert('Error', e instanceof Error ? e.message : 'Failed to register push token');
+                    }
                   }
                 } else {
                   Alert.alert('Permissions Denied', 'Enable notifications in device settings');

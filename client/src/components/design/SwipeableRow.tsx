@@ -18,10 +18,15 @@ const SWIPE_THRESHOLD = 80;
 interface SwipeableRowProps {
   onDelete?: () => void;
   onArchive?: () => void;
+  /**
+   * Spring the row back instead of sliding it out when the delete threshold
+   * is crossed — for flows that show a confirmation before actually deleting.
+   */
+  confirmDelete?: boolean;
   children: React.ReactNode;
 }
 
-export function SwipeableRow({ onDelete, onArchive, children }: SwipeableRowProps) {
+export function SwipeableRow({ onDelete, onArchive, confirmDelete = false, children }: SwipeableRowProps) {
   const translateX = useSharedValue(0);
   const isCollapsing = useSharedValue(false);
   const measuredHeight = useSharedValue(0);
@@ -64,7 +69,12 @@ export function SwipeableRow({ onDelete, onArchive, children }: SwipeableRowProp
     })
     .onEnd((event) => {
       if (event.translationX < -SWIPE_THRESHOLD && onDelete) {
-        slideOut('left', triggerDelete);
+        if (confirmDelete) {
+          translateX.value = withSpring(0, { damping: 20, stiffness: 300 });
+          runOnJS(triggerDelete)();
+        } else {
+          slideOut('left', triggerDelete);
+        }
       } else if (event.translationX > SWIPE_THRESHOLD && onArchive) {
         slideOut('right', triggerArchive);
       } else {

@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { api } from '../api/client';
 import type { Client } from 'shared';
 import DataTable from '../components/DataTable';
+import EmptyState from '../components/EmptyState';
 import { FormModal } from '../components/FormModal';
 import { FormField } from '../components/FormField';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -138,6 +139,15 @@ export default function Clients() {
       <DataTable
         data={crud.items}
         keyField="id"
+        loading={crud.loading}
+        empty={
+          <EmptyState
+            title="No clients yet"
+            subtitle="Clients are receivers — devices and apps that read your messages with their own token."
+            actionLabel="Create a client"
+            onAction={openCreate}
+          />
+        }
         columns={[
           { key: 'id', header: 'ID' },
           { key: 'name', header: 'Name' },

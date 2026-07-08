@@ -3,6 +3,7 @@ use rstify_core::error::CoreError;
 
 pub const NOTIFY_POLICIES: &[&str] = &["always", "never", "threshold", "on_change", "digest"];
 pub const STORE_POLICIES: &[&str] = &["all", "on_change", "interval"];
+pub const INBOX_OVERRIDES: &[&str] = &["always", "never", "threshold"];
 
 /// Validates that a string field's length is within the given bounds (inclusive).
 /// Returns `BAD_REQUEST` if the length is outside `[min, max]`.

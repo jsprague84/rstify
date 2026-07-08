@@ -152,6 +152,86 @@ async fn update_topic() {
 }
 
 #[tokio::test]
+async fn update_topic_persists_inbox_override() {
+    let app = common::setup().await;
+
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::post_json(
+            "/api/topics",
+            &app.user_token,
+            serde_json::json!({ "name": "inbox-topic" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::put_json(
+            "/api/topics/inbox-topic",
+            &app.user_token,
+            serde_json::json!({
+                "inbox_override": "threshold",
+                "inbox_priority_min": 6
+            }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = common::body_json(resp).await;
+    assert_eq!(body["inbox_override"], "threshold");
+    assert_eq!(body["inbox_priority_min"], 6);
+
+    // A follow-up update that omits the fields must keep them (None = keep-current)
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::put_json(
+            "/api/topics/inbox-topic",
+            &app.user_token,
+            serde_json::json!({ "description": "unrelated edit" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = common::body_json(resp).await;
+    assert_eq!(body["inbox_override"], "threshold");
+    assert_eq!(body["inbox_priority_min"], 6);
+}
+
+#[tokio::test]
+async fn update_topic_rejects_invalid_inbox_override() {
+    let app = common::setup().await;
+
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::post_json(
+            "/api/topics",
+            &app.user_token,
+            serde_json::json!({ "name": "inbox-bad" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::put_json(
+            "/api/topics/inbox-bad",
+            &app.user_token,
+            serde_json::json!({ "inbox_override": "bogus" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
 async fn update_topic_forbidden() {
     let app = common::setup().await;
 

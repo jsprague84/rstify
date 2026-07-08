@@ -90,11 +90,15 @@ export default function Messages() {
     return m;
   }, [apps]);
 
-  const load = useCallback((limit: number) => {
+  const load = useCallback((limit: number, isCurrent: () => boolean = () => true) => {
     setLoading(true);
     api.listMessages(limit, 0, true)
-      .then(res => { setMessages(res.messages); setHasMore(res.paging.size >= limit); })
-      .catch(e => setError(e.message))
+      .then(res => {
+        if (!isCurrent()) return;
+        setMessages(res.messages);
+        setHasMore(res.paging.size >= limit);
+      })
+      .catch(e => { if (isCurrent()) setError(e.message); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -134,12 +138,34 @@ export default function Messages() {
     setShowDeleteAll(false);
   };
 
-  const handleSearch = async (query: string) => {
+  // Debounce keystrokes and drop out-of-order responses so a slow early
+  // search can never overwrite the results of a later one (or of clearing).
+  const searchSeq = useRef(0);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
-    if (!query.trim()) { load(fetchLimit.current); return; }
-    const results = await searchAction.execute(() => api.searchMessages({ q: query, limit: 100 }));
-    if (results) setMessages(results); else setError('Search failed');
+    clearTimeout(searchDebounce.current);
+    const seq = ++searchSeq.current;
+    if (!query.trim()) {
+      load(fetchLimit.current, () => seq === searchSeq.current);
+      return;
+    }
+    searchDebounce.current = setTimeout(async () => {
+      const results = await searchAction.execute(() => api.searchMessages({ q: query, limit: 100 }));
+      if (seq !== searchSeq.current) return;
+      if (results) {
+        setMessages(results);
+        // If the open thread's source vanished from the results, close it
+        // explicitly instead of leaving a silently-empty detail pane.
+        setSelectedSourceId(prev =>
+          prev && !results.some(m => getSourceId(m) === prev) ? null : prev,
+        );
+      } else {
+        setError('Search failed');
+      }
+    }, 250);
   };
+  useEffect(() => () => clearTimeout(searchDebounce.current), []);
 
   const handleLoadMore = () => { fetchLimit.current += PAGE_SIZE; load(fetchLimit.current); };
   const onAttachmentDeleted = (msgId: number, attId: number) =>
@@ -191,10 +217,17 @@ export default function Messages() {
             {searching ? (
               <p className="text-slate-400 text-center py-16 text-sm">Searching…</p>
             ) : sources.length === 0 && !loading ? (
-              <div className="px-6 py-16 text-center">
-                <p className="text-slate-500 dark:text-slate-400 font-medium">No messages yet</p>
-                <p className="text-sm text-slate-400 mt-1">Messages from your apps and topics appear here.</p>
-              </div>
+              searchQuery.trim() ? (
+                <div className="px-6 py-16 text-center">
+                  <p className="text-slate-500 dark:text-slate-400 font-medium">No results for “{searchQuery.trim()}”</p>
+                  <p className="text-sm text-slate-400 mt-1">Try a different search term.</p>
+                </div>
+              ) : (
+                <div className="px-6 py-16 text-center">
+                  <p className="text-slate-500 dark:text-slate-400 font-medium">No messages yet</p>
+                  <p className="text-sm text-slate-400 mt-1">Messages from your apps and topics appear here.</p>
+                </div>
+              )
             ) : (
               <div className="divide-y divide-slate-100 dark:divide-white/[0.06]">
                 {sources.map(s => (

@@ -212,6 +212,13 @@ impl FcmClient {
         if let Some(ref click_url) = msg.click_url {
             data.insert("clickUrl".to_string(), click_url.clone());
         }
+        // Source coordinates so the mobile app can open the right thread on tap.
+        if let Some(appid) = msg.appid {
+            data.insert("appid".to_string(), appid.to_string());
+        }
+        if let Some(ref topic) = msg.topic {
+            data.insert("topic".to_string(), topic.clone());
+        }
 
         let request = FcmRequest {
             message: FcmMessage {

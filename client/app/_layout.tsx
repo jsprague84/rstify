@@ -10,7 +10,7 @@ import {
   Inter_800ExtraBold,
 } from '@expo-google-fonts/inter';
 import { ActivityIndicator, View, Linking } from 'react-native';
-import { Stack, SplashScreen } from 'expo-router';
+import { Stack, SplashScreen, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme as useNativeWindColorScheme } from 'nativewind';
@@ -111,18 +111,41 @@ export default function RootLayout() {
     initializeNotifications().then(() => requestNotificationPermissions());
   }, []);
 
-  // Step 3: Open click_url when user taps a notification
+  // Step 3: Notification tap → click_url if the message has one, otherwise
+  // open the thread the message belongs to (topic:<name> / app:<id>). The
+  // target is queued so a cold-start tap navigates once auth has resolved.
+  const [pendingThread, setPendingThread] = useState<string | null>(null);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const url = response.notification.request.content.data?.clickUrl;
-        if (typeof url === 'string' && url) {
-          Linking.openURL(url);
-        }
-      },
-    );
+    const handleResponse = (response: Notifications.NotificationResponse) => {
+      const data = response.notification.request.content.data ?? {};
+      const url = data.clickUrl;
+      if (typeof url === 'string' && url) {
+        Linking.openURL(url);
+        return;
+      }
+      const sourceId =
+        typeof data.topic === 'string' && data.topic
+          ? `topic:${data.topic}`
+          : data.appid != null && data.appid !== ''
+            ? `app:${data.appid}`
+            : null;
+      if (sourceId) setPendingThread(sourceId);
+    };
+    const sub = Notifications.addNotificationResponseReceivedListener(handleResponse);
+    // Cold start: the tap that launched the app fired before the listener existed.
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) handleResponse(response);
+    });
     return () => sub.remove();
   }, []);
+
+  useEffect(() => {
+    if (pendingThread && !migrating && !isLoadingAuth && isAuthenticated) {
+      router.push(`/thread/${encodeURIComponent(pendingThread)}`);
+      setPendingThread(null);
+    }
+  }, [pendingThread, migrating, isLoadingAuth, isAuthenticated]);
 
   // Hide splash once migration is done and auth has resolved
   useEffect(() => {
