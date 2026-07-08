@@ -165,7 +165,7 @@ export default function Messages() {
   const searching = searchAction.loading;
 
   return (
-    <div className="h-[calc(100dvh-7rem)] flex flex-col rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white dark:bg-surface-card">
+    <div className="h-full flex flex-col rounded-2xl border border-slate-200 dark:border-white/10 overflow-hidden bg-white dark:bg-surface-card">
       <div className="flex flex-1 min-h-0">
         {/* ── List pane ── */}
         <aside className={`w-full md:w-[380px] md:flex-shrink-0 flex-col min-h-0 md:border-r border-slate-200 dark:border-white/10 ${selectedSource ? 'hidden md:flex' : 'flex'}`}>
@@ -278,7 +278,7 @@ function SourceRow({ source, active, onOpen }: { source: SourceMeta; active: boo
       </div>
       <div className="flex flex-col items-end flex-shrink-0 self-start pt-0.5">
         <span className="text-caption text-slate-400 tabular-nums whitespace-nowrap">{formatTimeAgo(source.latest.date)}</span>
-        <span className="text-caption text-slate-400 mt-1.5">{source.count}</span>
+        <span className="text-caption font-mono text-slate-400 mt-1.5">{source.count}</span>
       </div>
     </button>
   );

@@ -40,16 +40,16 @@ const brand = {
   300: '#7AA1FF',
   400: '#3D74FF',
   500: '#0052FF', // Coinbase blue — primary
-  600: '#0043D1', // hover / pressed
-  700: '#0036A8',
-  800: '#002C85',
-  900: '#00246B',
+  600: '#003ECC', // Coinbase primary-active (pressed)
+  700: '#0033A6',
+  800: '#002A85',
+  900: '#00216B',
 };
 
 // Semantic status ramps — Coinbase-tuned (green up, red down, restrained amber).
 const success = { DEFAULT: '#05B169', light: '#1AD07E', dark: '#048A52' };
 const warning = { DEFAULT: '#F5A623', light: '#FBBF24', dark: '#C97F0A' };
-const error = { DEFAULT: '#E5484D', light: '#F87171', dark: '#C4292E' };
+const error = { DEFAULT: '#CF202F', light: '#F87171', dark: '#A81C28' }; // Coinbase down-red
 const info = { DEFAULT: '#0BA5EC', light: '#38BDF8', dark: '#0086C9' };
 const accent = { DEFAULT: '#7A5AF8', light: '#9B8AFB', dark: '#6938EF' };
 
