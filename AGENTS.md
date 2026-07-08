@@ -152,4 +152,13 @@ paths) · Encountered Lessons = append-only log of mistakes-not-to-repeat.
 
 <!-- Append one-liners as you hit non-obvious footguns. Prune stale entries. agentic-init: curated above -->
 
-- (none yet)
+- **Unknown backend routes return the SPA (HTTP 200) — a wrong curl path "succeeds" silently.**
+  Gotify-compat routes are singular and unprefixed (`/application`, `/message`); rstify-native
+  routes live under `/api/*`. When seeding or scripting, check the response body, not just the
+  status code. (2026-07-08: a seed POST to `/api/applications` no-opped for an hour.)
+- **Update repos treat `None` as keep-current, so a nullable field can't be cleared with `null`.**
+  Clearing needs an explicit sentinel — `inbox_override` uses `""` (empty string) to reset to auto.
+  Apply the same pattern when adding clearable optional fields.
+- **`messages` has a CHECK requiring exactly one of `application_id`/`topic_id`.** Anything that
+  creates messages (incoming webhooks, new publish paths) must target exactly one or every delivery
+  500s at insert time — validate at config-creation time, not just delivery time.

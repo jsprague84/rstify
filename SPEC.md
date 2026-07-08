@@ -19,7 +19,8 @@ Drop-in for Gotify clients, plus features Gotify lacks (topics/pub-sub, webhooks
 <!-- Move features here once live. One line each: behavior, not code. -->
 
 - Gotify-compatible message API (apps, messages, clients, extras: `client::display`/`notification`, `android::action`).
-- Topics (pub-sub), incoming + outgoing webhooks (HMAC, `{{env.KEY}}` templating), file attachments, tags.
+- Topics (pub-sub), incoming + outgoing webhooks (HMAC, `{{env.KEY}}` templating, delivery log for both directions), file attachments, tags.
+- Inbox = app messages + visible-topic messages routed by `should_inbox` (`GET /message?inbox=…`; bare `/message` stays Gotify-pure, apps only).
 - JWT auth (Argon2), rate limiting, CORS, security headers.
 - FCM/SMTP optional integrations.
 
