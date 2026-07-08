@@ -117,6 +117,74 @@ async fn list_messages() {
 }
 
 // ---------------------------------------------------------------------------
+// Inbox view: topic messages appear with ?inbox=true but NOT on the bare
+// Gotify-compatible /message listing.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn inbox_listing_includes_topic_messages() {
+    let app = common::setup().await;
+
+    // Create a readable topic and publish a high-priority message to it
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::post_json(
+            "/api/topics",
+            &app.user_token,
+            serde_json::json!({ "name": "inbox-view-topic" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::post_json(
+            "/api/topics/inbox-view-topic/publish",
+            &app.user_token,
+            serde_json::json!({ "message": "topic inbox message", "priority": 9 }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Inbox view (rstify-specific param) must include the topic message,
+    // with the topic name resolved.
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::get("/message?inbox=true", &app.user_token))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = common::body_json(resp).await;
+    let messages = body["messages"].as_array().unwrap();
+    assert!(
+        messages
+            .iter()
+            .any(|m| m["topic"] == "inbox-view-topic" && m["message"] == "topic inbox message"),
+        "inbox view should include visible-topic messages with the topic name set"
+    );
+
+    // Bare /message stays Gotify-pure: application messages only.
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::get("/message", &app.user_token))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = common::body_json(resp).await;
+    let messages = body["messages"].as_array().unwrap();
+    assert!(
+        !messages.iter().any(|m| m["topic"] == "inbox-view-topic"),
+        "bare /message must not include topic messages (Gotify compat)"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // List messages with limit=1 → returns exactly 1 message
 // ---------------------------------------------------------------------------
 

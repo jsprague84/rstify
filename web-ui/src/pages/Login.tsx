@@ -27,7 +27,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 relative">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-surface-bg relative">
       <button
         onClick={toggleTheme}
         className="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
@@ -48,35 +48,35 @@ export default function Login() {
           <img src="/icon-512.png" alt="rstify" className="w-20 h-20 rounded-xl mb-3" />
           <h1 className="text-3xl font-bold dark:text-white">rstify</h1>
         </div>
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 shadow-md dark:shadow-gray-900 rounded-lg p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-surface-card border border-slate-200 dark:border-white/10 rounded-2xl p-6 space-y-4">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm">{error}</div>
+            <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm">{error}</div>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Username</label>
             <input
               type="text"
               value={username}
               onChange={e => setUsername(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+              className="w-full border border-slate-200 dark:border-white/10 rounded-md px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary dark:bg-surface-elevated transition"
               required
               autoFocus
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Password</label>
             <input
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+              className="w-full border border-slate-200 dark:border-white/10 rounded-md px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary dark:bg-surface-elevated transition"
               required
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-2 rounded-md text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            className="w-full bg-primary text-white py-2.5 rounded-pill text-sm font-semibold hover:bg-brand-600 active:bg-brand-700 disabled:opacity-50 transition"
           >
             {loading ? 'Signing in...' : 'Sign in'}
           </button>

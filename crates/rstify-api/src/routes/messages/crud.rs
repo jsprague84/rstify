@@ -7,7 +7,7 @@ use rstify_core::models::{
     UpdateMessage,
 };
 use rstify_core::repositories::{
-    ApplicationRepository, ClientRepository, MessageRepository, UserRepository,
+    ApplicationRepository, ClientRepository, MessageRepository, TopicRepository, UserRepository,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -118,13 +118,42 @@ pub async fn list_messages(
     let limit = params.limit.unwrap_or(100).clamp(1, 500);
     let since = params.since.unwrap_or(0).max(0);
 
-    let messages = state
-        .message_repo
-        .list_by_user_apps(auth.user.id, limit, since, params.inbox)
-        .await
-        .map_err(ApiError::from)?;
+    // The rstify-specific `inbox` param selects the inbox view: app messages
+    // PLUS messages on topics the user can read. Without it, `/message` stays
+    // Gotify-pure (application messages only) so Gotify clients see exactly
+    // what they expect.
+    let (messages, topic_names) = if params.inbox.is_some() {
+        let visible = state
+            .topic_repo
+            .list_visible(auth.user.id)
+            .await
+            .map_err(ApiError::from)?;
+        let topic_ids: Vec<i64> = visible.iter().map(|t| t.id).collect();
+        let names: std::collections::HashMap<i64, String> =
+            visible.into_iter().map(|t| (t.id, t.name)).collect();
+        let msgs = state
+            .message_repo
+            .list_inbox(auth.user.id, &topic_ids, limit, since, params.inbox)
+            .await
+            .map_err(ApiError::from)?;
+        (msgs, Some(names))
+    } else {
+        let msgs = state
+            .message_repo
+            .list_by_user_apps(auth.user.id, limit, since, params.inbox)
+            .await
+            .map_err(ApiError::from)?;
+        (msgs, None)
+    };
 
-    let responses = enrich_with_attachments(&state, &messages, None).await?;
+    let mut responses = enrich_with_attachments(&state, &messages, None).await?;
+    if let Some(names) = topic_names {
+        for (resp, msg) in responses.iter_mut().zip(&messages) {
+            if let Some(tid) = msg.topic_id {
+                resp.topic = names.get(&tid).cloned();
+            }
+        }
+    }
     let size = responses.len() as i64;
 
     Ok(Json(PagedMessages {

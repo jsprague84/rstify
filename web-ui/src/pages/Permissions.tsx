@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { api } from '../api/client';
-import type { TopicPermission, UserResponse } from 'shared';
+import type { TopicPermission, UserResponse, Topic } from 'shared';
 import DataTable from '../components/DataTable';
 import EmptyState from '../components/EmptyState';
 import { FormModal } from '../components/FormModal';
@@ -14,6 +14,13 @@ export default function Permissions() {
 
   const fetchUsers = useCallback(() => api.listUsers(), []);
   const usersCrud = useCrudResource<UserResponse>(fetchUsers);
+
+  // Real topic names for the pattern autocomplete — free text stays allowed
+  // for wildcards, but typos shouldn't be the default experience.
+  const [topics, setTopics] = useState<Topic[]>([]);
+  useEffect(() => {
+    api.listTopics().then(setTopics).catch(() => {});
+  }, []);
 
   const [showCreate, setShowCreate] = useState(false);
   const [deletePerm, setDeletePerm] = useState<TopicPermission | null>(null);
@@ -75,7 +82,6 @@ export default function Permissions() {
           />
         }
         columns={[
-          { key: 'id', header: 'ID' },
           { key: 'user_id', header: 'User', render: (p) => getUserName(p.user_id) },
           { key: 'topic_pattern', header: 'Topic Pattern' },
           { key: 'can_read', header: 'Read', render: (p) => (p.can_read ? 'Yes' : 'No') },
@@ -111,14 +117,33 @@ export default function Permissions() {
           onChange={setUserId}
           options={userOptions}
         />
-        <FormField
-          label="Topic Pattern"
-          required
-          value={topicPattern}
-          onChange={setTopicPattern}
-          placeholder="e.g. alerts/* or my-topic"
-          helpText="Use * as wildcard. Example: alerts/* matches alerts/cpu, alerts/disk, etc."
-        />
+        <div>
+          <FormField
+            label="Topic Pattern"
+            required
+            value={topicPattern}
+            onChange={setTopicPattern}
+            placeholder="e.g. alerts/* or my-topic"
+            helpText="Use * as wildcard. Example: alerts/* matches alerts/cpu, alerts/disk, etc."
+          />
+          {topics.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 -mt-1 mb-2">
+              {topics
+                .filter(t => !topicPattern || t.name.toLowerCase().includes(topicPattern.toLowerCase()))
+                .slice(0, 8)
+                .map(t => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTopicPattern(t.name)}
+                    className={`px-2 py-0.5 text-xs rounded-pill transition ${topicPattern === t.name ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-surface-elevated text-slate-500 dark:text-slate-400 hover:text-primary'}`}
+                  >
+                    {t.name}
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
         <FormField type="checkbox" label="Can Read" checked={canRead} onChange={setCanRead} />
         <FormField type="checkbox" label="Can Write" checked={canWrite} onChange={setCanWrite} />
       </FormModal>

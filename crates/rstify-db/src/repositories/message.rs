@@ -109,6 +109,49 @@ impl MessageRepository for SqliteMessageRepo {
             .map_err(crate::map_sqlx_err)
     }
 
+    async fn list_inbox(
+        &self,
+        user_id: i64,
+        topic_ids: &[i64],
+        limit: i64,
+        since: i64,
+        inbox: Option<bool>,
+    ) -> Result<Vec<Message>, CoreError> {
+        let mut qb = sqlx::QueryBuilder::<sqlx::Sqlite>::new(
+            r#"SELECT * FROM (
+                 SELECT m.* FROM messages m
+                 JOIN applications a ON m.application_id = a.id
+                 WHERE a.user_id = "#,
+        );
+        qb.push_bind(user_id);
+        if !topic_ids.is_empty() {
+            qb.push(" UNION ALL SELECT m.* FROM messages m WHERE m.topic_id IN (");
+            let mut sep = qb.separated(", ");
+            for id in topic_ids {
+                sep.push_bind(*id);
+            }
+            qb.push(")");
+        }
+        qb.push(") WHERE id > ");
+        qb.push_bind(since);
+        match inbox {
+            Some(true) => {
+                qb.push(" AND inbox = 1");
+            }
+            Some(false) => {
+                qb.push(" AND inbox = 0");
+            }
+            None => {}
+        }
+        qb.push(" ORDER BY id DESC LIMIT ");
+        qb.push_bind(limit);
+
+        qb.build_query_as::<Message>()
+            .fetch_all(&self.pool)
+            .await
+            .map_err(crate::map_sqlx_err)
+    }
+
     async fn list_by_topic(
         &self,
         topic_id: i64,

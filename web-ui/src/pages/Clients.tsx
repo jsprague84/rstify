@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { api } from '../api/client';
-import type { Client } from 'shared';
+import type { Client, Application } from 'shared';
 import DataTable from '../components/DataTable';
 import EmptyState from '../components/EmptyState';
 import { FormModal } from '../components/FormModal';
@@ -43,6 +43,13 @@ export default function Clients() {
   const [showCreate, setShowCreate] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
   const [deleteClient, setDeleteClient] = useState<Client | null>(null);
+
+  // Applications are named entities — offer a picker, not a numeric-ID input.
+  const [apps, setApps] = useState<Application[]>([]);
+  useEffect(() => {
+    api.listApplications().then(setApps).catch(() => {});
+  }, []);
+  const appName = (id: string) => apps.find(a => String(a.id) === id)?.name;
 
   // Form field state
   const [name, setName] = useState('');
@@ -100,29 +107,35 @@ export default function Clients() {
           </label>
         ))}
       </div>
-      <div className="flex gap-2">
-        <input
-          placeholder="App ID (e.g., 5)"
-          value={appScope}
-          onChange={e => setAppScope(e.target.value)}
-          className="flex-1 border dark:border-gray-600 rounded px-3 py-1.5 text-sm dark:bg-gray-700 dark:text-white"
-        />
-        <button type="button" onClick={addAppScope} className="px-3 py-1.5 text-xs bg-purple-600 text-white rounded hover:bg-purple-700">
-          Add app scope
-        </button>
-      </div>
+      {apps.length > 0 && (
+        <div className="flex gap-2">
+          <select
+            value={appScope}
+            onChange={e => setAppScope(e.target.value)}
+            className="flex-1 border dark:border-gray-600 rounded px-3 py-1.5 text-sm dark:bg-gray-700 dark:text-white"
+          >
+            <option value="">Restrict to application…</option>
+            {apps
+              .filter(a => !scopes.includes(`app:${a.id}`))
+              .map(a => <option key={a.id} value={String(a.id)}>{a.name}</option>)}
+          </select>
+          <button type="button" onClick={addAppScope} disabled={!appScope} className="px-3 py-1.5 text-xs font-semibold bg-primary text-white rounded-pill hover:bg-brand-600 disabled:opacity-50 transition">
+            Add app scope
+          </button>
+        </div>
+      )}
       {scopes.filter(s => s.startsWith('app:')).length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
           {scopes.filter(s => s.startsWith('app:')).map(s => (
-            <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">
-              {s}
-              <button type="button" onClick={() => removeScope(s)} className="hover:text-purple-900">&times;</button>
+            <span key={s} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-full bg-slate-100 text-slate-700 dark:bg-surface-elevated dark:text-slate-300">
+              {appName(s.slice(4)) || s}
+              <button type="button" onClick={() => removeScope(s)} className="hover:text-error">&times;</button>
             </span>
           ))}
         </div>
       )}
       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-        read = list messages, write = create/delete messages, admin = all access. app:ID restricts to a specific application.
+        read = list messages, write = create/delete messages, admin = all access. An app scope restricts the token to that application's messages.
       </p>
     </div>
   );
@@ -149,7 +162,6 @@ export default function Clients() {
           />
         }
         columns={[
-          { key: 'id', header: 'ID' },
           { key: 'name', header: 'Name' },
           { key: 'token', header: 'Token', render: c => <TokenDisplay token={c.token} /> },
           { key: 'scopes', header: 'Scopes', render: c => <ScopeBadges scopes={c.scopes} /> },

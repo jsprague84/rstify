@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Application, MessageResponse } from 'shared';
 import { useMessageStream } from '../hooks/useMessageStream';
@@ -82,6 +83,9 @@ export default function Messages() {
   const [searchQuery, setSearchQuery] = useState('');
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  // True once the first inbox load has settled — the ?source= deep-link merge
+  // must wait for it, or the initial load would overwrite the merged history.
+  const [bootstrapped, setBootstrapped] = useState(false);
   const fetchLimit = useRef(PAGE_SIZE);
   const [apps, setApps] = useState<Application[]>([]);
   const appsMap = useMemo(() => {
@@ -99,7 +103,7 @@ export default function Messages() {
         setHasMore(res.paging.size >= limit);
       })
       .catch(e => { if (isCurrent()) setError(e.message); })
-      .finally(() => setLoading(false));
+      .finally(() => { setLoading(false); setBootstrapped(true); });
   }, []);
 
   useEffect(() => {
@@ -178,15 +182,50 @@ export default function Messages() {
     [messages, selectedSourceId],
   );
 
+  // Deep link: /messages?source=app:5 or ?source=topic:builds opens that
+  // thread. If the source isn't in the loaded inbox window (older messages,
+  // or a channel-only topic), fetch its history once and merge it in.
+  const [searchParams] = useSearchParams();
+  const sourceParam = searchParams.get('source');
+  const fetchedParam = useRef<string | null>(null);
+  useEffect(() => {
+    if (!sourceParam || !bootstrapped || loading) return;
+    if (sources.some(s => s.sourceId === sourceParam)) {
+      if (fetchedParam.current !== sourceParam) {
+        fetchedParam.current = sourceParam;
+        setSelectedSourceId(sourceParam);
+      }
+      return;
+    }
+    if (fetchedParam.current === sourceParam) return;
+    fetchedParam.current = sourceParam;
+    const history = sourceParam.startsWith('topic:')
+      ? api.listTopicMessages(sourceParam.slice(6)).then(r => r.messages)
+      : sourceParam.startsWith('app:')
+        ? api.listApplicationMessages(Number(sourceParam.slice(4))).then(r => r.messages)
+        : Promise.resolve([] as MessageResponse[]);
+    history
+      .then(msgs => {
+        if (msgs.length) {
+          setMessages(prev => {
+            const seen = new Set(prev.map(m => m.id));
+            return [...prev, ...msgs.filter(m => !seen.has(m.id))];
+          });
+        }
+        setSelectedSourceId(sourceParam);
+      })
+      .catch(() => setSelectedSourceId(sourceParam));
+  }, [sourceParam, bootstrapped, loading, sources]);
+
   // On desktop, open the most-recent source by default so the detail pane isn't empty.
   const didAutoSelect = useRef(false);
   useEffect(() => {
-    if (!didAutoSelect.current && sources.length &&
+    if (!didAutoSelect.current && !sourceParam && sources.length &&
         typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches) {
       didAutoSelect.current = true;
       setSelectedSourceId(sources[0].sourceId);
     }
-  }, [sources]);
+  }, [sources, sourceParam]);
 
   const searching = searchAction.loading;
 

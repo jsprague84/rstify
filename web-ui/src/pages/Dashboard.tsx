@@ -1,4 +1,5 @@
 import { useState, useEffect, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import type { StatsResponse, HealthResponse, VersionResponse } from 'shared';
 import { useAuth } from '../hooks/useAuth';
@@ -20,6 +21,8 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  const isEmptyInstance = user?.is_admin && stats != null && stats.messages === 0;
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="mb-7">
@@ -30,38 +33,74 @@ export default function Dashboard() {
       {statsAction.error && (
         <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm mb-5">{statsAction.error}</div>
       )}
+      {healthAction.error && (
+        <div className="bg-warning/10 text-warning px-4 py-2.5 rounded-xl text-sm mb-5">
+          Could not reach the server health endpoint: {healthAction.error}
+        </div>
+      )}
+
+      {isEmptyInstance && (
+        <div className="rounded-2xl border border-dashed border-slate-200 dark:border-white/10 p-6 mb-5">
+          <p className="font-semibold text-slate-900 dark:text-white">Get your first notification flowing</p>
+          <ol className="mt-2 space-y-1 text-sm text-slate-500 dark:text-slate-400 list-decimal list-inside">
+            <li><Link to="/applications" className="text-primary hover:underline font-medium">Create an application</Link> — it gets a token your scripts use to push messages.</li>
+            <li>Send one: <code className="bg-slate-100 dark:bg-surface-elevated px-1.5 py-0.5 rounded text-xs">curl "{window.location.origin}/message?token=&lt;apptoken&gt;" -F "title=Hi" -F "message=It works"</code></li>
+            <li>Watch it arrive in <Link to="/messages" className="text-primary hover:underline font-medium">Messages</Link> — or hook up <Link to="/webhooks" className="text-primary hover:underline font-medium">a webhook</Link>.</li>
+          </ol>
+        </div>
+      )}
 
       {user?.is_admin && stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-          <StatCard label="Users" value={stats.users} icon={<IconUsers />} />
-          <StatCard label="Topics" value={stats.topics} icon={<IconHash />} />
-          <StatCard label="Total messages" value={stats.messages} icon={<IconInbox />} />
-          <StatCard label="Messages · 24h" value={stats.messages_last_24h} icon={<IconBolt />} />
+          <StatCard label="Users" value={stats.users} icon={<IconUsers />} to="/users" />
+          <StatCard label="Topics" value={stats.topics} icon={<IconHash />} to="/topics" />
+          <StatCard label="Total messages" value={stats.messages} icon={<IconInbox />} to="/messages" />
+          <StatCard label="Messages · 24h" value={stats.messages_last_24h} icon={<IconBolt />} to="/messages" />
         </div>
       )}
 
       {health && <ServerCard health={health} version={version} />}
 
       {!user?.is_admin && (
-        <p className="text-slate-500 dark:text-slate-400 mt-5">
-          Use the sidebar to manage your applications, clients, and topics.
-        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-5">
+          <QuickLink to="/messages" title="Inbox" subtitle="Read your messages" icon={<IconInbox />} />
+          <QuickLink to="/applications" title="Applications" subtitle="Tokens for sending" icon={<IconBolt />} />
+          <QuickLink to="/topics" title="Topics" subtitle="Subscribe & publish" icon={<IconHash />} />
+        </div>
       )}
     </div>
   );
 }
 
-function StatCard({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
+function StatCard({ label, value, icon, to }: { label: string; value: number; icon: ReactNode; to: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface-card p-5">
+    <Link
+      to={to}
+      className="block rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface-card p-5 hover:border-primary/40 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary transition group"
+    >
       <div className="flex items-start justify-between">
-        <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
+        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition">{label}</p>
         <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-surface-elevated flex items-center justify-center text-slate-400">{icon}</div>
       </div>
       <p className="text-[32px] leading-none font-semibold font-mono tabular-nums text-slate-900 dark:text-white mt-4">
         {value.toLocaleString()}
       </p>
-    </div>
+    </Link>
+  );
+}
+
+function QuickLink({ to, title, subtitle, icon }: { to: string; title: string; subtitle: string; icon: ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center gap-3.5 rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-surface-card p-5 hover:border-primary/40 hover:shadow-sm transition"
+    >
+      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-surface-elevated flex items-center justify-center text-slate-400 flex-shrink-0">{icon}</div>
+      <div>
+        <p className="font-semibold text-slate-900 dark:text-white">{title}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+      </div>
+    </Link>
   );
 }
 

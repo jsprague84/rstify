@@ -78,7 +78,6 @@ export default function Users() {
           />
         }
         columns={[
-          { key: 'id', header: 'ID' },
           { key: 'username', header: 'Username' },
           { key: 'email', header: 'Email', render: (u) => u.email || '-' },
           { key: 'is_admin', header: 'Admin', render: (u) => (u.is_admin ? 'Yes' : 'No') },

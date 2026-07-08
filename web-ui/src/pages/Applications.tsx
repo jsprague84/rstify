@@ -1,18 +1,14 @@
 import { useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import type { Application, MessageResponse } from 'shared';
-import MessageContent from '../components/MessageContent';
+import type { Application } from 'shared';
 import DataTable from '../components/DataTable';
 import EmptyState from '../components/EmptyState';
-import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import TokenDisplay from '../components/TokenDisplay';
-import PriorityBadge from '../components/PriorityBadge';
 import { FormModal } from '../components/FormModal';
 import { FormField } from '../components/FormField';
 import { useCrudResource } from '../hooks/useCrudResource';
-import { useAsyncAction } from '../hooks/useAsyncAction';
-import { formatLocalTime } from 'shared';
 
 function AppIcon({ app, size = 32 }: { app: Application; size?: number }) {
   const [v] = useState(() => Date.now());
@@ -37,16 +33,14 @@ function AppIcon({ app, size = 32 }: { app: Application; size?: number }) {
 }
 
 export default function Applications() {
+  const navigate = useNavigate();
   const fetchApps = useCallback(() => api.listApplications(), []);
   const crud = useCrudResource(fetchApps);
-  const messagesAction = useAsyncAction<MessageResponse[]>();
 
   // Modal state
   const [showCreate, setShowCreate] = useState(false);
   const [editApp, setEditApp] = useState<Application | null>(null);
   const [deleteApp, setDeleteApp] = useState<Application | null>(null);
-  const [messagesApp, setMessagesApp] = useState<Application | null>(null);
-  const [appMessages, setAppMessages] = useState<MessageResponse[]>([]);
 
   // Form field state
   const [name, setName] = useState('');
@@ -84,15 +78,6 @@ export default function Applications() {
     setIconVersion(Date.now());
     setIconError('');
     setEditApp(app);
-  };
-
-  const loadAppMessages = async (app: Application) => {
-    setMessagesApp(app);
-    const result = await messagesAction.execute(async () => {
-      const res = await api.listApplicationMessages(app.id);
-      return res.messages;
-    });
-    if (result) setAppMessages(result);
   };
 
   const handleDelete = async () => {
@@ -203,7 +188,6 @@ export default function Applications() {
           />
         }
         columns={[
-          { key: 'id', header: 'ID' },
           { key: 'image', header: 'Icon', render: a => <button onClick={() => openEdit(a)} className="cursor-pointer"><AppIcon app={a} size={28} /></button> },
           { key: 'name', header: 'Name' },
           { key: 'description', header: 'Description', render: a => a.description || '-' },
@@ -213,7 +197,7 @@ export default function Applications() {
         ]}
         actions={a => (
           <div className="flex gap-2 justify-end">
-            <button onClick={() => loadAppMessages(a)} className="text-primary hover:text-brand-700 text-sm font-medium">Messages</button>
+            <button onClick={() => navigate(`/messages?source=app:${a.id}`)} className="text-primary hover:text-brand-700 text-sm font-medium">Messages</button>
             <button onClick={() => openEdit(a)} className="text-primary hover:text-brand-700 text-sm font-medium">Edit</button>
             <button onClick={() => setDeleteApp(a)} className="text-error hover:text-error/80 text-sm font-medium">Delete</button>
           </div>
@@ -275,36 +259,6 @@ export default function Applications() {
         title="Delete Application"
         message={`Delete application "${deleteApp?.name}"? All associated messages will be deleted.`}
       />
-      {messagesApp && (
-        <Modal open onClose={() => { setMessagesApp(null); setAppMessages([]); messagesAction.clearError(); }} title={`Messages \u2014 ${messagesApp.name}`}>
-          <div className="max-h-96 overflow-y-auto space-y-3">
-            {messagesAction.loading ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-4">Loading...</p>
-            ) : messagesAction.error ? (
-              <p className="text-red-500 dark:text-red-400 text-center py-4">{messagesAction.error}</p>
-            ) : appMessages.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-4">No messages</p>
-            ) : (
-              appMessages.map(m => (
-                <div key={m.id} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    {m.title && <span className="font-semibold text-gray-900 dark:text-white text-sm">{m.title}</span>}
-                    <span className="text-xs text-gray-400">#{m.id}</span>
-                    <PriorityBadge priority={m.priority} />
-                  </div>
-                  <MessageContent message={m.message} extras={m.extras} contentType={m.content_type} />
-                  {m.tags && m.tags.length > 0 && (
-                    <div className="flex gap-1 mt-1">
-                      {m.tags.map(t => <span key={t} className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">{t}</span>)}
-                    </div>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1">{formatLocalTime(m.date)}</p>
-                </div>
-              ))
-            )}
-          </div>
-        </Modal>
-      )}
     </div>
   );
 }

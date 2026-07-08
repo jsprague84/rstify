@@ -44,6 +44,17 @@ pub trait MessageRepository: Send + Sync {
         since: i64,
         inbox: Option<bool>,
     ) -> Result<Vec<Message>, CoreError>;
+    /// Inbox view: the user's application messages PLUS messages on the given
+    /// (visible) topics. `/message` without the rstify-specific `inbox` param
+    /// stays Gotify-pure via list_by_user_apps.
+    async fn list_inbox(
+        &self,
+        user_id: i64,
+        topic_ids: &[i64],
+        limit: i64,
+        since: i64,
+        inbox: Option<bool>,
+    ) -> Result<Vec<Message>, CoreError>;
     async fn list_by_topic(
         &self,
         topic_id: i64,

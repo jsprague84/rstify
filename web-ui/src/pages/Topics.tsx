@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Topic, MessageResponse } from 'shared';
 import DataTable from '../components/DataTable';
@@ -7,26 +8,20 @@ import Modal from '../components/Modal';
 import { FormModal } from '../components/FormModal';
 import { FormField } from '../components/FormField';
 import ConfirmDialog from '../components/ConfirmDialog';
-import MessageContent from '../components/MessageContent';
 import { useToast } from '../components/Toast';
-import { formatLocalTime } from 'shared';
-import PriorityBadge from '../components/PriorityBadge';
 import { useCrudResource } from '../hooks/useCrudResource';
 import { useAsyncAction } from '../hooks/useAsyncAction';
 
 export default function Topics() {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const fetchTopics = useCallback(() => api.listTopics(), []);
   const crud = useCrudResource(fetchTopics);
-  const messagesAction = useAsyncAction<MessageResponse[]>();
 
   const [showCreate, setShowCreate] = useState(false);
   const [editTopic, setEditTopic] = useState<Topic | null>(null);
   const [deleteTopic, setDeleteTopic] = useState<Topic | null>(null);
-  const [messagesTopic, setMessagesTopic] = useState<Topic | null>(null);
-  const [topicMessages, setTopicMessages] = useState<MessageResponse[]>([]);
   const [publishTopic, setPublishTopic] = useState<Topic | null>(null);
-  const [showDeleteAllTopicMsgs, setShowDeleteAllTopicMsgs] = useState(false);
 
   // Create form state
   const [createName, setCreateName] = useState('');
@@ -44,14 +39,6 @@ export default function Topics() {
   const openCreate = () => {
     resetCreateForm();
     setShowCreate(true);
-  };
-
-  const loadTopicMessages = async (topic: Topic) => {
-    setMessagesTopic(topic);
-    const result = await messagesAction.execute(() =>
-      api.listTopicMessages(topic.name).then(res => res.messages)
-    );
-    if (result) setTopicMessages(result);
   };
 
   const handleDelete = async () => {
@@ -82,16 +69,15 @@ export default function Topics() {
           />
         }
         columns={[
-          { key: 'id', header: 'ID' },
           { key: 'name', header: 'Name' },
           { key: 'description', header: 'Description', render: t => t.description || '-' },
           { key: 'everyone_read', header: 'Public Read', render: t => t.everyone_read ? 'Yes' : 'No' },
           { key: 'everyone_write', header: 'Public Write', render: t => t.everyone_write ? 'Yes' : 'No' },
         ]}
         actions={t => (
-          <div className="flex gap-2">
-            <button onClick={() => loadTopicMessages(t)} className="text-primary hover:text-brand-700 text-sm font-medium">Messages</button>
-            <button onClick={() => setPublishTopic(t)} className="text-green-600 hover:text-green-800 text-sm">Send</button>
+          <div className="flex gap-2 items-center">
+            <button onClick={() => setPublishTopic(t)} className="px-3 py-1 text-xs font-semibold rounded-pill border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:border-primary hover:text-primary transition">Send</button>
+            <button onClick={() => navigate(`/messages?source=topic:${encodeURIComponent(t.name)}`)} className="text-primary hover:text-brand-700 text-sm font-medium">Messages</button>
             <button onClick={() => setEditTopic(t)} className="text-primary hover:text-brand-700 text-sm font-medium">Edit</button>
             <button onClick={() => setDeleteTopic(t)} className="text-error hover:text-error/80 text-sm font-medium">Delete</button>
           </div>
@@ -132,33 +118,6 @@ export default function Topics() {
         onConfirm={handleDelete}
         title="Delete Topic"
         message={`Delete topic "${deleteTopic?.name}"? All associated messages will be deleted.`}
-      />
-      {messagesTopic && (
-        <Modal open onClose={() => { setMessagesTopic(null); setTopicMessages([]); }} title={`Messages — ${messagesTopic.name}`}>
-          <TopicMessagesView
-            topic={messagesTopic}
-            messages={topicMessages}
-            loading={messagesAction.loading}
-            onRequestDeleteAll={() => setShowDeleteAllTopicMsgs(true)}
-          />
-        </Modal>
-      )}
-      <ConfirmDialog
-        open={showDeleteAllTopicMsgs}
-        onClose={() => setShowDeleteAllTopicMsgs(false)}
-        onConfirm={async () => {
-          const ids = topicMessages.map(m => m.id).filter(id => id > 0);
-          if (ids.length > 0) {
-            const ok = await crud.mutate(async () => { await api.deleteBatchMessages(ids); });
-            if (ok) {
-              setTopicMessages([]);
-              toast('All messages deleted', 'success');
-            }
-          }
-          setShowDeleteAllTopicMsgs(false);
-        }}
-        title="Delete All Messages"
-        message={`Delete all ${topicMessages.length} messages in this topic? This cannot be undone.`}
       />
       {publishTopic && (
         <Modal open onClose={() => setPublishTopic(null)} title={`Send to ${publishTopic.name}`}>
@@ -318,92 +277,6 @@ function EditTopicForm({ topic, onSubmit, onClose }: {
         <button type="submit" disabled={loading} className="px-5 py-2 text-sm font-semibold text-white bg-primary rounded-pill hover:bg-brand-600 disabled:opacity-50 transition">Save</button>
       </div>
     </form>
-  );
-}
-
-function TopicMessagesView({ topic, messages, loading, onRequestDeleteAll }: {
-  topic: Topic;
-  messages: MessageResponse[];
-  loading: boolean;
-  onRequestDeleteAll: () => void;
-}) {
-  const [mode, setMode] = useState<'history' | 'live'>('history');
-  const [liveMessages, setLiveMessages] = useState<MessageResponse[]>([]);
-
-  useEffect(() => {
-    if (mode !== 'live') return;
-    setLiveMessages([]);
-
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const token = localStorage.getItem('rstify_token');
-    const wsUrl = `${protocol}//${window.location.host}/api/topics/${encodeURIComponent(topic.name)}/ws?token=${token}`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data) as MessageResponse;
-        setLiveMessages(prev => [...prev.slice(-99), msg]);
-      } catch {}
-    };
-
-    return () => ws.close();
-  }, [mode, topic.name]);
-
-  const renderMessage = (m: MessageResponse, idx: number) => (
-    <div key={m.id || idx} className="bg-gray-50 dark:bg-gray-700 rounded p-3">
-      <div className="flex items-center gap-2 mb-1">
-        {m.title && <span className="font-semibold text-gray-900 dark:text-white text-sm">{m.title}</span>}
-        {m.id > 0 && <span className="text-xs text-gray-400">#{m.id}</span>}
-        <PriorityBadge priority={m.priority} />
-        {m.source && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400">via {m.source}</span>}
-      </div>
-      <MessageContent message={m.message} extras={m.extras} contentType={m.content_type} />
-      {m.tags && m.tags.length > 0 && (
-        <div className="flex gap-1 mt-1">
-          {m.tags.map(t => <span key={t} className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">{t}</span>)}
-        </div>
-      )}
-      <p className="text-xs text-gray-400 mt-1">{formatLocalTime(m.date)}</p>
-    </div>
-  );
-
-  const displayMessages = mode === 'live' ? liveMessages : messages;
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex gap-2">
-          <button onClick={() => setMode('history')} className={`px-3 py-1 text-sm rounded ${mode === 'history' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-surface-elevated text-slate-600 dark:text-slate-300'}`}>
-            History
-          </button>
-          <button onClick={() => setMode('live')} className={`px-3 py-1 text-sm rounded ${mode === 'live' ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'}`}>
-            Live
-          </button>
-          {mode === 'live' && (
-            <span className="text-xs text-green-500 flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Connected
-            </span>
-          )}
-        </div>
-        {mode === 'history' && messages.length > 0 && (
-          <button
-            onClick={onRequestDeleteAll}
-            className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Delete All
-          </button>
-        )}
-      </div>
-      <div className="max-h-96 overflow-y-auto space-y-3">
-        {loading ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-4">Loading...</p>
-        ) : displayMessages.length === 0 ? (
-          <p className="text-gray-500 dark:text-gray-400 text-center py-4">{mode === 'live' ? 'Waiting for messages...' : 'No messages'}</p>
-        ) : (
-          displayMessages.map((m, i) => renderMessage(m, i))
-        )}
-      </div>
-    </div>
   );
 }
 
