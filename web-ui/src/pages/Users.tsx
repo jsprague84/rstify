@@ -51,16 +51,16 @@ export default function Users() {
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold dark:text-white">Users</h2>
+        <h2 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">Users</h2>
         <button
           onClick={openCreate}
-          className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-pill hover:bg-brand-600 transition"
         >
           Create User
         </button>
       </div>
       {crud.error && (
-        <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">
+        <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm mb-4">
           {crud.error}
         </div>
       )}
@@ -76,10 +76,10 @@ export default function Users() {
         ]}
         actions={(u) => (
           <div className="flex gap-2 justify-end">
-            <button onClick={() => openEdit(u)} className="text-indigo-600 hover:text-indigo-800 text-sm">
+            <button onClick={() => openEdit(u)} className="text-primary hover:text-brand-700 text-sm font-medium">
               Edit
             </button>
-            <button onClick={() => setDeleteUser(u)} className="text-red-600 hover:text-red-800 text-sm">
+            <button onClick={() => setDeleteUser(u)} className="text-error hover:text-error/80 text-sm font-medium">
               Delete
             </button>
           </div>

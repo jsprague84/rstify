@@ -37,6 +37,12 @@ try {
     const ctx = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: 1 });
     // Boot authed: set the token before any page script runs, on every navigation.
     if (TOKEN) await ctx.addInitScript((t) => localStorage.setItem('rstify_token', t), TOKEN);
+    if (process.env.SHOT_THEME) {
+      await ctx.addInitScript((theme) => {
+        localStorage.setItem('rstify_theme', theme);
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+      }, process.env.SHOT_THEME);
+    }
     const page = await ctx.newPage();
     await page.goto(BASE + '/', { waitUntil: 'networkidle' }).catch(() => {});
     if (route !== '/') {

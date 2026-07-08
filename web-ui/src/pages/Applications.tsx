@@ -182,13 +182,13 @@ export default function Applications() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold dark:text-white">Applications</h2>
-        <button onClick={openCreate} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-          Create Application
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-white tracking-tight">Applications</h1>
+        <button onClick={openCreate} className="px-4 py-2 text-sm font-semibold bg-primary text-white rounded-pill hover:bg-brand-600 transition">
+          New application
         </button>
       </div>
-      {crud.error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-3 py-2 rounded text-sm mb-4">{crud.error}</div>}
+      {crud.error && <div className="bg-error/10 text-error px-4 py-2.5 rounded-xl text-sm mb-4">{crud.error}</div>}
       <DataTable
         data={crud.items}
         keyField="id"
@@ -203,9 +203,9 @@ export default function Applications() {
         ]}
         actions={a => (
           <div className="flex gap-2 justify-end">
-            <button onClick={() => loadAppMessages(a)} className="text-blue-600 hover:text-blue-800 text-sm">Messages</button>
-            <button onClick={() => openEdit(a)} className="text-indigo-600 hover:text-indigo-800 text-sm">Edit</button>
-            <button onClick={() => setDeleteApp(a)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
+            <button onClick={() => loadAppMessages(a)} className="text-primary hover:text-brand-700 text-sm font-medium">Messages</button>
+            <button onClick={() => openEdit(a)} className="text-primary hover:text-brand-700 text-sm font-medium">Edit</button>
+            <button onClick={() => setDeleteApp(a)} className="text-error hover:text-error/80 text-sm font-medium">Delete</button>
           </div>
         )}
       />
