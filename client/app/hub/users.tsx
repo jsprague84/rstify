@@ -255,8 +255,9 @@ export default function UsersScreen() {
           <Text className="text-sm text-slate-500 dark:text-slate-400">User</Text>
           <View className="bg-slate-50 dark:bg-surface-elevated border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
             {users.filter((u) => u.id !== user?.id).map((u) => (
-              <Pressable
+              <AnimatedPressable
                 key={u.id}
+                haptic={false}
                 className={`flex-row items-center justify-between p-3 ${newPermUserId === String(u.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
                 onPress={() => setNewPermUserId(String(u.id))}
               >
@@ -264,7 +265,7 @@ export default function UsersScreen() {
                 {newPermUserId === String(u.id) && (
                   <Ionicons name="checkmark" size={18} color="#3b82f6" />
                 )}
-              </Pressable>
+              </AnimatedPressable>
             ))}
           </View>
         </View>
