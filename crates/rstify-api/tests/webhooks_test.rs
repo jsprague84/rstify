@@ -44,6 +44,118 @@ async fn create_webhook() {
     assert_eq!(body["webhook_type"], "generic");
 }
 
+#[tokio::test]
+async fn create_incoming_webhook_requires_exactly_one_target() {
+    let app = common::setup().await;
+    let topic_id = common::seed::create_topic(&app.pool, 2, "wh-target-topic").await;
+
+    // No target → 400 (a message must belong to exactly one topic or app,
+    // so delivery would 500 otherwise)
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::post_json(
+            "/api/webhooks",
+            &app.user_token,
+            serde_json::json!({ "name": "No target", "webhookType": "custom" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+    // Both targets → 400
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::post_json(
+            "/api/webhooks",
+            &app.user_token,
+            serde_json::json!({
+                "name": "Both targets",
+                "webhookType": "custom",
+                "targetTopicId": topic_id,
+                "targetApplicationId": 1
+            }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn incoming_webhook_logs_deliveries() {
+    let app = common::setup().await;
+    let topic_id = common::seed::create_topic(&app.pool, 2, "wh-log-topic").await;
+
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::post_json(
+            "/api/webhooks",
+            &app.user_token,
+            serde_json::json!({
+                "name": "Logged webhook",
+                "webhookType": "custom",
+                "targetTopicId": topic_id
+            }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = common::body_json(resp).await;
+    let token = body["token"].as_str().unwrap().to_string();
+    let wh_id = body["id"].as_i64().unwrap();
+
+    // Successful delivery
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::unauthed_post_json(
+            &format!("/api/wh/{}", token),
+            serde_json::json!({ "title": "Hi", "message": "logged" }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Invalid JSON body → rejected AND logged
+    let resp = app
+        .router
+        .clone()
+        .oneshot(
+            axum::http::Request::builder()
+                .method("POST")
+                .uri(format!("/api/wh/{}", token))
+                .header("content-type", "application/json")
+                .body(axum::body::Body::from("not json"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+    // Both attempts must appear in the delivery log
+    let resp = app
+        .router
+        .clone()
+        .oneshot(common::get(
+            &format!("/api/webhooks/{}/deliveries", wh_id),
+            &app.user_token,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let logs = common::body_json(resp).await;
+    let arr = logs.as_array().expect("array of delivery logs");
+    assert_eq!(arr.len(), 2, "expected accepted + rejected entries");
+    assert!(arr
+        .iter()
+        .any(|l| l["success"] == true && l["status_code"] == 200));
+    assert!(arr
+        .iter()
+        .any(|l| l["success"] == false && l["status_code"] == 400));
+}
+
 // ---------------------------------------------------------------------------
 // List webhooks
 // ---------------------------------------------------------------------------

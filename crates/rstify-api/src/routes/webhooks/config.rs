@@ -64,6 +64,25 @@ pub async fn create_webhook(
 
     let direction = req.direction.as_deref().unwrap_or("incoming");
 
+    // Incoming webhooks must deliver to exactly one target: the messages
+    // table CHECK requires exactly one of application_id/topic_id, so a
+    // config with neither (or both) would 500 on every delivery.
+    if direction == "incoming" {
+        match (req.target_topic_id, req.target_application_id) {
+            (Some(_), None) | (None, Some(_)) => {}
+            (None, None) => {
+                return Err(ApiError::from(CoreError::Validation(
+                    "Incoming webhooks need a delivery target: set target_topic_id or target_application_id".to_string(),
+                )));
+            }
+            (Some(_), Some(_)) => {
+                return Err(ApiError::from(CoreError::Validation(
+                    "Incoming webhooks can target a topic or an application, not both".to_string(),
+                )));
+            }
+        }
+    }
+
     let config = state
         .message_repo
         .create_webhook_config(
@@ -333,6 +352,34 @@ pub async fn delete_webhook(
     Ok(Json(serde_json::json!({"success": true})))
 }
 
+/// Record an incoming webhook attempt in the shared delivery log so the UI can
+/// answer "is GitHub actually reaching my server?" — including rejections,
+/// which are the debugging gold. `note` lands in response_body_preview.
+async fn log_incoming_delivery(
+    pool: &sqlx::SqlitePool,
+    webhook_config_id: i64,
+    message_id: Option<i64>,
+    status_code: i32,
+    note: &str,
+    started: std::time::Instant,
+    success: bool,
+) {
+    if let Err(e) = sqlx::query(
+        "INSERT INTO webhook_delivery_log (webhook_config_id, message_id, status_code, response_body_preview, duration_ms, success) VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(webhook_config_id)
+    .bind(message_id)
+    .bind(status_code)
+    .bind(note)
+    .bind(started.elapsed().as_millis() as i64)
+    .bind(success)
+    .execute(pool)
+    .await
+    {
+        tracing::error!("Failed to log incoming webhook delivery: {}", e);
+    }
+}
+
 /// POST /api/wh/{token} - Receive incoming webhook
 #[utoipa::path(
     post,
@@ -346,6 +393,7 @@ pub async fn receive_webhook(
     headers: HeaderMap,
     body: Bytes,
 ) -> Result<Json<serde_json::Value>, ApiError> {
+    let started = std::time::Instant::now();
     let config = state
         .message_repo
         .find_webhook_config_by_token(&token)
@@ -354,8 +402,36 @@ pub async fn receive_webhook(
         .ok_or_else(|| ApiError::from(CoreError::NotFound("Webhook not found".to_string())))?;
 
     if !config.enabled {
+        log_incoming_delivery(
+            &state.pool,
+            config.id,
+            None,
+            403,
+            "rejected: webhook is disabled",
+            started,
+            false,
+        )
+        .await;
         return Err(ApiError::from(CoreError::Forbidden(
             "Webhook is disabled".to_string(),
+        )));
+    }
+
+    // Legacy configs may have no target (or both): messages require exactly
+    // one of application_id/topic_id, so fail clearly instead of a DB 500.
+    if config.target_topic_id.is_some() == config.target_application_id.is_some() {
+        log_incoming_delivery(
+            &state.pool,
+            config.id,
+            None,
+            422,
+            "rejected: webhook has no valid delivery target — edit it to target exactly one topic or application",
+            started,
+            false,
+        )
+        .await;
+        return Err(ApiError::from(CoreError::Validation(
+            "Webhook has no valid delivery target; edit it to target exactly one topic or application".to_string(),
         )));
     }
 
@@ -390,14 +466,40 @@ pub async fn receive_webhook(
             .unwrap_or(false),
         };
         if !verified {
+            log_incoming_delivery(
+                &state.pool,
+                config.id,
+                None,
+                403,
+                "rejected: invalid or missing signature",
+                started,
+                false,
+            )
+            .await;
             return Err(ApiError::from(CoreError::Forbidden(
                 "Invalid or missing webhook signature".to_string(),
             )));
         }
     }
 
-    let payload: serde_json::Value = serde_json::from_slice(&body)
-        .map_err(|_| ApiError::from(CoreError::Validation("Invalid JSON body".to_string())))?;
+    let payload: serde_json::Value = match serde_json::from_slice(&body) {
+        Ok(v) => v,
+        Err(_) => {
+            log_incoming_delivery(
+                &state.pool,
+                config.id,
+                None,
+                400,
+                "rejected: invalid JSON body",
+                started,
+                false,
+            )
+            .await;
+            return Err(ApiError::from(CoreError::Validation(
+                "Invalid JSON body".to_string(),
+            )));
+        }
+    };
 
     // Extract message from payload based on webhook type
     let (title, message, priority, click_url, tags_json, extras_json) =
@@ -532,6 +634,20 @@ pub async fn receive_webhook(
             .await;
         }
     }
+
+    log_incoming_delivery(
+        &state.pool,
+        config.id,
+        Some(msg.id),
+        200,
+        &format!(
+            "accepted: {}",
+            title.as_deref().unwrap_or(&config.webhook_type)
+        ),
+        started,
+        true,
+    )
+    .await;
 
     Ok(Json(
         serde_json::json!({"success": true, "message_id": msg.id}),

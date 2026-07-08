@@ -3,7 +3,6 @@ pub mod email;
 pub mod outgoing_webhooks;
 pub mod scheduled;
 pub mod ssrf;
-pub mod webhooks;
 
 use scheduled::BroadcastFn;
 use sqlx::SqlitePool;
