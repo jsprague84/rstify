@@ -93,8 +93,9 @@ export default function SettingsScreen() {
           <SectionLabel>Appearance</SectionLabel>
           <View className="bg-white dark:bg-surface-card rounded-xl overflow-hidden">
             {themeOptions.map((opt) => (
-              <Pressable
+              <AnimatedPressable
                 key={opt.value}
+                haptic={false}
                 className={`flex-row items-center gap-3 p-3 ${mode === opt.value ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
                 onPress={() => setMode(opt.value)}
               >
@@ -110,7 +111,7 @@ export default function SettingsScreen() {
                 <View className={`w-5 h-5 rounded-full border-2 items-center justify-center ${mode === opt.value ? 'border-primary' : 'border-slate-300 dark:border-slate-600'}`}>
                   {mode === opt.value && <View className="w-3 h-3 rounded-full bg-primary" />}
                 </View>
-              </Pressable>
+              </AnimatedPressable>
             ))}
           </View>
         </View>
